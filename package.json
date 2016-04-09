@@ -1,0 +1,24 @@
+{
+  "name": "bubblebot",
+  "version": "0.0.1",
+  "description": "A slackbot the manages cloud-hosted infrastructure",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublish": "coffee -o lib -c src/*.coffee"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bubblegroup/bubblebot.git"
+  },
+  "keywords": [
+    "slack",
+    "deployment"
+  ],
+  "author": "Bubble Group, Inc <contact@bubble.is>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bubblegroup/bubblebot/issues"
+  },
+  "homepage": "https://github.com/bubblegroup/bubblebot"
+}
