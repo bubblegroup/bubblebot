@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-bubblebot = require('../index');
+bubblebot = require('..');
 
 command = process.argv[2];
 
