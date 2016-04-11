@@ -2,7 +2,7 @@
   "name": "bubblebot",
   "version": "0.0.1",
   "description": "A slackbot the manages cloud-hosted infrastructure",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublish": "coffee -o lib -c src/*.coffee"
