@@ -1,8 +1,6 @@
 {
     //Where we install bubblebot on the bubblebot server
     "install_directory": "~/bubblebot/",
-    //The file we store configuration options in on the bubblebot server, relative to the install directory
-    "configuration_file": "configuration.json",
     //The file we run on server start
     "run_file": "run.js"
 }

@@ -2,13 +2,11 @@ commands = exports
 
 
 commands.publish = ->
-    #Load the configuration from disk
-    saved_config = fs.readSync 'configuration.json', {encoding: 'utf8'}
-    JSON.parse strip_comments saved_config
+    #Load the local configuration from disk
+    config.init()
 
     #Prompt the user for the master credential
     prompt.start()
-
     block = u.Block('master key')
     prompt.get('master key', block.make_cb())
     master_key = block.wait()['master key']
@@ -43,15 +41,6 @@ commands.publish = ->
         bbserver.run('sudo supervisorctl stop bubblebot', {can_fail: true})
         #start bubblebot
         bbserver.run('sudo supervisorctl start bubblebot')
-
-
-#Starts bubble bot running on a machine, including the web server and slack client
-commands.start_server = ->
-    #Load the configuration from disk
-    saved_config = fs.readSync config.get('install_directory') + config.get('configuration_file'), {encoding: 'utf8'}
-    config.init JSON.parse strip_comments saved_config
-
-    winston.log 'Starting bubblebot...'
 
 
 #Installs bubblebot into a directory
