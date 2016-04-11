@@ -1,11 +1,22 @@
 commands = exports
 
 
-commands.publish = (configuration) ->
-    #Set up the configuration for the remainder of this call
-    config.init configuration
+commands.publish = ->
+    #Load the configuration from disk
+    saved_config = fs.readSync 'configuration.json', {encoding: 'utf8'}
+    JSON.parse strip_comments saved_config
 
-    cloud = new clouds.Cloud()
+    #Prompt the user for the master credential
+    prompt.start()
+
+    block = u.Block('master key')
+    prompt.get('master key', block.make_cb())
+    master_key = block.wait()['master key']
+
+    #Save the master key to our configuration
+    config.set 'master_key', master_key
+
+    cloud = new clouds.AWSCloud()
 
     bbserver = cloud.get_bbserver()
 
@@ -38,9 +49,27 @@ commands.publish = (configuration) ->
 commands.start_server = ->
     #Load the configuration from disk
     saved_config = fs.readSync config.get('install_directory') + config.get('configuration_file'), {encoding: 'utf8'}
-    config.init JSON.parse saved_config
+    config.init JSON.parse strip_comments saved_config
+
+    winston.log 'Starting bubblebot...'
 
 
+#Installs bubblebot into a directory
+commands.install = ->
+    for name in ['run.js', 'configuration.json']
+        console.log 'Creating ' + name
+        data = fs.readFileSync __dirname + '/../templates/' + name
+        try
+            fs.writeFileSync name, data, {flag: 'wx'}
+        catch err
+            console.log 'Could not create ' + name + ' (a file with that name may already exist)'
+
+
+#Prints the help for the bubblebot command line tool
+commands.print_help = ->
+    console.log 'Available commands:'
+    console.log '  install -- creates default files for a bubblebot installation'
+    console.log '  publish -- deploys bubblebot to a remote repository'
 
 
 
@@ -51,3 +80,5 @@ winston = require 'winston'
 fs = require 'fs'
 os = require 'os'
 config = require './config'
+strip_comments = require 'strip-json-comments'
+prompt = require 'prompt'

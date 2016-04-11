@@ -1,6 +1,6 @@
 clouds = exports
 
-clouds.Cloud = class Cloud
+clouds.AWSCloud = class AWSCloud
 
     get_bbserver: ->
 

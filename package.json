@@ -7,6 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublish": "coffee -o lib -c src/*.coffee"
   },
+  "bin": {
+    "bubblebot": "bin/bubblebot.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/bubblegroup/bubblebot.git"
@@ -20,5 +23,9 @@
   "bugs": {
     "url": "https://github.com/bubblegroup/bubblebot/issues"
   },
-  "homepage": "https://github.com/bubblegroup/bubblebot"
+  "homepage": "https://github.com/bubblegroup/bubblebot",
+  "dependencies": {
+    "prompt": "^1.0.0",
+    "strip-json-comments": "^2.0.1"
+  }
 }
