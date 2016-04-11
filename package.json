@@ -1,6 +1,6 @@
 {
   "name": "bubblebot",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "A slackbot the manages cloud-hosted infrastructure",
   "main": "lib/index.js",
   "scripts": {
@@ -26,6 +26,7 @@
   "homepage": "https://github.com/bubblegroup/bubblebot",
   "dependencies": {
     "prompt": "^1.0.0",
-    "strip-json-comments": "^2.0.1"
+    "strip-json-comments": "^2.0.1",
+    "winston": "^2.2.0"
   }
 }
