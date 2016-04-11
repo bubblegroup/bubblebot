@@ -5,5 +5,5 @@ Slackbot that manages a deployment
 
 ```
 npm install --save bubblebot
-bubblebot install
+./node_modules/.bin/bubblebot install
 ```

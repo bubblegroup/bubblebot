@@ -6,7 +6,7 @@ command = process.argv[2];
 
 if (command === 'install') {
     bubblebot.install();
-else if {command === 'publish') {
+} else if (command === 'publish') {
     bubblebot.publish();
 } else {
     bubblebot.print_help();
