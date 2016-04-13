@@ -24,7 +24,9 @@ commands.publish = ->
 
     #Capture the current directory to a tarball, upload it, and delete it
     temp_file = u.create_tarball(process.cwd())
-    bbserver.upload_file(temp_file, config.get('install_directory'))
+    bbserver.upload_file(temp_file, '~')
+    bbserver.run("tar -xf ~/#{temp_file} -C #{config.get('install_directory')}")
+    bbserver.run("rm ~/#{temp_file}")
     fs.removeFileSync temp_file
 
     #Save the configuration information to bubblebot
