@@ -1,12 +1,21 @@
-{
-    //Where we install bubblebot on the bubblebot server
-    "install_directory": "~/bubblebot/",
-    //The file we run on server start
-    "run_file": "run.js",
+{    
+    //Naming AWS resources
+    
     //The tag name we use to identify bubblebot resources
     "bubblebot_tag_key": "bubblebot",
     //The value we use to identify the bubblebot server instance
     "bubblebot_tag_value": "bubblebot_server",
+    //The prefix we use to name key pairs
+    "keypair_prefix": "bubblebot_keypair_",
+    
+    //Role tags -- we use this to tag assets based on how bubblebot uses them
+    "bubblebot_role_tag": "bubblebot_role", 
+    "bubblebot_role_bbserver": "bbserver"
+    
+    
+    
+    //Bubblebot server
+    
     //The region we run the bubblebot server in
     "bubblebot_region": "us-west-2",
     //The AMI we use as the base for the bubblebot server
@@ -14,7 +23,10 @@
     //The size we use for the bubblebot server
     "bubblebot_instance_type": "t2.nano",
     
-    //Role tags -- we use this to tag assets based on how bubblebot uses them
-    "bubblebot_role_tag": "bubblebot_role", 
-    "bubblebot_role_bbserver": "bbserver"
+    //Where we install bubblebot on the bubblebot server
+    "install_directory": "~/bubblebot/",
+    //The file we run on server start
+    "run_file": "run.js",
+    
+
 }

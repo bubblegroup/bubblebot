@@ -8,11 +8,12 @@ commands.publish = ->
     #Prompt the user for the master credential
     prompt.start()
     block = u.Block('master key')
-    prompt.get('master key', block.make_cb())
-    master_key = block.wait()['master key']
+    prompt.get(['access_key', 'secret'], block.make_cb())
+    {access_key, secret} = block.wait()
 
     #Save the master key to our configuration
-    config.set 'master_key', master_key
+    config.set 'accessKeyId', access_key
+    config.set 'secretAccessKey', secret
 
     cloud = new clouds.AWSCloud()
 
