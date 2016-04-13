@@ -60,23 +60,62 @@ class Environment
             #If not, create it
             {KeyMaterial} = @ec2('createKeyPair', {KeyName: name})
 
-            #And save it securely in S3
-            TODO DO THIS
+            #And save it to s3
+            @s3.putObject {Bucket: config.get('bubblebot_s3_bucket'), Key: name, Body: KeyMaterial}
 
         return name
 
 
-    #creates a new ec2 server in this environment
-    create_server: (image_id, instance_type, role, name) ->
-        keypair = @get_keypair_name()
-        security_group = @get_webserver_security_group()
+    #creates and returns a new ec2 server in this environment
+    create_server: (ImageId, InstanceType, role, name) ->
+        KeyName = @get_keypair_name()
+        SecurityGroupIds = [@get_webserver_security_group()]
+        SubnetId = @get_subnet()
+        MaxCount = 1
+        MinCount = 1
+        InstanceInitiatedShutdownBehavior = 'stop'
+
+        results = @ec2 'runInstances', {
+            ImageId
+            MaxCount
+            MinCount
+            SubnetId
+            KeyName
+            SecurityGroupIds
+            InstanceType
+            InstanceInitiatedShutdownBehavior
+        }
+
+        id = results.Instances[0].InstanceId
+
+        @tag_resource id, 'Name', name
+        @tag_resource id, config.get('bubblebot_role_tag'), role
+
+        return new Instance id
+
+
+    get_subnet: ->
+
+    tag_resource: ->
+
+
+
+
 
     #Calls ec2 and returns the results
-    ec2: (method, parameters) ->
-        ec2 = new AWS.EC2(aws_config @get_region())
+    ec2: (method, parameters) -> @aws 'EC2', method, parameters
+
+    #Calls s3 and returns the results
+    s3: (method, parameters) -> @aws 'S3', method, parameters
+
+    #Calls the AWS api
+    aws: (service, method, parameters) ->
+        svc = new AWS[service](aws_config @get_region())
         block = u.Block method
-        ec2[method] parameters, block.make_cb()
+        svc[method] parameters, block.make_cb()
         return block.wait()
+
+
 
 
 

@@ -10,11 +10,14 @@
     
     //Role tags -- we use this to tag assets based on how bubblebot uses them
     "bubblebot_role_tag": "bubblebot_role", 
-    "bubblebot_role_bbserver": "bbserver"
-    
+    "bubblebot_role_bbserver": "bbserver",
     
     
     //Bubblebot server
+    
+    //The bucket we use to store secure bubblebot resources in. MAKE SURE THIS IS LOCKED DOWN
+    //TO JUST THE BUBBLEBOT ACCOUNT!
+    "bubblebot_s3_bucket": "my_bubblebot_bucket",
     
     //The region we run the bubblebot server in
     "bubblebot_region": "us-west-2",
