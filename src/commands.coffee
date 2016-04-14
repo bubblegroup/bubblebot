@@ -34,7 +34,7 @@ commands.publish = ->
         if not config.get 'secretAccessKey', null
             prompt.start()
             block = u.Block('prompt')
-            prompt.get(['secret'], block.make_cb())
+            prompt.get({properties: {secret: {hidden: true}}}, block.make_cb())
             {secret} = block.wait()
 
             config.set 'secretAccessKey', secret
@@ -88,6 +88,7 @@ commands.install = ->
 commands.update = ->
     u.SyncRun ->
         console.log 'Checking for updates...'
+        console.log u.run_local 'npm install bubblebot'
         console.log u.run_local 'npm update bubblebot'
 
         process.exit()

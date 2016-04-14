@@ -67,7 +67,7 @@ class Environment
     get_instances_by_tag: (key, value) ->
         #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
         return @describe_instances {
-            Filters: [{Name: 'tag', Values: [key + '=' + value]}]
+            Filters: [{Name: 'tag:' + key, Values: [value]}]
         }
 
     #Calls describe instances on the given set of instances / parameters, and returns an array of
@@ -89,8 +89,12 @@ class Environment
         name = config.get('keypair_prefix') + @get_name()
 
         #check to see if it already exists
-        pairs = @ec2('describeKeyPairs', {KeyNames: [name]})
-        if not pairs.KeyPairs?.length > 0
+        try
+            pairs = @ec2('describeKeyPairs', {KeyNames: [name]})
+        catch err
+            if String(err).indexOf('does not exist') is -1
+                throw err
+
             #If not, create it
             {KeyMaterial} = @ec2('createKeyPair', {KeyName: name})
 
@@ -135,6 +139,8 @@ class Environment
         @tag_resource id, config.get('bubblebot_role_tag'), role
 
         return new Instance this, id
+
+    get_webserver_security_group: -> throw new Error 'not yet implemented!'
 
     get_subnet: -> throw new Error 'not yet implemented'
 
