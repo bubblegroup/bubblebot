@@ -35,7 +35,7 @@ commands.publish = ->
 
     #Ask bubblebot to restart itself
     try
-        bbserver.post_authenticated('/restart_me')
+        bbserver.run("curl -X POST http://localhost:8081/shutdown")
     catch err
         winston.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
         #make sure supervisord is running

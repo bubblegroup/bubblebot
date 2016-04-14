@@ -29,7 +29,7 @@
     //Where we install bubblebot on the bubblebot server
     "install_directory": "~/bubblebot/",
     //The file we run on server start
-    "run_file": "run.js",
+    "run_file": "run.js"
     
 
 }
