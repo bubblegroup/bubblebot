@@ -6,15 +6,38 @@ commands.publish = ->
         #Load the local configuration from disk
         config.init()
 
-        #Prompt the user for the master credential
+        #Prompt the user for the credentials
         prompt.start()
-        block = u.Block('master key')
-        prompt.get(['access_key', 'secret'], block.make_cb())
-        {access_key, secret} = block.wait()
+        block = u.Block('prompt')
+        prompt.get(['access_key'], block.make_cb())
+        {access_key} = block.wait()
 
-        #Save the master key to our configuration
         config.set 'accessKeyId', access_key
-        config.set 'secretAccessKey', secret
+
+        #load any access_key specific configuration
+        env_config_path = access_key + '.json'
+        try
+            raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
+        catch err
+            console.log "Creating #{env_config_path} to save access-key-specific configuration..."
+            raw = '{\n//Store access-key-specific configuration here\n}'
+            fs.writeFileSync env_config_path, raw
+
+        try
+            for k, v of JSON.parse strip_comments raw
+                config.set k, v
+        catch err
+            console.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
+            throw err
+
+        #Prompt for the secret
+        if not config.get 'secretAccessKey', null
+            prompt.start()
+            block = u.Block('prompt')
+            prompt.get(['secret'], block.make_cb())
+            {secret} = block.wait()
+
+            config.set 'secretAccessKey', secret
 
         cloud = new clouds.AWSCloud()
 
@@ -79,21 +102,6 @@ commands.print_help = ->
     process.exit()
 
 
-#For testing purposes, fetches the latest bubblebot.
-#Assumes that we are pointing to github, not npm, so does a coffeescript build
-#
-#Then runs publish
-commands.test = ->
-    u.SyncRun ->
-        console.log 'updating...'
-        u.run_local 'npm update bubblebot'
-        console.log 'compiling...'
-        u.run_local 'coffee -o node_modules/bubblebot/lib -c node_modules/bubblebot/src'
-        console.log 'publishing...'
-        commands.publish()
-
-
-
 u = require './utilities'
 clouds = require './clouds'
 winston = require 'winston'
@@ -101,3 +109,4 @@ fs = require 'fs'
 os = require 'os'
 config = require './config'
 prompt = require 'prompt'
+strip_comments = require 'strip-json-comments'

@@ -12,11 +12,15 @@ config.init = (options) ->
         _config = JSON.parse JSON.stringify options
 
 #Retrieves an individual key, throwing an error if undefined
-config.get = (key) ->
+#
+#Can pass a value for default (including null) to avoid throwing an error
+config.get = (key, default_value) ->
     val = _config?[key]
     if not val?
         if DEFAULTS[key]?
             return DEFAULTS[key]
+        if default_value isnt undefined
+            return default_value
         throw u.error 'Missing configuration key: ' + key
     return val
 

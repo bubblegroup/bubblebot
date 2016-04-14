@@ -67,7 +67,7 @@ class Environment
     get_instances_by_tag: (key, value) ->
         #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
         return @describe_instances {
-            Filters: [{tag: key + '=' + value}]
+            Filters: [{Name: 'tag', Values: [key + '=' + value]}]
         }
 
     #Calls describe instances on the given set of instances / parameters, and returns an array of
@@ -169,6 +169,8 @@ class BBEnvironment extends Environment
 
     get_region: -> config.get('bubblebot_region')
 
+    get_vpc: -> config.get('bubblebot_vpc')
+
 
 
 class Instance
@@ -234,3 +236,4 @@ software = require './software'
 AWS = require 'aws-sdk'
 ssh = require './ssh'
 request = require 'request'
+u = require './utilities'

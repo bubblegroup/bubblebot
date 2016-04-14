@@ -21,6 +21,8 @@
     
     //The region we run the bubblebot server in
     "bubblebot_region": "us-west-2",
+    //The VPC in that region we run it in
+    "bubblebot_vpc": "MY_VPC",
     //The AMI we use as the base for the bubblebot server
     "bubblebot_image_id": "ami-d5c5d1e5",
     //The size we use for the bubblebot server
