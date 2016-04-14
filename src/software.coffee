@@ -40,6 +40,15 @@ software.Software = class Software
     run: (cmd) -> @commands.push cmd
 
 
+#Manages instances
+software.create = create = (fn) ->
+    _instances = {}
+    return (args...) ->
+        key = args.join(',')
+        _instances[key] ?= fn args...
+        return _instances[key]
+
+
 #Sets up sudo and yum and installs GCC
 software.basics = create ->
     pkg = new Software()
@@ -84,10 +93,3 @@ software.node = create (version) ->
     return pkg
 
 
-#Manages instances
-software.create = create = (fn) ->
-    _instances = {}
-    return (args...) ->
-        key = args.join(',')
-        _instances[key] ?= fn args...
-        return _instances[key]
