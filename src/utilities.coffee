@@ -8,8 +8,17 @@ u.create_tarball = (directory) ->
     return tempfile
 
 u.run_local = (cmd, {can_fail}) ->
-    throw new Error 'not implemented'
-    child_process.execute cmd
+    block = u.Block 'run_local ' + cmd
+    child_process.exec {encoding: 'utf8'}, (err, stdout, stderr) ->
+        if err
+            if can_fail
+                block.success stdout + stderr
+            else
+                block.fail err
+        else
+            block.success stdout + stderr
+    return block.wait()
+
 
 #Gets the global environment for the current fiber
 u.get_context = ->
