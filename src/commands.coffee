@@ -81,11 +81,17 @@ commands.print_help = ->
 
 #For testing purposes, fetches the latest bubblebot.
 #Assumes that we are pointing to github, not npm, so does a coffeescript build
+#
+#Then runs publish
 commands.test = ->
     u.SyncRun ->
+        console.log 'updating...'
         u.run_local 'npm update bubblebot'
+        console.log 'compiling...'
         u.run_local 'coffee -o node_modules/bubblebot/lib -c node_modules/bubblebot/src'
-        process.exit()
+        console.log 'publishing...'
+        commands.publish()
+
 
 
 u = require './utilities'
