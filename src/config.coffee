@@ -34,3 +34,4 @@ DEFAULTS =
     configuration_file: 'configuration.json'
 
 strip_comments = require 'strip-json-comments'
+fs = require 'fs'
