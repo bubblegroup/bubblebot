@@ -8,7 +8,8 @@ u.create_tarball = (directory) ->
     return tempfile
 
 u.run_local = (cmd, {can_fail}) ->
-    child_process.execute
+    throw new Error 'not implemented'
+    child_process.execute cmd
 
 #Gets the global environment for the current fiber
 u.get_context = ->

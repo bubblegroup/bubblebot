@@ -19,7 +19,7 @@ clouds.AWSCloud = class AWSCloud
 
         #Install node and supervisor
         command = 'node ' + config.get('install_directory') + config.get('run_file')
-        software.supervisor(command).add(software.node('4.4.4')).install(instance)
+        software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.4')).install(instance)
 
         return instance
 
