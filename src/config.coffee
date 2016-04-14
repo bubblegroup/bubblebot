@@ -7,7 +7,7 @@ _config = null
 config.init = (options) ->
     if not options?
         #Load the options from disk
-        _config = JSON.parse strip_comments fs.readSync config.get('configuration_file'), {encoding: 'utf8'}
+        _config = JSON.parse strip_comments fs.readFileSync config.get('configuration_file'), {encoding: 'utf8'}
     else
         _config = JSON.parse JSON.stringify options
 
