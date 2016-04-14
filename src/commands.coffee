@@ -81,7 +81,7 @@ commands.print_help = ->
 
 #For testing purposes, fetches the latest bubblebot.
 #Assumes that we are pointing to github, not npm, so does a coffeescript build
-commands.update_test = ->
+commands.test = ->
     u.SyncRun ->
         u.run_local 'npm update bubblebot'
         u.run_local 'coffee -o node_modules/bubblebot/lib -c node_modules/bubblebot/src'
