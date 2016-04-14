@@ -11,19 +11,19 @@ software.Software = class Software
         #first, build the dependency tree.
         dependencies = []
 
-        add = (software) ->
-            if dependencies.indexOf(software) isnt -1
+        add = (pkg) ->
+            if dependencies.indexOf(pkg) isnt -1
                 return
-            for s in software.dependencies
+            for s in pkg.dependencies
                 add s
-            dependencies.push software
+            dependencies.push pkg
 
         add this
 
         #Then, go through each dependency and add its commands
         commands = []
-        for software in dependencies
-            for command in software.commands
+        for pkg in dependencies
+            for command in pkg.commands
                 commands.push command
 
         return commands
@@ -34,7 +34,7 @@ software.Software = class Software
             instance.run(command)
 
     #Adds the given software to this stack
-    add: (software) -> @dependencies.push software
+    add: (pkg) -> @dependencies.push pkg
 
     #Runs the given command
     run: (cmd) -> @commands.push cmd
@@ -42,46 +42,46 @@ software.Software = class Software
 
 #Sets up sudo and yum and installs GCC
 software.basics = create ->
-    package = new Software()
+    pkg = new Software()
 
     #unfuck sudo
-    package.run "cat > tmp << 'EOF'\nalias sudo='sudo env PATH=$PATH NODE_PATH=$NODE_PATH'\nEOF"
-    package.run 'sudo su -c"mv tmp /etc/profile.d/fix_sudo.sh"'
+    pkg.run "cat > tmp << 'EOF'\nalias sudo='sudo env PATH=$PATH NODE_PATH=$NODE_PATH'\nEOF"
+    pkg.run 'sudo su -c"mv tmp /etc/profile.d/fix_sudo.sh"'
 
     #update yum and install git + development tools
-    package.run 'sudo yum update -y'
-    package.run 'sudo yum -y install git'
-    package.run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y '
+    pkg.run 'sudo yum update -y'
+    pkg.run 'sudo yum -y install git'
+    pkg.run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y '
 
-    return package
+    return pkg
 
 
 #Installs supervisor and sets it up to run the given command
 software.supervisor = create (name, command, pwd) ->
-    package = new Software()
+    pkg = new Software()
 
-    package.add basics
+    pkg.add basics
 
-    package.run 'sudo pip install supervisor==3.1'
-    package.run '/usr/local/bin/echo_supervisord_conf > tmp'
-    package.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\nenvironment=PWD="' + pwd + '"\n\nEOF'
-    package.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
+    pkg.run 'sudo pip install supervisor==3.1'
+    pkg.run '/usr/local/bin/echo_supervisord_conf > tmp'
+    pkg.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\nenvironment=PWD="' + pwd + '"\n\nEOF'
+    pkg.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
 
-    return package
+    return pkg
 
 
 #Installs node
 software.node = create (version) ->
-    package = new Software()
+    pkg = new Software()
 
-    package.add basics
+    pkg.add basics
 
-    package.run 'git clone https://github.com/tj/n'
-    package.run 'cd n; sudo make install'
-    package.run 'cd n/bin; sudo ./n ' + version
-    package.run 'rm -rf n'
+    pkg.run 'git clone https://github.com/tj/n'
+    pkg.run 'cd n; sudo make install'
+    pkg.run 'cd n/bin; sudo ./n ' + version
+    pkg.run 'rm -rf n'
 
-    return package
+    return pkg
 
 
 #Manages instances
