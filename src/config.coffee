@@ -32,3 +32,5 @@ config.export = -> return JSON.stringify _config
 #should be put in the configuration.json template file.
 DEFAULTS =
     configuration_file: 'configuration.json'
+
+strip_comments = require 'strip-json-comments'
