@@ -69,6 +69,12 @@ commands.print_help = ->
     console.log '  update  -- updates the bubblebot code (npm update bubblebot)'
 
 
+#For testing purposes, fetches the latest bubblebot.
+#Assumes that we are pointing to github, not npm, so does a coffeescript build
+commands.update_test = ->
+    u.run_local 'npm update bubblebot'
+    u.run_local 'coffee -o node_modules/bubblebot/lib -c node_modules/bubblebot/src/*.coffee'
+
 
 u = require './utilities'
 clouds = require './clouds'
