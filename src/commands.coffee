@@ -56,13 +56,17 @@ commands.install = ->
         catch err
             console.log 'Could not create ' + name + ' (a file with that name may already exist)'
 
+commands.update = ->
+    console.log 'Checking for updates...'
+    console.log u.run_local 'npm update bubblebot'
+
 
 #Prints the help for the bubblebot command line tool
 commands.print_help = ->
     console.log 'Available commands:'
     console.log '  install -- creates default files for a bubblebot installation'
     console.log '  publish -- deploys bubblebot to a remote repository'
-
+    console.log '  update  -- updates the bubblebot code (npm update bubblebot)'
 
 
 
