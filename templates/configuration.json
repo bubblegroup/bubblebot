@@ -8,6 +8,9 @@
     //The prefix we use to name key pairs
     "keypair_prefix": "bubblebot_keypair_",
     
+    //Status tag: we use this for instance creation
+    "status_tag": "bubblebot_status",
+    
     //Role tags -- we use this to tag assets based on how bubblebot uses them
     "bubblebot_role_tag": "bubblebot_role", 
     "bubblebot_role_bbserver": "bbserver",

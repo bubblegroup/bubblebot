@@ -1,11 +1,25 @@
 clouds = exports
 
+#Statuses
+INITIALIZED = 'initialized'
+
 clouds.AWSCloud = class AWSCloud
     get_bbserver: ->
         instances = @get_bb_environment().get_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver'))
-        if instances.length > 0
+
+        #Clean up any bubblebot server instances not tagged as initialized -- they represent
+        #abortive attempts at creating the server
+        good = []
+        for instance in instances
+            if instance.get_tags()[config.get('status_tag')] isnt INITIALIZED
+                winston.info 'found an uninitialized bubbblebot server.  Terminating it...'
+                instance.terminate()
+            else
+                good.push instance
+
+        if good.length > 1
             throw new Error 'Found more than one bubblebot server!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbserver')
-        return instances[0]
+        return good[0]
 
     #Returns the special bubblebot environment
     get_bb_environment: -> new BBEnvironment(this)
@@ -20,6 +34,8 @@ clouds.AWSCloud = class AWSCloud
         #Install node and supervisor
         command = 'node ' + config.get('install_directory') + config.get('run_file')
         software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.4')).install(instance)
+
+        environment.tag_resource(config.get('status_tag'), INITIALIZED)
 
         return instance
 
@@ -81,6 +97,9 @@ class Environment
                 id = instance.InstanceId
                 instance_cache.set id, instance
                 res.push new Instance this, id
+
+        #filter out terminated instances
+        res = (instance for instance in res when instance.get_state() not in ['terminated', 'shutting-down'])
 
         return res
 
@@ -147,22 +166,22 @@ class Environment
 
         rules = [
             #Allow outside world access on 80 and 443
-            {CidrIp: '0.0.0.0/32', IpProtocol: 'tcp', FromPort: 80, ToPort: 80}
-            {CidrIp: '0.0.0.0/32', IpProtocol: 'tcp', FromPort: 443, ToPort: 443}
+            {IpRanges: [{CidrIp: '0.0.0.0/32'}], IpProtocol: 'tcp', FromPort: 80, ToPort: 80}
+            {IpRanges: [{CidrIp: '0.0.0.0/32'}], IpProtocol: 'tcp', FromPort: 443, ToPort: 443}
             #Allow other boxes in this security group to connect on any port
-            {SourceSecurityGroupOwnerId: id, IpProtocol: '-1', FromPort: 0, ToPort: 65535}
+            {UserIdGroupPairs: [{GroupId: id}], IpProtocol: '-1'}
         ]
         #If this a server people are allowed to SSH into directly, open port 22.
         if @allow_outside_ssh()
-            rules.push {CidrIp: '0.0.0.0/32', IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
+            rules.push {IpRanges: [{CidrIp: '0.0.0.0/32'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
 
         #If this is not bubblebot, add the bubblebot security group
         if not (this instanceof BBEnvironment)
             bubblebot_sg = @cloud.get_bb_environment().get_webserver_security_group()
             #Allow bubblebot to connect on any port
-            rules.push {SourceSecurityGroupOwnerId: bubblebot_sg, IpProtocol: '-1', FromPort: 0, ToPort: 65535}
+            rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}]}
 
-        @ensure_security_group_rules group_name, @generate_webserver_rules()
+        @ensure_security_group_rules group_name, rules
         return id
 
 
@@ -176,7 +195,7 @@ class Environment
         if data?
             return data
 
-        data = @ec2('describeSecurityGroups', {Filters: [{Name: 'group-name', Values: [name]}]}).SecurityGroups[0]
+        data = @ec2('describeSecurityGroups', {Filters: [{Name: 'group-name', Values: [group_name]}]}).SecurityGroups[0]
         if data?
             sg_cache.set(group_name, data)
             return data
@@ -200,12 +219,23 @@ class Environment
         to_remove = []
         to_add = []
 
+        #convert the rule into a consistent string format for easy comparison
+        #we do this by removing empty arrays, nulls, and certain auto-generated fields,
+        #then converting to JSON with a consistent key order and comparing
+        clean = (obj) ->
+            if obj? and typeof(obj) is 'object'
+                ret = {}
+                for k, v of obj
+                    if v? and (not Array.isArray(v) or v.length > 0) and k not in ['UserId']
+                        ret[k] = clean v
+                return ret
+            else
+                return obj
+
+        to_string = (r) -> stable_stringify(clean(r))
+
         #Returns true if the rules are equivalent
-        compare = (r1, r2) ->
-            for keyname in ['CidrIp', 'IpProtocol', 'SourceSecurityGroupOwnerId', 'FromPort', 'ToPort']
-                if (r1[keyname] ? null) isnt (r2[keyname] ? null)
-                    return false
-            return true
+        compare = (r1, r2) -> to_string(r1) is to_string(r2)
 
         #make sure all the new rules exist
         for new_rule in rules
@@ -225,7 +255,7 @@ class Environment
                     found = true
                     break
             if not found
-                to_remove.push new_rule
+                to_remove.push existing_rule
 
         #we are done
         if to_remove.length is 0 and to_add.length is 0
@@ -233,19 +263,38 @@ class Environment
 
         #prevent an infinite recursion if something goes wrong
         if retries is 0
-            throw new Error 'unable to ensure rules. group data: ' + JSON.stringify(data) + ' and rules: ' + JSON.stringify(rules)
+            message = 'unable to ensure rules.  group data:\n' + JSON.stringify(data, null, 4)
+            message += '\n\nto remove:'
+            for rule in to_remove
+                message += '\n' + to_string(rule)
+            message += '\n\nto add:'
+            for rule in to_add
+                message += '\n' + to_string(rule)
+            throw new Error message
+
+        #refresh our data for what we have right now, and then retry this function
+        refresh_and_retry = =>
+            @get_security_group_data(group_name, true)
+            return @ensure_security_group_rules(group_name, rules, retries - 1)
 
         #apply the changes...
         GroupId = @get_security_group_id(group_name)
         if to_add.length > 0
-            @ec2 'authorizeSecurityGroupIngress', {GroupId, IpPermissions: to_add}
+            try
+                @ec2 'authorizeSecurityGroupIngress', {GroupId, IpPermissions: to_add}
+            catch err
+                #If it is a duplicate rule, force a refresh of the cache, then retry
+                if String(err).indexOf('InvalidPermission.Duplicate') isnt -1
+                    return refresh_and_retry()
+                else
+                    throw err
+
 
         if to_remove.length > 0
             @ec2 'revokeSecurityGroupIngress', {GroupId, IpPermissions: to_remove}
 
         #then refresh our cache and confirm they got applied
-        @get_security_group_data(group_name, true)
-        return @ensure_security_group_rules(group_name, rules, retries - 1)
+        return refresh_and_retry()
 
 
     #Returns the default subnet for adding new server to this VPC.  Right now
@@ -324,8 +373,8 @@ class Instance
 
     toString: -> 'Instance ' + @id
 
-    run: (command, {can_fail, timeout}) ->
-        return ssh.run @get_address(), @environment.get_private_key(), command, {can_fail, timeout}
+    run: (command, options) ->
+        return ssh.run @get_address(), @environment.get_private_key(), command, options
 
     upload_file: (path, remote_dir) ->
         ssh.upload_file @get_address(), @environment.get_private_key(), path, remote_dir
@@ -344,6 +393,12 @@ class Instance
 
     #Returns the state of the instance
     get_state: -> @get_data().State.Name
+
+    terminate: ->
+        winston.info 'Terminating server ' + @id
+        data = @environment.ec2 'terminateInstances', {InstanceIds: [@id]}
+        if not data.TerminatingInstances?[0]?.InstanceId is @id
+            throw new Error 'failed to terminate! ' + JSON.stringify(data)
 
     #Returns the address bubblebot can use for ssh / http requests to this instance
     get_address: -> @get_private_ip_address()
@@ -381,3 +436,5 @@ AWS = require 'aws-sdk'
 ssh = require './ssh'
 request = require 'request'
 u = require './utilities'
+winston = require 'winston'
+stable_stringify = require 'json-stable-stringify'

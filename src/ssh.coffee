@@ -1,7 +1,8 @@
 ssh = exports
 
 
-ssh.run = (host, private_key, cmd, {can_fail, timeout}) ->
+ssh.run = (host, private_key, cmd, options) ->
+    {can_fail, timeout} = options
     stream = exec_ssh host, private_key, cmd
 
     output = []

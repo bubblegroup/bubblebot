@@ -1,16 +1,17 @@
 commands = exports
 
 
-commands.publish = ->
+commands.publish = (access_key) ->
     u.SyncRun ->
         #Load the local configuration from disk
         config.init()
 
         #Prompt the user for the credentials
-        prompt.start()
-        block = u.Block('prompt')
-        prompt.get(['access_key'], block.make_cb())
-        {access_key} = block.wait()
+        if not access_key
+            prompt.start()
+            block = u.Block('prompt')
+            prompt.get(['access_key'], block.make_cb())
+            {access_key} = block.wait()
 
         config.set 'accessKeyId', access_key
 
@@ -44,7 +45,7 @@ commands.publish = ->
         bbserver = cloud.get_bbserver()
 
         if not bbserver
-            winston.log 'There is no bubble bot server in this environment.  Creating one...'
+            winston.info 'There is no bubble bot server in this environment.  Creating one...'
             bbserver = cloud.create_bbserver()
 
         #Capture the current directory to a tarball, upload it, and delete it
@@ -61,7 +62,7 @@ commands.publish = ->
         try
             bbserver.run("curl -X POST http://localhost:8081/shutdown")
         catch err
-            winston.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
+            winston.info 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
             #make sure supervisord is running
             bbserver.run('sudo supervisord -c /etc/supervisord.conf', {can_fail: true})
             #stop bubblebot if it is running

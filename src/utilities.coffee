@@ -21,6 +21,19 @@ u.run_local = (cmd, options = {}) ->
     return block.wait()
 
 
+#Given a destination object and one or more source objects, copies
+#the key / values from the sources into the destination.  Not recursive, just
+#touches the top level keys
+u.extend = (dest, srcs...) ->
+    for src in srcs
+        for k, v of src ? {}
+            dest[k] = v
+    return dest
+
+#Deep copies an object by converting it to JSON then parsing it
+u.json_deep_copy = (obj) -> JSON.parse JSON.stringify obj
+
+
 #Gets the global environment for the current fiber
 u.get_context = ->
     if not Fiber.current?

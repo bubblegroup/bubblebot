@@ -27,6 +27,7 @@
   "dependencies": {
     "aws-sdk": "^2.3.3",
     "fibers": "^1.0.10",
+    "json-stable-stringify": "^1.0.1",
     "prompt": "^1.0.0",
     "request": "^2.71.0",
     "scp2": "^0.2.2",
@@ -40,17 +41,17 @@
   },
   "eslintConfig": {
     "rules": {
-        "no-undef": 2
+      "no-undef": 2
     },
     "env": {
-        "browser": true,
-        "node": true,
-        "jquery": true
+      "browser": true,
+      "node": true,
+      "jquery": true
     },
     "globals": {
-        "mixpanel": true,
-        "braintree": true,
-        "Handsontable": true
+      "mixpanel": true,
+      "braintree": true,
+      "Handsontable": true
     }
   }
 }

@@ -33,11 +33,15 @@ software.Software = class Software
         for command in @get_commands()
             instance.run(command)
 
-    #Adds the given software to this stack
-    add: (pkg) -> @dependencies.push pkg
+    #Adds the given software to this stack.  Returns itself to ease chaining.
+    add: (pkg) ->
+        @dependencies.push pkg
+        return this
 
-    #Runs the given command
-    run: (cmd) -> @commands.push cmd
+    #Runs the given command as part of this package.  Returns itself to ease chaining
+    run: (cmd) ->
+        @commands.push cmd
+        return this
 
 
 #Manages instances
