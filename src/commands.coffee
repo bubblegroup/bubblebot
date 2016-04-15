@@ -73,13 +73,16 @@ commands.publish = ->
 
 
 #Installs bubblebot into a directory
-commands.install = ->
+#If force is set to "force", overwrites existing files
+commands.install = (force) ->
+    force = force is "force"
+
     u.SyncRun ->
         for name in ['run.js', 'configuration.json']
             console.log 'Creating ' + name
             data = fs.readFileSync __dirname + '/../templates/' + name
             try
-                fs.writeFileSync name, data, {flag: 'wx'}
+                fs.writeFileSync name, data, {flag: if force then 'w' else 'wx'}
             catch err
                 console.log 'Could not create ' + name + ' (a file with that name may already exist)'
 
