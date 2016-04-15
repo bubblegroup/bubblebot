@@ -13,6 +13,8 @@ commands.publish = (access_key) ->
             prompt.get(['access_key'], block.make_cb())
             {access_key} = block.wait()
 
+        winston.info 'Publishing to account ' + access_key
+
         config.set 'accessKeyId', access_key
 
         #load any access_key specific configuration
@@ -20,7 +22,7 @@ commands.publish = (access_key) ->
         try
             raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
         catch err
-            console.log "Creating #{env_config_path} to save access-key-specific configuration..."
+            winston.info "Creating #{env_config_path} to save access-key-specific configuration..."
             raw = '{\n//Store access-key-specific configuration here\n}'
             fs.writeFileSync env_config_path, raw
 
@@ -28,7 +30,7 @@ commands.publish = (access_key) ->
             for k, v of JSON.parse strip_comments raw
                 config.set k, v
         catch err
-            console.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
+            winston.info 'Error parsing ' + env_config_path + '; make sure it is valid json!'
             throw err
 
         #Prompt for the secret
@@ -42,11 +44,15 @@ commands.publish = (access_key) ->
 
         cloud = new clouds.AWSCloud()
 
+        winston.info 'Searching for bubblebot server...'
+
         bbserver = cloud.get_bbserver()
 
         if not bbserver
             winston.info 'There is no bubble bot server in this environment.  Creating one...'
             bbserver = cloud.create_bbserver()
+
+        winston.info 'Found bubblebot server, uploading contents...'
 
         #Capture the current directory to a tarball, upload it, and delete it
         temp_file = u.create_tarball(process.cwd())
@@ -80,30 +86,32 @@ commands.install = (force) ->
 
     u.SyncRun ->
         for name in ['run.js', 'configuration.json']
-            console.log 'Creating ' + name
+            winston.info 'Creating ' + name
             data = fs.readFileSync __dirname + '/../templates/' + name
             try
                 fs.writeFileSync name, data, {flag: if force then 'w' else 'wx'}
             catch err
-                console.log 'Could not create ' + name + ' (a file with that name may already exist)'
+                winston.info 'Could not create ' + name + ' (a file with that name may already exist)'
+
+        winston.info 'Installation complete!'
 
         process.exit()
 
 commands.update = ->
     u.SyncRun ->
-        console.log 'Checking for updates...'
-        console.log u.run_local 'npm install bubblebot'
-        console.log u.run_local 'npm update bubblebot'
+        winston.info 'Checking for updates...'
+        winston.info u.run_local 'npm install bubblebot'
+        winston.info u.run_local 'npm update bubblebot'
 
         process.exit()
 
 
 #Prints the help for the bubblebot command line tool
 commands.print_help = ->
-    console.log 'Available commands:'
-    console.log '  install -- creates default files for a bubblebot installation'
-    console.log '  publish -- deploys bubblebot to a remote repository'
-    console.log '  update  -- updates the bubblebot code (npm update bubblebot)'
+    winston.info 'Available commands:'
+    winston.info '  install -- creates default files for a bubblebot installation'
+    winston.info '  publish -- deploys bubblebot to a remote repository'
+    winston.info '  update  -- updates the bubblebot code (npm update bubblebot)'
     process.exit()
 
 

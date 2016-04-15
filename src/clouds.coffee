@@ -413,7 +413,7 @@ class Instance
 
     #Waits til the server is in the running state
     wait_for_running: (retries = 20) ->
-        if @get_state() is 'running'
+        if @get_state(true) is 'running'
             return
         else if retries is 0
             throw new Error 'timed out while waiting for ' + @id + ' to be running: ' + @get_state()
@@ -433,9 +433,8 @@ class Instance
                 u.pause 10000
                 return @wait_For_ssh(retries - 1)
 
-    #Returns the state of the instance
-    #This refreshes the instances data, since if we care about the state, it's likely in flux
-    get_state: -> @get_data(true).State.Name
+    #Returns the state of the instance.  Set force_refresh to true to check for changes.
+    get_state: (force_refresh) -> @get_data(force_refresh).State.Name
 
     terminate: ->
         winston.info 'Terminating server ' + @id
