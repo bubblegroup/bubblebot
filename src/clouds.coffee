@@ -414,7 +414,7 @@ class Instance
             throw new Error 'timed out while waiting for ' + @id + ' to be running: ' + @get_state()
         else
             u.pause 10000
-            @wait_for_running()
+            @wait_for_running(retries - 1)
 
     #waits for the server to accept ssh connections
     wait_for_ssh: (retries = 6) ->
@@ -426,7 +426,7 @@ class Instance
                 throw err
             else
                 u.pause 10000
-                return @wait_For_ssh()
+                return @wait_For_ssh(retries - 1)
 
     #Returns the state of the instance
     get_state: -> @get_data().State.Name
