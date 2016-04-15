@@ -30,13 +30,18 @@ clouds.AWSCloud = class AWSCloud
         environment = @get_bb_environment()
 
         instance = environment.create_server image_id, instance_type, config.get('bubblebot_role_bbserver'), 'Bubble Bot'
+        winston.info 'bubblebot server created, waiting for it to ready...'
         instance.wait_for_ssh()
+
+        winston.info 'bubblebot server ready, installing software...'
 
         #Install node and supervisor
         command = 'node ' + config.get('install_directory') + config.get('run_file')
         software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.4')).install(instance)
 
         environment.tag_resource(config.get('status_tag'), INITIALIZED)
+
+        winston.info 'bubblebot server has base software installed'
 
         return instance
 
