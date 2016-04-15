@@ -34,6 +34,33 @@ u.extend = (dest, srcs...) ->
 u.json_deep_copy = (obj) -> JSON.parse JSON.stringify obj
 
 
+
+#Returns {private_key, public_key}
+u.generate_key_pair = ->
+    cmd = 'openssl genrsa 2048'
+    block = u.Block cmd
+    child_process.exec cmd, {encoding: 'ascii'}, block.make_cb()
+    private_key = block.wait()
+
+    block = u.Block 'openssl rsa -pubout'
+    stderr = ''
+    stdout = ''
+    make_pub = child_process.spawn 'openssl', ['rsa', '-pubout']
+    make_pub.stderr.on  'data', (data) -> stderr += data
+    make_pub.stdout.on 'data', (data) -> stdout += data
+    make_pub.on 'error', (err) -> block.fail err
+    make_pub.on 'close', (code) ->
+        if code is 0
+            block.success stdout
+        else
+            block.fail u.error 'error running generating public key: ' + stderr
+    make_pub.stdin.write private_key
+    make_pub.stdin.end()
+    public_key = block.wait()
+
+    return {private_key, public_key}
+
+
 #Gets the global environment for the current fiber
 u.get_context = ->
     if not Fiber.current?

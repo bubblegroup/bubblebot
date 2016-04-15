@@ -115,10 +115,16 @@ class Environment
                 throw err
 
             #If not, create it
-            {KeyMaterial} = @ec2('createKeyPair', {KeyName: name})
+            {private_key, public_key} = u.generate_key_pair()
 
-            #And save it to s3
-            @s3 'putObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: name, Body: KeyMaterial}
+            #Save the private key to s3
+            @s3 'putObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: name, Body: private_key}
+
+            #Strip the header and footer lines
+            public_key = public_key.split('-----BEGIN PUBLIC KEY-----\n')[1].split('\n-----END PUBLIC KEY-----')[0]
+
+            #And save the public key to ec2 to use in server creation
+            @ec2('importKeyPair', {KeyName: name, PublicKeyMaterial: public_key})
 
         return name
 
@@ -126,10 +132,18 @@ class Environment
     get_private_key: ->
         keyname = @get_keypair_name()
         if not key_cache.get(keyname)
-            data = @s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: keyname}).Body
-            if typeof(data) isnt 'string'
-                throw new Error 'non string data: ' + +typeof(data) + ' ' + data
-            key_cache.set keyname, data
+            try
+                data = @s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: keyname}).Body
+                if typeof(data) isnt 'string'
+                    throw new Error 'non string data: ' + typeof(data) + ' ' + data
+                key_cache.set keyname, data
+            catch err
+                #We lost our key, so delete it
+                if String(err).indexOf('NoSuchKey') isnt -1
+                    winston.error 'Could not find private key for ' + keyname + ': deleting it!'
+                    @ec2 'deleteKeyPair', {KeyName: keyname}
+                    throw new Error 'Could not retrieve private key for ' + keyname + '; deleted public key'
+
         return key_cache.get(keyname)
 
     #creates and returns a new ec2 server in this environment

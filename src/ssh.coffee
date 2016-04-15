@@ -2,7 +2,7 @@ ssh = exports
 
 
 ssh.run = (host, private_key, cmd, options) ->
-    {can_fail, timeout} = options
+    {can_fail, timeout} = options ? {}
     stream = exec_ssh host, private_key, cmd
 
     output = []
