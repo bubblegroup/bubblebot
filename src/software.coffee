@@ -69,7 +69,7 @@ software.basics = create ->
 software.supervisor = create (name, command, pwd) ->
     pkg = new Software()
 
-    pkg.add basics
+    pkg.add software.basics()
 
     pkg.run 'sudo pip install supervisor==3.1'
     pkg.run '/usr/local/bin/echo_supervisord_conf > tmp'
@@ -83,7 +83,7 @@ software.supervisor = create (name, command, pwd) ->
 software.node = create (version) ->
     pkg = new Software()
 
-    pkg.add basics
+    pkg.add software.basics()
 
     pkg.run 'git clone https://github.com/tj/n'
     pkg.run 'cd n; sudo make install'

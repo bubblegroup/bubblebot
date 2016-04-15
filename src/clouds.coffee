@@ -143,6 +143,7 @@ class Environment
     #Retrieves the security group for webservers in this group, creating it if necessary
     get_webserver_security_group: ->
         group_name = @name + '_webserver_sg'
+        id = @get_security_group_id(group_name)
 
         rules = [
             #Allow outside world access on 80 and 443
@@ -162,7 +163,7 @@ class Environment
             rules.push {SourceSecurityGroupOwnerId: bubblebot_sg, IpProtocol: '-1', FromPort: 0, ToPort: 65535}
 
         @ensure_security_group_rules group_name, @generate_webserver_rules()
-        return @get_security_group_id(group_name)
+        return id
 
 
     #Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
@@ -270,7 +271,7 @@ class Environment
                 return data
 
         data = @ec2 'describeSubnets', {Filters: [{Name: 'vpc-id', Values: [vpc_id]}]}
-        vpc_to_sbunets.set(vpc_id, data)
+        vpc_to_subnets.set(vpc_id, data)
         return data
 
 

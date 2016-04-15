@@ -21,7 +21,7 @@ config.get = (key, default_value) ->
             return DEFAULTS[key]
         if default_value isnt undefined
             return default_value
-        throw u.error 'Missing configuration key: ' + key
+        throw new Error 'Missing configuration key: ' + key
     return val
 
 #Sets a key on our configuration

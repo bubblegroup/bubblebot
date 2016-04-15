@@ -8,8 +8,8 @@ ssh.run = (host, private_key, cmd, {can_fail, timeout}) ->
 
     exit_code = null
 
-    close_block = Block()
-    block = Block()
+    close_block = u.Block('ssh.run close block')
+    block = u.Block('ssh.run')
     on_data = (data) ->
         output.push data
     stream.on 'data', on_data
@@ -100,7 +100,7 @@ get_connection = (host, private_key) ->
                 delete ssh_connections[host]
 
         conn.connect {
-            host: to_hostname host
+            host: host
             port: 22
             username: 'ec2-user'
             privateKey: private_key

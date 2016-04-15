@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublish": "coffee -o lib -c src/*.coffee"
+    "prepublish": "coffee -o lib -c src/*.coffee && node node_modules/eslint/bin/eslint.js lib"
   },
   "bin": {
     "bubblebot": "bin/bubblebot.js"
@@ -34,5 +34,23 @@
     "strip-json-comments": "^2.0.1",
     "tmp": "0.0.28",
     "winston": "^2.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^2.7.0"
+  },
+  "eslintConfig": {
+    "rules": {
+        "no-undef": 2
+    },
+    "env": {
+        "browser": true,
+        "node": true,
+        "jquery": true
+    },
+    "globals": {
+        "mixpanel": true,
+        "braintree": true,
+        "Handsontable": true
+    }
   }
 }
