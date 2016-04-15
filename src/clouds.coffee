@@ -405,14 +405,14 @@ class Instance
     #Makes sure we have fresh metadata for this instance
     refresh: -> @environment.describe_instances({InstanceIds: [@id]})
 
-    #Gets the amazon metadata for this instance, refreshing if it is null
-    get_data: ->
-        if not instance_cache.get(@id)
+    #Gets the amazon metadata for this instance, refreshing if it is null or if force_refresh is true
+    get_data: (force_refresh) ->
+        if force_refresh or not instance_cache.get(@id)
             @refresh()
         return instance_cache.get(@id)
 
     #Waits til the server is in the running state
-    wait_for_running: (retries = 6) ->
+    wait_for_running: (retries = 20) ->
         if @get_state() is 'running'
             return
         else if retries is 0
@@ -422,7 +422,7 @@ class Instance
             @wait_for_running(retries - 1)
 
     #waits for the server to accept ssh connections
-    wait_for_ssh: (retries = 6) ->
+    wait_for_ssh: (retries = 20) ->
         @wait_for_running()
         try
             @run 'hostname'
@@ -434,7 +434,8 @@ class Instance
                 return @wait_For_ssh(retries - 1)
 
     #Returns the state of the instance
-    get_state: -> @get_data().State.Name
+    #This refreshes the instances data, since if we care about the state, it's likely in flux
+    get_state: -> @get_data(true).State.Name
 
     terminate: ->
         winston.info 'Terminating server ' + @id
