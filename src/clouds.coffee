@@ -148,14 +148,18 @@ class Environment
             #Allow outside world access on 80 and 443
             {CidrIp: '0.0.0.0/32', IpProtocol: 'tcp', FromPort: 80, ToPort: 80}
             {CidrIp: '0.0.0.0/32', IpProtocol: 'tcp', FromPort: 443, ToPort: 443}
-            #Allow bubblebot to connect on any port
-            {SourceSecurityGroupOwnerId: @cloud.get_bb_environment().get_webserver_security_group(), IpProtocol: '-1', FromPort: 0, ToPort: 65535}
             #Allow other boxes in this security group to connect on any port
             {SourceSecurityGroupOwnerId: id, IpProtocol: '-1', FromPort: 0, ToPort: 65535}
         ]
         #If this a server people are allowed to SSH into directly, open port 22.
         if @allow_outside_ssh()
             rules.push {CidrIp: '0.0.0.0/32', IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
+
+        #If this is not bubblebot, add the bubblebot security group
+        if not (this instanceof BBEnvironment)
+            bubblebot_sg = @cloud.get_bb_environment().get_webserver_security_group()
+            #Allow bubblebot to connect on any port
+            rules.push {SourceSecurityGroupOwnerId: bubblebot_sg, IpProtocol: '-1', FromPort: 0, ToPort: 65535}
 
         @ensure_security_group_rules group_name, @generate_webserver_rules()
         return @get_security_group_id(group_name)
