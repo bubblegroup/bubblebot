@@ -83,7 +83,8 @@ exec_ssh = (host, private_key, cmd) ->
 
 #Gets or creates a connection to the given host
 get_connection = (host, private_key) ->
-    ssh_connections = u.get_context().ssh_connections
+    context = u.get_context()
+    ssh_connections = context.ssh_connections ?= {}
 
     if not ssh_connections[host]
 

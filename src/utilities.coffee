@@ -68,6 +68,12 @@ u.get_context = ->
     Fiber.current.current_context ?= {}
     return Fiber.current.current_context
 
+#Pauses the current fiber for this # of ms
+u.pause = (ms) ->
+    block = u.Block 'pause'
+    setTimeout block.make_cb(), ms
+    block.wait()
+
 
 # #### u.Block
 # Interface for working with fibers.  Returns a block, which you can call success (data) and fail (err), and wait (returns success data or throws fail error)

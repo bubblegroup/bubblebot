@@ -30,6 +30,7 @@ clouds.AWSCloud = class AWSCloud
         environment = @get_bb_environment()
 
         instance = environment.create_server image_id, instance_type, config.get('bubblebot_role_bbserver'), 'Bubble Bot'
+        instance.wait_for_ssh()
 
         #Install node and supervisor
         command = 'node ' + config.get('install_directory') + config.get('run_file')
@@ -404,6 +405,28 @@ class Instance
         if not instance_cache.get(@id)
             @refresh()
         return instance_cache.get(@id)
+
+    #Waits til the server is in the running state
+    wait_for_running: (retries = 6) ->
+        if @get_state() is 'running'
+            return
+        else if retries is 0
+            throw new Error 'timed out while waiting for ' + @id + ' to be running: ' + @get_state()
+        else
+            u.pause 10000
+            @wait_for_running()
+
+    #waits for the server to accept ssh connections
+    wait_for_ssh: (retries = 6) ->
+        @wait_for_running()
+        try
+            @run 'hostname'
+        catch err
+            if retries is 0
+                throw err
+            else
+                u.pause 10000
+                return @wait_For_ssh()
 
     #Returns the state of the instance
     get_state: -> @get_data().State.Name
