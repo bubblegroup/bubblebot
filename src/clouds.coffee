@@ -413,6 +413,7 @@ class Instance
 
     #Waits til the server is in the running state
     wait_for_running: (retries = 20) ->
+        winston.info 'waiting for server to be running (' + retries + ')'
         if @get_state(true) is 'running'
             return
         else if retries is 0
@@ -422,16 +423,21 @@ class Instance
             @wait_for_running(retries - 1)
 
     #waits for the server to accept ssh connections
-    wait_for_ssh: (retries = 20) ->
+    wait_for_ssh: () ->
         @wait_for_running()
-        try
-            @run 'hostname'
-        catch err
-            if retries is 0
-                throw err
-            else
-                u.pause 10000
-                return @wait_For_ssh(retries - 1)
+        do_wait = (retries = 20) =>
+            winston.info 'server running, waiting for it accept ssh connections (' + retries + ')'
+            try
+                @run 'hostname'
+            catch err
+                if retries is 0
+                    throw err
+                else
+                    u.pause 10000
+                    return do_wait(retries - 1)
+
+        do_wait()
+
 
     #Returns the state of the instance.  Set force_refresh to true to check for changes.
     get_state: (force_refresh) -> @get_data(force_refresh).State.Name
