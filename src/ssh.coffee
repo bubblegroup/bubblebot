@@ -62,12 +62,15 @@ ssh.run = (host, private_key, cmd, options) ->
 
 ssh.upload_file = (host, privateKey, filename, path) ->
     block = u.Block 'upload_file'
-    scp2.scp filename, {host, privateKey, path}, block.make_cb()
-    block.wait()
+    if not privateKey
+        throw new Error 'missing private key'
+    u.log 'Uploading ' + filename + ' to ' + host + ':' + path
+    scp2.scp filename, {host, privateKey, path, username: 'ec2-user'}, block.make_cb()
+    block.wait(360000)
 
 ssh.write_file = (host, privateKey, destination, content) ->
     block = u.Block 'write_file'
-    client = new scp2.Client {host, privateKey}
+    client = new scp2.Client {host, privateKey, username: 'ec2-user'}
     client.write {destination, content}, block.make_Cb()
     block.wait()
 
