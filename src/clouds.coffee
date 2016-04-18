@@ -39,7 +39,7 @@ clouds.AWSCloud = class AWSCloud
         command = 'node ' + config.get('install_directory') + config.get('run_file')
         software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.3')).install(instance)
 
-        environment.tag_resource(config.get('status_tag'), INITIALIZED)
+        environment.tag_resource(instance.id, config.get('status_tag'), INITIALIZED)
 
         u.log 'bubblebot server has base software installed'
 

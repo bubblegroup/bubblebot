@@ -55,10 +55,11 @@ commands.publish = (access_key) ->
             u.log 'There is no bubble bot server in this environment.  Creating one...'
             bbserver = cloud.create_bbserver()
 
-        u.log 'Found bubblebot server, uploading contents...'
+        u.log 'Found bubblebot server'
 
         #Capture the current directory to a tarball, upload it, and delete it
         temp_file = u.create_tarball(process.cwd())
+        u.log 'Saved current directory to ' + temp_file
         bbserver.upload_file(temp_file, '~')
         bbserver.run("tar -xf ~/#{temp_file} -C #{config.get('install_directory')}")
         bbserver.run("rm ~/#{temp_file}")
