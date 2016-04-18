@@ -59,10 +59,12 @@ commands.publish = (access_key) ->
 
         #Capture the current directory to a tarball, upload it, and delete it
         temp_file = u.create_tarball(process.cwd())
+        temp_file_name = path.basename(temp_file)
         u.log 'Saved current directory to ' + temp_file
         bbserver.upload_file(temp_file, '/home/ec2-user/')
-        bbserver.run("tar -xf /home/ec2-user/#{temp_file} -C #{config.get('install_directory')}")
-        bbserver.run("rm /home/ec2-user/#{temp_file}")
+        bbserver.run("mkdir -p #{config.get('install_directory')}")
+        bbserver.run("tar -xf /home/ec2-user/#{temp_file_name} -C #{config.get('install_directory')}")
+        bbserver.run("rm /home/ec2-user/#{temp_file_name}")
         fs.removeFileSync temp_file
 
         #Save the configuration information to bubblebot
@@ -126,3 +128,4 @@ os = require 'os'
 config = require './config'
 prompt = require 'prompt'
 strip_comments = require 'strip-json-comments'
+path = require 'path'
