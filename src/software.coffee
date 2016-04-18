@@ -31,7 +31,7 @@ software.Software = class Software
     #Installs this stack of software on the given instance
     install: (instance) ->
         for command in @get_commands()
-            instance.run(command)
+            instance.run(command, {timeout: 300000})
 
     #Adds the given software to this stack.  Returns itself to ease chaining.
     add: (pkg) ->

@@ -6,6 +6,9 @@ commands.publish = (access_key) ->
         #Load the local configuration from disk
         config.init()
 
+        #Indicate that we are running from the command line
+        config.set 'command_line', true
+
         #Prompt the user for the credentials
         if not access_key
             prompt.start()
@@ -13,7 +16,7 @@ commands.publish = (access_key) ->
             prompt.get(['access_key'], block.make_cb())
             {access_key} = block.wait()
 
-        winston.info 'Publishing to account ' + access_key
+        u.log 'Publishing to account ' + access_key
 
         config.set 'accessKeyId', access_key
 
@@ -22,7 +25,7 @@ commands.publish = (access_key) ->
         try
             raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
         catch err
-            winston.info "Creating #{env_config_path} to save access-key-specific configuration..."
+            u.log "Creating #{env_config_path} to save access-key-specific configuration..."
             raw = '{\n//Store access-key-specific configuration here\n}'
             fs.writeFileSync env_config_path, raw
 
@@ -30,7 +33,7 @@ commands.publish = (access_key) ->
             for k, v of JSON.parse strip_comments raw
                 config.set k, v
         catch err
-            winston.info 'Error parsing ' + env_config_path + '; make sure it is valid json!'
+            u.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
             throw err
 
         #Prompt for the secret
@@ -44,15 +47,15 @@ commands.publish = (access_key) ->
 
         cloud = new clouds.AWSCloud()
 
-        winston.info 'Searching for bubblebot server...'
+        u.log 'Searching for bubblebot server...'
 
         bbserver = cloud.get_bbserver()
 
         if not bbserver
-            winston.info 'There is no bubble bot server in this environment.  Creating one...'
+            u.log 'There is no bubble bot server in this environment.  Creating one...'
             bbserver = cloud.create_bbserver()
 
-        winston.info 'Found bubblebot server, uploading contents...'
+        u.log 'Found bubblebot server, uploading contents...'
 
         #Capture the current directory to a tarball, upload it, and delete it
         temp_file = u.create_tarball(process.cwd())
@@ -68,7 +71,7 @@ commands.publish = (access_key) ->
         try
             bbserver.run("curl -X POST http://localhost:8081/shutdown")
         catch err
-            winston.info 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
+            u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
             #make sure supervisord is running
             bbserver.run('sudo supervisord -c /etc/supervisord.conf', {can_fail: true})
             #stop bubblebot if it is running
@@ -86,38 +89,37 @@ commands.install = (force) ->
 
     u.SyncRun ->
         for name in ['run.js', 'configuration.json']
-            winston.info 'Creating ' + name
+            u.log 'Creating ' + name
             data = fs.readFileSync __dirname + '/../templates/' + name
             try
                 fs.writeFileSync name, data, {flag: if force then 'w' else 'wx'}
             catch err
-                winston.info 'Could not create ' + name + ' (a file with that name may already exist)'
+                u.log 'Could not create ' + name + ' (a file with that name may already exist)'
 
-        winston.info 'Installation complete!'
+        u.log 'Installation complete!'
 
         process.exit()
 
 commands.update = ->
     u.SyncRun ->
-        winston.info 'Checking for updates...'
-        winston.info u.run_local 'npm install bubblebot'
-        winston.info u.run_local 'npm update bubblebot'
+        u.log 'Checking for updates...'
+        u.log u.run_local 'npm install bubblebot'
+        u.log u.run_local 'npm update bubblebot'
 
         process.exit()
 
 
 #Prints the help for the bubblebot command line tool
 commands.print_help = ->
-    winston.info 'Available commands:'
-    winston.info '  install -- creates default files for a bubblebot installation'
-    winston.info '  publish -- deploys bubblebot to a remote repository'
-    winston.info '  update  -- updates the bubblebot code (npm update bubblebot)'
+    u.log 'Available commands:'
+    u.log '  install -- creates default files for a bubblebot installation'
+    u.log '  publish -- deploys bubblebot to a remote repository'
+    u.log '  update  -- updates the bubblebot code (npm update bubblebot)'
     process.exit()
 
 
 u = require './utilities'
 clouds = require './clouds'
-winston = require 'winston'
 fs = require 'fs'
 os = require 'os'
 config = require './config'

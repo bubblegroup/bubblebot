@@ -3,6 +3,10 @@ ssh = exports
 
 ssh.run = (host, private_key, cmd, options) ->
     {can_fail, timeout} = options ? {}
+
+    logger = u.get_logger()
+    logger '\nSSH ' + host + ': ' + cmd
+
     stream = exec_ssh host, private_key, cmd
 
     output = []
@@ -12,10 +16,12 @@ ssh.run = (host, private_key, cmd, options) ->
     close_block = u.Block('ssh.run close block')
     block = u.Block('ssh.run')
     on_data = (data) ->
+        logger data
         output.push data
     stream.on 'data', on_data
 
     on_stderr_data = (data) ->
+        logger data
         output.push data
     stream.stderr.on 'data', on_stderr_data
 
@@ -38,7 +44,7 @@ ssh.run = (host, private_key, cmd, options) ->
     stream.on 'end', on_end
 
     close_block.wait(timeout)
-    block.wait(10)
+    block.wait(10000)
 
     stream.removeListener 'data', on_data
     stream.stderr.removeListener 'data', on_stderr_data
@@ -77,6 +83,7 @@ exec_ssh = (host, private_key, cmd) ->
         block.fail err
     conn.once 'error', handler
     res = block.wait()
+    res.setEncoding 'utf8'
     conn.removeListener 'error', handler
     return res
 
@@ -100,6 +107,9 @@ get_connection = (host, private_key) ->
         conn.on 'close', ->
             if ssh_connections[host] is conn
                 delete ssh_connections[host]
+
+        if not private_key
+            throw new Error 'missing private key!'
 
         conn.connect {
             host: host

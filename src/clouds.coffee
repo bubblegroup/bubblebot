@@ -12,7 +12,7 @@ clouds.AWSCloud = class AWSCloud
         good = []
         for instance in instances
             if instance.get_tags()[config.get('status_tag')] isnt INITIALIZED
-                winston.info 'found an uninitialized bubbblebot server.  Terminating it...'
+                u.log 'found an uninitialized bubbblebot server.  Terminating it...'
                 instance.terminate()
             else
                 good.push instance
@@ -30,18 +30,18 @@ clouds.AWSCloud = class AWSCloud
         environment = @get_bb_environment()
 
         instance = environment.create_server image_id, instance_type, config.get('bubblebot_role_bbserver'), 'Bubble Bot'
-        winston.info 'bubblebot server created, waiting for it to ready...'
+        u.log 'bubblebot server created, waiting for it to ready...'
         instance.wait_for_ssh()
 
-        winston.info 'bubblebot server ready, installing software...'
+        u.log 'bubblebot server ready, installing software...'
 
         #Install node and supervisor
         command = 'node ' + config.get('install_directory') + config.get('run_file')
-        software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.4')).install(instance)
+        software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.3')).install(instance)
 
         environment.tag_resource(config.get('status_tag'), INITIALIZED)
 
-        winston.info 'bubblebot server has base software installed'
+        u.log 'bubblebot server has base software installed'
 
         return instance
 
@@ -137,20 +137,22 @@ class Environment
     #Gets the private key that corresponds with @get_keypair_name()
     get_private_key: ->
         keyname = @get_keypair_name()
-        if not key_cache.get(keyname)
-            try
-                data = @s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: keyname}).Body
-                if typeof(data) isnt 'string'
-                    throw new Error 'non string data: ' + typeof(data) + ' ' + data
-                key_cache.set keyname, data
-            catch err
-                #We lost our key, so delete it
-                if String(err).indexOf('NoSuchKey') isnt -1
-                    winston.error 'Could not find private key for ' + keyname + ': deleting it!'
-                    @ec2 'deleteKeyPair', {KeyName: keyname}
-                    throw new Error 'Could not retrieve private key for ' + keyname + '; deleted public key'
+        from_cache = key_cache.get(keyname)
+        if from_cache
+            return from_cache
 
-        return key_cache.get(keyname)
+        try
+            data = String(@s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: keyname}).Body)
+            key_cache.set keyname, data
+            return data
+
+        catch err
+            #We lost our key, so delete it
+            if String(err).indexOf('NoSuchKey') isnt -1
+                u.log 'Could not find private key for ' + keyname + ': deleting it!'
+                @ec2 'deleteKeyPair', {KeyName: keyname}
+                throw new Error 'Could not retrieve private key for ' + keyname + '; deleted public key'
+            throw err
 
     #creates and returns a new ec2 server in this environment
     create_server: (ImageId, InstanceType, role, name) ->
@@ -186,14 +188,14 @@ class Environment
 
         rules = [
             #Allow outside world access on 80 and 443
-            {IpRanges: [{CidrIp: '0.0.0.0/32'}], IpProtocol: 'tcp', FromPort: 80, ToPort: 80}
-            {IpRanges: [{CidrIp: '0.0.0.0/32'}], IpProtocol: 'tcp', FromPort: 443, ToPort: 443}
+            {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 80, ToPort: 80}
+            {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 443, ToPort: 443}
             #Allow other boxes in this security group to connect on any port
             {UserIdGroupPairs: [{GroupId: id}], IpProtocol: '-1'}
         ]
         #If this a server people are allowed to SSH into directly, open port 22.
         if @allow_outside_ssh()
-            rules.push {IpRanges: [{CidrIp: '0.0.0.0/32'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
+            rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
 
         #If this is not bubblebot, add the bubblebot security group
         if not (this instanceof BBEnvironment)
@@ -239,6 +241,18 @@ class Environment
         to_remove = []
         to_add = []
 
+        #Current rules
+        TARGETS = ['IpRanges', 'UserIdGroupPairs', 'PrefixListIds']
+        existing = []
+        for rule in data.IpPermissions ? []
+            for target in TARGETS
+                for item in rule[target] ? []
+                    r = u.json_deep_copy(rule)
+                    for t in TARGETS
+                        delete r[t]
+                    r[target] = [item]
+                    existing.push r
+
         #convert the rule into a consistent string format for easy comparison
         #we do this by removing empty arrays, nulls, and certain auto-generated fields,
         #then converting to JSON with a consistent key order and comparing
@@ -260,7 +274,7 @@ class Environment
         #make sure all the new rules exist
         for new_rule in rules
             found = false
-            for existing_rule in data.IpPermissions ? []
+            for existing_rule in existing
                 if compare new_rule, existing_rule
                     found = true
                     break
@@ -268,7 +282,7 @@ class Environment
                 to_add.push new_rule
 
         #make sure all the existing rules are in the new rules
-        for existing_rule in data.IpPermissions ? []
+        for existing_rule in existing
             found = false
             for new_rule in rules
                 if compare new_rule, existing_rule
@@ -413,7 +427,7 @@ class Instance
 
     #Waits til the server is in the running state
     wait_for_running: (retries = 20) ->
-        winston.info 'waiting for server to be running (' + retries + ')'
+        u.log 'waiting for server to be running (' + retries + ')'
         if @get_state(true) is 'running'
             return
         else if retries is 0
@@ -426,11 +440,11 @@ class Instance
     wait_for_ssh: () ->
         @wait_for_running()
         do_wait = (retries = 20) =>
-            winston.info 'server running, waiting for it accept ssh connections (' + retries + ')'
+            u.log 'server running, waiting for it accept ssh connections (' + retries + ')'
             try
                 @run 'hostname'
             catch err
-                if retries is 0
+                if retries is 0 or not @_ssh_expected(err)
                     throw err
                 else
                     u.pause 10000
@@ -438,18 +452,30 @@ class Instance
 
         do_wait()
 
+    #True if this is one of the expected errors while we wait for a server to become reachable via ssh
+    _ssh_expected: (err) ->
+        if String(err).indexOf('Timed out while waiting for handshake') isnt -1
+            return true
+        if  String(err).indexOf('ECONNREFUSED') isnt -1
+            return true
+        return false
+
 
     #Returns the state of the instance.  Set force_refresh to true to check for changes.
     get_state: (force_refresh) -> @get_data(force_refresh).State.Name
 
     terminate: ->
-        winston.info 'Terminating server ' + @id
+        u.log 'Terminating server ' + @id
         data = @environment.ec2 'terminateInstances', {InstanceIds: [@id]}
         if not data.TerminatingInstances?[0]?.InstanceId is @id
             throw new Error 'failed to terminate! ' + JSON.stringify(data)
 
     #Returns the address bubblebot can use for ssh / http requests to this instance
-    get_address: -> @get_private_ip_address()
+    get_address: ->
+        if config.get('command_line')
+            @get_public_ip_address()
+        else
+            @get_private_ip_address()
 
     get_public_dns: -> @get_data().PublicDnsName
 
@@ -484,5 +510,4 @@ AWS = require 'aws-sdk'
 ssh = require './ssh'
 request = require 'request'
 u = require './utilities'
-winston = require 'winston'
 stable_stringify = require 'json-stable-stringify'

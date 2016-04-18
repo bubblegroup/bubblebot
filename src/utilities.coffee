@@ -60,6 +60,11 @@ u.generate_key_pair = ->
 
     return {private_key, public_key}
 
+#Logs a message to the current context
+u.log = (msg) -> u.get_logger() msg
+
+u.get_logger = -> return console.log.bind(console)
+
 
 #Gets the global environment for the current fiber
 u.get_context = ->
@@ -95,7 +100,11 @@ class Block
         if not @name?
             throw new Error 'blocks must be named'
 
-    wait: ->
+    wait: (timeout) ->
+        old_timeout = Fiber.current._u_fiber_timeout
+        if timeout?
+            Fiber.current._u_fiber_timeout = timeout
+
         if not @finished
             if not Fiber.current
                 throw new Error 'Not inside SyncRun!'
@@ -119,6 +128,8 @@ class Block
             err.stack ?= ''
             err.stack += '\n\n' + (new Error('Outer Error (see above for inner error)')).stack
             throw err
+
+        Fiber.current._u_fiber_timeout = old_timeout
 
         return data
 
