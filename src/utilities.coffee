@@ -9,6 +9,7 @@ u.create_tarball = (directory) ->
 
 u.run_local = (cmd, options = {}) ->
     {can_fail} = options
+    u.log 'Running locally: ' + cmd
     block = u.Block 'run_local ' + cmd
     child_process.exec cmd, {encoding: 'utf8'}, (err, stdout, stderr) ->
         if err

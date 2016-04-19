@@ -36,7 +36,7 @@ clouds.AWSCloud = class AWSCloud
         u.log 'bubblebot server ready, installing software...'
 
         #Install node and supervisor
-        command = 'node ' + config.get('install_directory') + config.get('run_file')
+        command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
         software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.3')).install(instance)
 
         environment.tag_resource(instance.id, config.get('status_tag'), INITIALIZED)

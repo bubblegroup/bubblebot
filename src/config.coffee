@@ -70,7 +70,7 @@ DEFAULTS =
             return null
         return prompt_for 'AWS secret', {properties: {"AWS secret": {hidden: true}}}
 
-    remote_repo: -> u.run_local 'git config --get remote.origin.url'
+    remote_repo: -> u.run_local('git config --get remote.origin.url').trim()
 
     deploy_key_path: 'deploy_key_rsa'
 
@@ -88,9 +88,11 @@ DEFAULTS =
 
     bubblebot_role_bbserver: 'bbserver'
 
-    install_directory: '~/bubblebot/'
+    install_directory: '/home/ec2-user/bubblebot'
 
     run_file: 'run.js'
+
+
 
 
 strip_comments = require 'strip-json-comments'
