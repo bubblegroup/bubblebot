@@ -7,6 +7,7 @@ _config = null
 config.init = (options) ->
     if not options?
         #Load the options from disk
+        u.log 'Loading options from disk: ' + config.get('configuration_file') + ' (cwd: ' + process.cwd() + ')'
         _config = JSON.parse strip_comments fs.readFileSync config.get('configuration_file'), {encoding: 'utf8'}
     else
         _config = JSON.parse JSON.stringify options

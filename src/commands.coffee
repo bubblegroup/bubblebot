@@ -1,21 +1,20 @@
 commands = exports
 
+build = ->
+    #Load the local configuration from disk
+    config.init()
+
+    u.run_local 'npm prune'
+    u.run_local 'npm install'
+    u.run_local 'npm dedupe'
+    u.run_local 'npm shrinkwrap'
+    u.run_local './node_modules/bubblebot/node_modules/.bin/shrinkpack'
+    u.log 'Build complete'
+
+
 commands.build = ->
     u.SyncRun ->
-        #Load the local configuration from disk
-        config.init()
-
-        u.run_local 'npm prune'
-        u.run_local 'npm install'
-        u.run_local 'npm dedupe'
-        u.run_local 'npm shrinkwrap'
-        try
-            u.run_local './node_modules/bubblebot/node_modules/.bin/shrinkpack'
-        catch err
-            if String(err).indexOf('npm-shrinkwrap.json is already shrinkpacked') is -1
-                throw err
-
-        u.log 'Build complete'
+        build()
         process.exit()
 
 commands.publish = (access_key) ->
@@ -105,13 +104,18 @@ commands.install = (force) ->
 
         process.exit()
 
+update = ->
+    u.log 'Checking for updates...'
+    u.log u.run_local 'rm npm-shrinkwrap.json', {can_fail: true}
+    u.log u.run_local 'rm -rf node_shrinkwrap', {can_fail: true}
+    u.log u.run_local 'npm install bubblebot'
+    u.log u.run_local 'npm update bubblebot'
+
+
 commands.update = ->
     u.SyncRun ->
-        u.log 'Checking for updates...'
-        u.log u.run_local 'rm npm-shrinkwrap.json', {can_fail: true}
-        u.log u.run_local 'npm install bubblebot'
-        u.log u.run_local 'npm update bubblebot'
-
+        update()
+        build()
         process.exit()
 
 
