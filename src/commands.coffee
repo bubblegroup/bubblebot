@@ -67,6 +67,8 @@ commands.publish = (access_key) ->
         bbserver.run("cd #{install_dir} && npm install && npm test")
 
         #Create a symbolic link pointing to the new directory, deleting the old one if it exits
+        bbserver.run('rm -rf bubblebot-old', {can_fail: true})
+        bbserver.run("mv $(readlink #{config.get('install_directory')}) bubblebot-old", {can_fail: true})
         bbserver.run('unlink ' + config.get('install_directory'), {can_fail: true})
         bbserver.run('ln -s ' + install_dir + ' ' +  config.get('install_directory'))
 
@@ -76,11 +78,11 @@ commands.publish = (access_key) ->
         catch err
             u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
             #make sure supervisord is running
-            bbserver.run('sudo supervisord -c /etc/supervisord.conf', {can_fail: true})
+            bbserver.run('supervisord -c /etc/supervisord.conf', {can_fail: true})
             #stop bubblebot if it is running
-            bbserver.run('sudo supervisorctl stop bubblebot', {can_fail: true})
+            bbserver.run('supervisorctl stop bubblebot', {can_fail: true})
             #start bubblebot
-            bbserver.run('sudo supervisorctl start bubblebot')
+            bbserver.run('supervisorctl start bubblebot')
 
         process.exit()
 

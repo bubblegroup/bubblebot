@@ -57,9 +57,8 @@ software.create = create = (fn) ->
 software.basics = create ->
     pkg = new Software()
 
-    #unfuck sudo
-    pkg.run "cat > tmp << 'EOF'\nalias sudo='sudo env PATH=$PATH NODE_PATH=$NODE_PATH'\nEOF"
-    pkg.run 'sudo su -c"mv tmp /etc/profile.d/fix_sudo.sh"'
+    #Redirects 80 -> 8080 so that don't have to run things as root
+    pkg.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080"
 
     #update yum and install git + development tools
     pkg.run 'sudo yum update -y'
@@ -67,7 +66,6 @@ software.basics = create ->
     pkg.run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y '
 
     return pkg
-
 
 #Installs supervisor and sets it up to run the given command
 software.supervisor = create (name, command, pwd) ->
