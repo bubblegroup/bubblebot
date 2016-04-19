@@ -29,7 +29,7 @@ clouds.AWSCloud = class AWSCloud
         instance_type = config.get('bubblebot_instance_type')
         environment = @get_bb_environment()
 
-        instance = environment.create_server image_id, instance_type, config.get('bubblebot_role_bbserver'), 'Bubble Bot'
+        instance = environment.create_server image_id, instance_type, config.get('bubblebot_role_bbserver'), 'Bubble Bot', config.get('bubblebot_instance_profile')
         u.log 'bubblebot server created, waiting for it to ready...'
         instance.wait_for_ssh()
 
@@ -155,7 +155,7 @@ class Environment
             throw err
 
     #creates and returns a new ec2 server in this environment
-    create_server: (ImageId, InstanceType, role, name) ->
+    create_server: (ImageId, InstanceType, role, name, instance_profile) ->
         KeyName = @get_keypair_name()
         SecurityGroupIds = [@get_webserver_security_group()]
         SubnetId = @get_subnet()
@@ -205,7 +205,6 @@ class Environment
 
         @ensure_security_group_rules group_name, rules
         return id
-
 
     #Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
     #Creates the group if there is not one with this name.
@@ -469,6 +468,13 @@ class Instance
         data = @environment.ec2 'terminateInstances', {InstanceIds: [@id]}
         if not data.TerminatingInstances?[0]?.InstanceId is @id
             throw new Error 'failed to terminate! ' + JSON.stringify(data)
+
+    #Writes the given private key to the default location on the box
+    install_private_key: (path) ->
+        key_data = fs.readFileSync path, 'utf8'
+        u.log 'installing private key'
+        @run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
+        @run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
 
     #Returns the address bubblebot can use for ssh / http requests to this instance
     get_address: ->

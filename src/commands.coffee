@@ -1,27 +1,19 @@
 commands = exports
 
-
 commands.publish = (access_key) ->
     u.SyncRun ->
         #Load the local configuration from disk
         config.init()
+        if access_key
+            config.set('accessKeyId', access_key)
 
         #Indicate that we are running from the command line
         config.set 'command_line', true
 
-        #Prompt the user for the credentials
-        if not access_key
-            prompt.start()
-            block = u.Block('prompt')
-            prompt.get(['access_key'], block.make_cb())
-            {access_key} = block.wait()
-
-        u.log 'Publishing to account ' + access_key
-
-        config.set 'accessKeyId', access_key
+        u.log 'Publishing to account ' + config.get('accessKeyId')
 
         #load any access_key specific configuration
-        env_config_path = access_key + '.json'
+        env_config_path = config.get('accessKeyId') + '.json'
         try
             raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
         catch err
@@ -36,15 +28,6 @@ commands.publish = (access_key) ->
             u.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
             throw err
 
-        #Prompt for the secret
-        if not config.get 'secretAccessKey', null
-            prompt.start()
-            block = u.Block('prompt')
-            prompt.get({properties: {secret: {hidden: true}}}, block.make_cb())
-            {secret} = block.wait()
-
-            config.set 'secretAccessKey', secret
-
         cloud = new clouds.AWSCloud()
 
         u.log 'Searching for bubblebot server...'
@@ -57,18 +40,17 @@ commands.publish = (access_key) ->
 
         u.log 'Found bubblebot server'
 
-        #Capture the current directory to a tarball, upload it, and delete it
-        temp_file = u.create_tarball(process.cwd())
-        temp_file_name = path.basename(temp_file)
-        u.log 'Saved current directory to ' + temp_file
-        bbserver.upload_file(temp_file, '/home/ec2-user/')
-        bbserver.run("mkdir -p #{config.get('install_directory')}")
-        bbserver.run("tar -xf /home/ec2-user/#{temp_file_name} -C #{config.get('install_directory')}")
-        bbserver.run("rm /home/ec2-user/#{temp_file_name}")
-        fs.removeFileSync temp_file
+        #Ensure we have the necessary deployment key installed
+        bbserver.install_private_key config.get('deploy_key_path')
 
-        #Save the configuration information to bubblebot
-        bbserver.write_file(config.export(), config.get('install_directory') + config.get('configuration_file'))
+        #Clone our bubblebot installation to a fresh directory, and run npm install and npm test
+        install_dir = 'bubblebot-' + Date.now()
+        bbserver.run('git clone ' + config.get('remote_repo') + ' ' + install_dir)
+        bbserver.run("cd #{install_dir} && npm install && npm test")
+
+        #Create a symbolic link pointing to the new directory, deleting the old one if it exits
+        bbserver.run('unlink ' + config.get('install_directory'), {can_fail: true})
+        bbserver.run('ln -s ' + install_dir + ' ' +  config.get('install_directory'))
 
         #Ask bubblebot to restart itself
         try
@@ -126,6 +108,5 @@ clouds = require './clouds'
 fs = require 'fs'
 os = require 'os'
 config = require './config'
-prompt = require 'prompt'
 strip_comments = require 'strip-json-comments'
 path = require 'path'

@@ -1,40 +1,69 @@
 {    
-    //Naming AWS resources
-    
-    //The tag name we use to identify bubblebot resources
-    "bubblebot_tag_key": "bubblebot",
-    //The value we use to identify the bubblebot server instance
-    "bubblebot_tag_value": "bubblebot_server",
-    //The prefix we use to name key pairs
-    "keypair_prefix": "bubblebot_keypair_",
-    
-    //Status tag: we use this for instance creation
-    "status_tag": "bubblebot_status",
-    
-    //Role tags -- we use this to tag assets based on how bubblebot uses them
-    "bubblebot_role_tag": "bubblebot_role", 
-    "bubblebot_role_bbserver": "bbserver",
-    
-    
-    //Bubblebot server
-    
+    //
+    //MUST BE SET
+    //
+
     //The bucket we use to store secure bubblebot resources in. MAKE SURE THIS IS LOCKED DOWN
     //TO JUST THE BUBBLEBOT ACCOUNT!
     "bubblebot_s3_bucket": "my_bubblebot_bucket",
     
-    //The region we run the bubblebot server in
-    "bubblebot_region": "us-west-2",
+     //The region we run the bubblebot server in
+    "bubblebot_region": "us-west-2",    
+
     //The VPC in that region we run it in
     "bubblebot_vpc": "MY_VPC",
+    
     //The AMI we use as the base for the bubblebot server
     "bubblebot_image_id": "ami-d5c5d1e5",
+    
     //The size we use for the bubblebot server
     "bubblebot_instance_type": "t2.nano",
     
+    
+    
+    
+    
+    
+    //
+    //OVERRIDABLE DEFAULTS
+    //
+
+
+    //Override the repo that contains the bubblebot code
+    //If not set, checks the current working directory
+    //"remote_repo": "git@github.com:my_user/my_installation.git",
+    
+    //We install a private ssh key that should have read (and only read) permissions on the
+    //repo where this project is stored
+    //"deploy_key_path": "deploy_key_rsa",
+    
+    //The tag name we use to identify bubblebot resources
+    //"bubblebot_tag_key": "bubblebot",
+
+    //The value we use to identify the bubblebot server instance
+    //"bubblebot_tag_value": "bubblebot_server",
+
+    //The prefix we use to name key pairs
+    //"keypair_prefix": "bubblebot_keypair_",
+    
+    //Status tag: we use this for instance creation
+    //"status_tag": "bubblebot_status",
+    
+    //Role tags -- we use this to tag assets based on how bubblebot uses them
+    //"bubblebot_role_tag": "bubblebot_role", 
+    //"bubblebot_role_bbserver": "bbserver",
+    
     //Where we install bubblebot on the bubblebot server
-    "install_directory": "~/bubblebot/",
+    //"install_directory": "~/bubblebot/",
     //The file we run on server start
-    "run_file": "run.js"
+    //"run_file": "run.js",
+
+    
+   
+
+
     
 
+    
+    "we_add_this_to_absorb": "any_trailing_commas"
 }

@@ -4,7 +4,11 @@ ssh = exports
 ssh.run = (host, private_key, cmd, options) ->
     {can_fail, timeout} = options ? {}
 
-    logger = u.get_logger()
+    if options.no_log
+        logger = ->
+    else
+        logger = u.get_logger()
+
     logger '\nSSH ' + host + ': ' + cmd
 
     stream = exec_ssh host, private_key, cmd
