@@ -73,7 +73,9 @@ commands.publish = (access_key) ->
 
         #Ask bubblebot to restart itself
         try
-            bbserver.run("curl -X POST http://localhost:8081/shutdown")
+            results = bbserver.run("curl -X POST http://localhost:8081/shutdown")
+            if results.indexOf(bubblebot_server.SHUTDOWN_ACK) is -1
+                throw new Error 'Unrecognized response: ' + results
         catch err
             u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
             #make sure supervisord is running
@@ -136,3 +138,4 @@ os = require 'os'
 config = require './config'
 strip_comments = require 'strip-json-comments'
 path = require 'path'
+bubblebot_server = require './bbserver'

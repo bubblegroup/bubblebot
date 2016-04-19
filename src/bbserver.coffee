@@ -12,14 +12,16 @@ bbserver.Server = class Server
         server.listen 8080
 
         server2 = http.createServer (req, res) ->
-            if req.path is '/shutdown'
+            if req.url is '/shutdown'
                 u.log 'Shutting down!'
-                res.end 'shutting down'
+                res.end bbserver.SHUTDOWN_ACK
                 process.exit(1)
             else
                 res.end 'unrecognized command'
 
         server2.listen 8081
+
+bbserver.SHUTDOWN_ACK = 'graceful shutdown command received'
 
 
 http = require 'http'
