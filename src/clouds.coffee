@@ -476,6 +476,10 @@ class Instance
         @run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
         @run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
 
+        #turn off strict host checking so that we don't get interrupted by prompts
+        @run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
+        @run 'chmod 600 /home/ec2-user/.ssh/config'
+
     #Returns the address bubblebot can use for ssh / http requests to this instance
     get_address: ->
         if config.get('command_line')
@@ -517,3 +521,4 @@ ssh = require './ssh'
 request = require 'request'
 u = require './utilities'
 stable_stringify = require 'json-stable-stringify'
+fs = require 'fs'

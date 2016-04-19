@@ -2,9 +2,9 @@ ssh = exports
 
 
 ssh.run = (host, private_key, cmd, options) ->
-    {can_fail, timeout} = options ? {}
+    {can_fail, timeout, no_log} = options ? {}
 
-    if options.no_log
+    if no_log
         logger = ->
     else
         logger = u.get_logger()

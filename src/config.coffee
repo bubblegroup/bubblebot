@@ -68,7 +68,7 @@ DEFAULTS =
         #otherwise, return null to indicate we are using IAM roles
         if not config.get('command_line')
             return null
-        return prompt_for 'AWS secret', {properties: {"AWS secret": {hidden: true}}
+        return prompt_for 'AWS secret', {properties: {"AWS secret": {hidden: true}}}
 
     remote_repo: -> u.run_local 'git config --get remote.origin.url'
 
