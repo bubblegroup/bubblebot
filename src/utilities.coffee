@@ -61,18 +61,59 @@ u.generate_key_pair = ->
 
     return {private_key, public_key}
 
+
+#Chatting (at various levels of verbosity ranging from most critical to hear to least):
+# report -- for problems (default is to pm administrators and current user)
+# announce -- for updates like a new deployment (default is to post in a public channel)
+# reply -- for things relevant to the current user (default is to pm current user)
+# log -- for everything else (default is to save to a transcript)
+
+# Log functions must work off fiber!!
+
+#Reports a problem / failure / error (and logs to current context)
+u.report = (msg) -> u.get_logger().report msg
+
+#Announces a message in to all users (And logs to current context)
+u.announce = (msg) -> u.get_logger().announce msg
+
+#Replies to the current user
+u.reply = (msg) -> u.get_logger().reply msg
+
 #Logs a message to the current context
-u.log = (msg) -> u.get_logger() msg
+u.log = (msg) -> u.get_logger().log msg
 
-u.get_logger = -> return console.log.bind(console)
+#Gets the current context's logger
+u.get_logger = -> u.get_context()?.logger ? u.get_default_logger()
+
+#Creates a logger object where all non-log methods also log
+u.create_logger = (methods) ->
+    logger = {}
+    logger.log = methods.log
+    for name in ['report', 'announce', 'reply']
+        logger[name] = (msg) ->
+            logger.log '\n\n' + name.toUpperCase()
+            methods[name]? msg
+        logger[name + '_no_log'] = methods[name]
+    return logger
+
+#Gets a logger that just console.logs everything
+_default_logger = u.create_logger {log: console.log.bind(log)}
+
+#Gets the logger to use when we are outside of a context
+u.get_default_logger = ->
+    return _default_logger
+
+#Sets the logger to use when we are outside of a context
+u.set_default_logger = (logger) ->
+    _default_logger = logger
 
 
-#Gets the global environment for the current fiber
+
+#Gets the global environment for the current fiber, or null
+#if we are off-fiber
 u.get_context = ->
-    if not Fiber.current?
-        throw new Error 'No current fiber!'
-    Fiber.current.current_context ?= {}
-    return Fiber.current.current_context
+    Fiber.current?.current_context ?= {}
+    return Fiber.current?.current_context ? null
 
 #Pauses the current fiber for this # of ms
 u.pause = (ms) ->

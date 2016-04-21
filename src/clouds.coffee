@@ -181,6 +181,9 @@ class Environment
 
         return new Instance this, id
 
+    #Retrieves a cloudwatch log stream
+    get_log_stream: (group_name, stream_name) -> new cloudwatchlogs.LogStream this, group_name, stream_name
+
     #Retrieves the security group for webservers in this group, creating it if necessary
     get_webserver_security_group: ->
         group_name = @name + '_webserver_sg'
@@ -376,12 +379,17 @@ class Environment
     #Calls s3 and returns the results
     s3: (method, parameters) -> @aws 'S3', method, parameters
 
+    CloudWatchLogs: (method, parameters) -> @aws 'CloudWatchLogs', method, parameters
+
     #Calls the AWS api
     aws: (service, method, parameters) ->
-        svc = new AWS[service](aws_config @get_region())
+        svc = @get_svc service
         block = u.Block method
         svc[method] parameters, block.make_cb()
         return block.wait()
+
+    #Gets the underlying AWS service object
+    get_svc: (service) -> new AWS[service](aws_config @get_region())
 
 
 #Special hard-coded environment that we use to run the bubble bot
@@ -522,3 +530,4 @@ request = require 'request'
 u = require './utilities'
 stable_stringify = require 'json-stable-stringify'
 fs = require 'fs'
+cloudwatchlogs = require './cloudwatchlogs'
