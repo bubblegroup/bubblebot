@@ -78,6 +78,7 @@ instance_cache = new Cache(60 * 1000)
 key_cache = new Cache(60 * 60 * 1000)
 sg_cache = new Cache(60 * 60 * 1000)
 vpc_to_subnets = new Cache(60 * 60 * 1000)
+log_stream_cache = new Cache(24 * 60 * 60 * 1000)
 
 
 class Environment
@@ -182,7 +183,13 @@ class Environment
         return new Instance this, id
 
     #Retrieves a cloudwatch log stream
-    get_log_stream: (group_name, stream_name) -> new cloudwatchlogs.LogStream this, group_name, stream_name
+    get_log_stream: (group_name, stream_name) ->
+        #We only want one instance per stream, since we remember state (the last log key,
+        #whether we are writing to it, etc.)
+        key = group_name + '-' + stream_name
+        if not log_stream_cache.get key
+            log_stream_cache.set key, new cloudwatchlogs.LogStream this, group_name, stream_name
+        return log_stream_cache.get key
 
     #Retrieves the security group for webservers in this group, creating it if necessary
     get_webserver_security_group: ->
