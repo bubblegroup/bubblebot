@@ -57,6 +57,8 @@ cloudwatchlogs.LogStream = class LogStream
             else
                 @put_scheduled = false
 
+    #Returns a url that a user can view to tail the logs
+    get_tail_url: -> throw new Error 'not implemented'
 
 
 u = require './utilities'

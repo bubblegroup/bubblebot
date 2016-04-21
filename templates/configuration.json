@@ -4,8 +4,8 @@
     //
 
     //The bucket we use to store secure bubblebot resources in. MAKE SURE THIS IS LOCKED DOWN
-    //TO JUST THE BUBBLEBOT ACCOUNT!
-    "bubblebot_s3_bucket": "my_bubblebot_bucket",
+    //TO JUST THE BUBBLEBOT ACCOUNT -- we save secure things like private keys here.
+    "bubblebot_s3_bucket": "MY_BUBBLEBOT_BUCKET",
     
      //The region we run the bubblebot server in
     "bubblebot_region": "us-west-2",    
@@ -19,8 +19,8 @@
     //The size we use for the bubblebot server
     "bubblebot_instance_type": "t2.nano",
     
-    
-    
+    //The slack token we use
+    "slack_token": "MY_TOKEN",
     
     
     

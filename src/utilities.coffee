@@ -68,7 +68,7 @@ u.generate_key_pair = ->
 # reply -- for things relevant to the current user (default is to pm current user)
 # log -- for everything else (default is to save to a transcript)
 
-# Log functions must work off fiber!!
+# Log, announce, and report must work off fiber.
 
 #Reports a problem / failure / error (and logs to current context)
 u.report = (msg) -> u.get_logger().report msg

@@ -3,8 +3,6 @@ bbserver = exports
 bbserver.Server = class Server
     #should listen on port 8081 for commands such as shutdown
     start: ->
-        u.log 'starting bubblebot server'
-
         server = http.createServer (req, res) ->
             res.write 'hi!!'
             res.end()
@@ -21,8 +19,48 @@ bbserver.Server = class Server
 
         server2.listen 8081
 
+        @slack_client = new slack.SlackClient()
+        @slack_client.on 'new_conversation', -> #process the command
+
+        cloud = new clouds.AWSCloud()
+        log_stream = cloud.get_bb_environment().get_log_stream('bubblebot', 'bubblebot_server')
+
+        #Create the default log environment for the server
+        logger = u.create_logger {
+            log: log_stream.log.bind(log_stream)
+            reply: -> throw new Error 'cannot reply: not in a conversation!'
+            announce: @slack_client.announce.bind(@slack_client)
+            report: @slack_Client.report.bind(@slack_client)
+        }
+
+        u.set_default_logger logger
+
+        u.announce 'Bubblebot is running!  Send me a PM for me info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() +
+
+        #Handle uncaught exceptions.
+        #We want to report them, with a rate limit of 10 per 30 minutes
+        rate_limit_count = 0
+        rate_limit_on = false
+        process.on 'uncaughtException', (err) ->
+            if rate_limit_on
+                return
+
+            rate_limit_count++
+            if rate_limit_count is 10
+                rate_limit_on = true
+                setTimeout ->
+                    rate_limit_count = 0
+                    rate_lmit_on = false
+                , 30 * 60 * 1000
+
+            message = 'Uncaught exception: ' + (err.stack ? err)
+            u.report message
+
+
 bbserver.SHUTDOWN_ACK = 'graceful shutdown command received'
 
 
 http = require 'http'
 u = require './utilities'
+slack = require './slack'
+clouds = require './clouds'

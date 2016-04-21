@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/bubblegroup/bubblebot",
   "dependencies": {
+    "@slack/client": "^2.3.0",
     "aws-sdk": "^2.3.3",
     "fibers": "^1.0.10",
     "json-stable-stringify": "^1.0.1",
