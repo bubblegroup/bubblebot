@@ -79,6 +79,9 @@ u.announce = (msg) -> u.get_logger().announce msg
 #Replies to the current user
 u.reply = (msg) -> u.get_logger().reply msg
 
+#Asks the current user a question and returns their response
+u.ask = (msg) -> return u.get_logger().ask msg
+
 #Logs a message to the current context
 u.log = (msg) -> u.get_logger().log msg
 
@@ -91,7 +94,10 @@ u.create_logger = (methods) ->
     logger.log = methods.log
     for name in ['report', 'announce', 'reply']
         logger[name] = (msg) ->
-            logger.log '\n\n' + name.toUpperCase()
+            try
+                logger.log '\n\n' + name.toUpperCase() + ': ' + msg
+            catch err
+                console.log err.stack ? err
             methods[name]? msg
         logger[name + '_no_log'] = methods[name]
     return logger
@@ -106,7 +112,7 @@ u.get_default_logger = ->
 #Sets the logger to use when we are outside of a context
 u.set_default_logger = (logger) ->
     _default_logger = logger
-
+    #
 
 
 #Gets the global environment for the current fiber, or null
@@ -120,6 +126,40 @@ u.pause = (ms) ->
     block = u.Block 'pause'
     setTimeout block.make_cb(), ms
     block.wait()
+
+
+#Tries running the function multiple times until it runs without an error
+#
+#tries is optional: defaults to 10 before throwing
+#
+#pause is optional: defaults to 100 ms in between tries
+#
+#Calls:
+#
+#u.retry(fn)
+#u.retry(tries, fn)
+#u.retry(tries, pause, fn)
+u.retry = (a, b, c) ->
+    if not b?
+        fn = a
+    else if not c?
+        tries = a
+        fn = b
+
+    tries ?= 10
+    pause ?= 100
+
+    try
+        return fn()
+    catch err
+        if tries > 1
+            u.pause pause
+            return u.retry(tries - 1, pause, fn)
+        else
+            throw err
+
+
+
 
 
 # #### u.Block
@@ -202,6 +242,12 @@ start_fiber_run = (my_fiber) ->
     my_fiber.run()
 
 
+#Makes sure we are in a fiber to run the given function; if not, creates a new one
+u.ensure_fiber = (fn) ->
+    if Fiber.current?
+        fn()
+    else
+        u.SyncRun fn
 
 # #### u.SyncRun
 #Runs the callback in a fiber.  Safe to call either from within a fiber or from non-fiber

@@ -19,8 +19,9 @@ bbserver.Server = class Server
 
         server2.listen 8081
 
-        @slack_client = new slack.SlackClient()
-        @slack_client.on 'new_conversation', -> #process the command
+        @slack_client = new slack.SlackClient(this)
+        @slack_client.on 'new_conversation', (msg) ->
+            throw u.error 'new_conversation not implemented'
 
         cloud = new clouds.AWSCloud()
         log_stream = cloud.get_bb_environment().get_log_stream('bubblebot', 'bubblebot_server')
@@ -29,8 +30,9 @@ bbserver.Server = class Server
         logger = u.create_logger {
             log: log_stream.log.bind(log_stream)
             reply: -> throw new Error 'cannot reply: not in a conversation!'
+            ask: -> throw new Error 'cannot ask: not in a conversation!'
             announce: @slack_client.announce.bind(@slack_client)
-            report: @slack_Client.report.bind(@slack_client)
+            report: @slack_client.report.bind(@slack_client)
         }
 
         u.set_default_logger logger
@@ -55,6 +57,10 @@ bbserver.Server = class Server
 
             message = 'Uncaught exception: ' + (err.stack ? err)
             u.report message
+
+    #Returns the list of admins.  Defaults to the owner of the slack channel.
+    #TODO: allow this to be modified and saved in the db.
+    get_admins: -> [@slack_client.get_slack_owner()]
 
 
 bbserver.SHUTDOWN_ACK = 'graceful shutdown command received'
