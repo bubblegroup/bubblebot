@@ -69,7 +69,16 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             delete @talking_to[message.user]
 
         #otherwise, interpet this as a new conversation
-        @emit 'new_conversation', text
+        @emit 'new_conversation', message.user, text
+
+    #Sends a message to the current user
+    reply: (msg) ->
+        user_id = u.get_context()?.user_id
+        if not user_id?
+            throw new Error 'tried to reply but no user / context: context is ' + u.get_context() + ' and user id is ' + user_id
+        block = u.Block 'replying'
+        @send_im user_id, msg, block.make_cb()
+        block.wait()
 
     #Sends an im to the given user
     send_im: (user_id, msg, cb) ->

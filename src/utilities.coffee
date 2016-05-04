@@ -88,6 +88,13 @@ u.log = (msg) -> u.get_logger().log msg
 #Gets the current context's logger
 u.get_logger = -> u.get_context()?.logger ? u.get_default_logger()
 
+#Sets the current context's logger
+u.set_logger = (logger) ->
+    context = u.get_context()
+    if not context
+        throw new Error 'no context!'
+    context.logger = logger
+
 #Creates a logger object where all non-log methods also log
 u.create_logger = (methods) ->
     logger = {}
