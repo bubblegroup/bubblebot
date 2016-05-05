@@ -173,8 +173,11 @@ bbserver.Command = class Command
                 if param.default?
                     processed_args.push param.default
                 else if param.required
-                    u.reply "Oops, we're missing some required information: " + param.name + '.  To run, say ' + prev_args.join(' ') + ' ' + @display_args()
-                    return
+                    if params.dont_ask
+                        u.reply "Oops, we're missing some required information: " + param.name + '.  To run, say ' + prev_args.join(' ') + ' ' + @display_args()
+                        return
+                    else
+                        processed_args.push u.ask "I need a bit more information.  What's the value for #{param.name}?"
 
         if @additional_params?
             processed_args.push args[@params?.length ? 0..]
