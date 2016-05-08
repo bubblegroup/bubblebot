@@ -2,8 +2,7 @@ bbserver = exports
 
 bbserver.Server = class Server
     constructor: ->
-        @root_command = new CommandTree()
-        @root_command.add 'help', new Help(@root_command)
+        @root_command = new RootCommand()
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
@@ -80,39 +79,50 @@ bbserver.Server = class Server
                 report: @slack_client.report.bind(@slack_client)
             }
             try
-                @parse_command msg
+                args = parse_command msg
+                u.get_context().parsed_message = args
+                @root_command.execute [], args
             catch err
-                u.reply 'Sorry, I hit an unexpected error trying to handle ' + (context.parsed_message ? context.orginal_message) + ': ' + err.stack ? err
+                cmd = context.parsed_message ? context.orginal_message
 
-    #Given a message typed in by a user, parses it as a bot command
-    parse_command: (msg) ->
-        args = []
+                if err.reason = u.CANCEL
+                    u.reply 'Cancelled: ' + cmd
+                else if err.reason = u.USER_TIMEOUT
+                    u.reply 'Timed out waiting for your reply: ' + cmd
+                else
+                    u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
+                    if context.user_id not in @get_admins()
+                        u.report 'User ' + @get_user_info(context.user_id).name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
 
-        #Go through and chunk based on whitespace or on quotes
-        while msg.length > 0
-            while msg[0] is ' '
-                msg = msg[1..]
 
-            if msg[0] is '"'
-                msg = msg[1..]
-                endpos = msg.indexOf('"')
-            else if msg[0] is "'"
-                msg = msg[1..]
-                endpos = msg.indexof("'")
-            else
-                endpos = msg.indexOf(' ')
 
-            #if we don't see our chunk segment, go to the end of the string
-            if endpos is -1
-                endpos = msg.length
+#Given a message typed in by a user, parses it as a bot command
+parse_command = (msg) ->
+    args = []
 
-            args.push msg[...endpos]
+    #Go through and chunk based on whitespace or on quotes
+    while msg.length > 0
+        while msg[0] is ' '
+            msg = msg[1..]
 
-            msg = msg[endpos + 1..]
+        if msg[0] is '"'
+            msg = msg[1..]
+            endpos = msg.indexOf('"')
+        else if msg[0] is "'"
+            msg = msg[1..]
+            endpos = msg.indexof("'")
+        else
+            endpos = msg.indexOf(' ')
 
-        u.get_context().parsed_message = args
+        #if we don't see our chunk segment, go to the end of the string
+        if endpos is -1
+            endpos = msg.length
 
-        @root_command.execute [], args
+        args.push msg[...endpos]
+
+        msg = msg[endpos + 1..]
+
+    return args
 
 
 
@@ -120,21 +130,30 @@ bbserver.CommandTree = class CommandTree
     constructor: (@subcommands) ->
         @subcommands = {}
 
+    get_subcommands: -> @subcommands
+
     #Adds a subcommand
-    add: (name, command) -> @subcommands[name] = command
+    add: (name, command) ->
+        @subcommands[name] = command
 
     #Lists all available subcommands
-    list: -> (k for k, v of @subcommands)
+    list: -> (k for k, v of @get_subcommands())
 
     #Gets the subcommand, returning null if not found
-    get: (command) -> @subcommands[command] ? null
+    get: (command) -> @get_subcommands()[command] ? null
 
     #Executes a command.  Previous args is the path through the outer tree to this tree,
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
     execute: (prev_args, args) ->
+        if args.length is 0
+            msg = 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are: ' + (k for k, v of @get_subcommands()).join ', '
+            args = parse_command msg
+
         first = args[0]
-        if @subcommands[first.toLowerCase()]
-            return @subcommands.execute prev_args.concat(first), args[1..]
+        subcommand = @get_subcommands()[first.toLowerCase()]
+
+        if subcommand
+            return subcommand.execute prev_args.concat(first), args[1..]
 
         if prev_args.length is 0
             help = 'help'
@@ -152,7 +171,7 @@ bbserver.CommandTree = class CommandTree
         else
             res.push "The command '#{prev} has the following sub-commands:\n'
 
-        for name, command of @subcommands
+        for name, command of @get_subcommands()
             full = prev + ' ' + name
             res.push full + ' ' + command.display_args(full)
 
@@ -228,6 +247,20 @@ class Help extends Command
         u.reply targ.get_help(commands.join(' '))
         return
 
+
+#The initial command structure for the bot
+class RootCommand extends CommandTree
+    constructor: ->
+        @commands = {}
+        @commands.help = new Help(@root_command)
+        @commands.env = new EnvTree()
+
+
+    get_commands: ->
+        return u.extend {}, @commands.env.get_commands(), @commands
+
+#A command tree that lets you navigate environments
+class EnvTree
 
 
 

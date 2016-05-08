@@ -13,6 +13,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         @web_client = new WebClient(token)
 
         @talking_to = {}
+        @talking_to_lock = {}
 
         ready = u.Block 'slack api initializing'
 
@@ -80,6 +81,8 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         @send_im user_id, msg, block.make_cb()
         block.wait()
 
+    get_user_info: (user_id) -> @api.dataStore.getUserById(user_id)
+
     #Sends an im to the given user
     send_im: (user_id, msg, cb) ->
         user = @api.dataStore.getUserById(user_id)
@@ -88,25 +91,42 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Asks the given user a question, and returns their reply
     ask: (user_id, msg) ->
-        block = u.Block 'sending message'
-        @send_im user_id, msg, block.make_cb()
-        block.wait()
+        #Only one thread can be trying to talk to a single user at a time...
+        #We set a long timeout because we'd rather not timeout from multiple
+        #threads waiting on the same user
+        @talking_to_lock[user_id] ?= u.Lock(60 * 60 * 1000)
 
-        block = u.Block 'waiting for reply'
-        @talking_to[user_id] = block.make_cb()
+        return @talking_to_lock[user_id].run =>
 
-        reminder = setTimeout ->
-            @send_im 'Hey, still waiting for an answer...'
+            block = u.Block 'sending message'
+            @send_im user_id, msg, block.make_cb()
+            block.wait()
+
+            block = u.Block 'waiting for reply'
+            @talking_to[user_id] = block.make_cb()
+
             reminder = setTimeout ->
-                @send_im "Mmm? In 2 minutes I'm going to give up..."
-            , 6 * 60 * 1000
-        , 2 * 60 * 1000
+                @send_im 'Hey, still waiting for an answer...'
+                reminder = setTimeout ->
+                    @send_im "Mmm? In 2 minutes I'm going to give up..."
+                , 6 * 60 * 1000
+            , 2 * 60 * 1000
 
-        response = block.wait(10 * 60 * 1000)
+            try
+                response = block.wait(10 * 60 * 1000)
+            catch err
+                if err.reason is u.TIMEOUT
+                    err = new Error 'timed out waiting for user to reply'
+                    err.reason = u.USER_TIMEOUT
+                throw err
 
-        clearTimeout reminder
+            if response.toLowerCase().trim() in ['cancel', 'abort']
+                err = new Error 'Got a request to cancel from the user'
+                err.reason = u.CANCEL
 
-        return response
+            clearTimeout reminder
+
+            return response
 
     #Sends a message to the announcements channel
     announce: (msg) ->

@@ -167,6 +167,54 @@ u.retry = (a, b, c) ->
 
 
 
+#Creates a lock object that fibers can acquire and release
+#
+#Acquiring the same lock multiple times has no effect
+u.Lock = -> new Lock()
+
+class Lock
+    constructor: (@acquire_timeout) ->
+        @waiting_on = []
+
+    #Acquires the lock, runs the function, then releases the lock.
+    #This is the recommended way to use locks... if we use a lower-level
+    #function there is no guarantee the lock is ever released.
+    run: (fn) ->
+        @acquire()
+        try
+            return fn()
+        finally
+            @release()
+
+    acquire: ->
+        #while someone else owns this lock, wait...
+        while @owner? and @owner isnt Fiber.current?
+            block = u.Block 'waiting on lock'
+            @waiting_on.push block
+            block.wait(@acquire_timeout)
+
+        #own this lock
+        @owner = Fiber.current
+
+    release: ->
+        #Only the holding thread can release
+        if @owner isnt Fiber.current?
+            return
+
+        #Release the lock
+        @owner = null
+
+        #shift the first thing waiting on this lock off the stack and let it
+        #try to acquire the lock again
+        next = @waiting_on.shift()
+        block.success()
+
+
+#Some standard error codes
+u.TIMEOUT = 'timeout'               #generic timeout (lots of things could cause this)
+u.CANCEL = 'cancel'                 #user cancelled the command
+u.USER_TIMEOUT = 'user_timeout'     #timed out waiting on a user reply
+
 
 
 # #### u.Block
@@ -323,7 +371,9 @@ check_fiber_timeout = (name) ->
         my_fiber._u_fiber_did_timeout = null
 
         msg = my_fiber._u_fiber_timeout_msg ? 'Current fiber timed out after ' + Fiber.current._u_fiber_timeout + ' ms'
-        throw new Error msg, {name}
+        err = new Error msg
+        err.reason = u.TIMEOUT
+        throw err
 
 
 
