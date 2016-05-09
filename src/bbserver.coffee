@@ -265,8 +265,28 @@ bbserver.Command = class Command
         processed_args = []
 
         for param, idx in @params ? []
+            #Casts the value into the expected type (boolean, string, number)
+            do_cast = (val) ->
+                if not param.type or param.type is 'string'
+                    return String(val)
+                else if param.type is 'boolean'
+                    if val.toLowerCase() in ['no', 'false']
+                        return false
+                    else if val.toLowerCase() in ['yes', 'true']
+                        return true
+                    else
+                        return do_cast u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting no / false or yes / true, though.  Try again? (Or type 'cancel' to abort)"
+                else if param.type is 'number'
+                    res = parseFloat val
+                    if isNaN res
+                        return do_cast u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting a number, though.  Try again? (Or type 'cancel' to abort)"
+                    return res
+
+                else
+                    throw new Error "unrecognized parameter type for #{param.name}: #{param.type}"
+
             if args[idx]?
-                processed_args.push args[idx]
+                processed_args.push do_cast args[idx]
             else
                 if param.default?
                     processed_args.push param.default
@@ -275,7 +295,7 @@ bbserver.Command = class Command
                         u.reply "Oops, we're missing some required information: " + param.name + '.  To run, say ' + prev_args.join(' ') + ' ' + @display_args()
                         return
                     else
-                        processed_args.push u.ask "I need a bit more information.  What's the value for #{param.name}?"
+                        processed_args.push do_cast u.ask "I need a bit more information.  What's the value for #{param.name}?"
 
         if @additional_params?
             processed_args.push args[@params?.length ? 0..]
@@ -302,6 +322,25 @@ bbserver.Command = class Command
 
     get_help: (prev) ->
         res = 'Usage:\n\n' + prev + ' ' + @display_args() + '\n\n' + (@help_text ? '')
+        res += '\n'
+        for param in @params
+            if param.required
+                default_info = 'required'
+            else if param.default?
+                default_info = 'optional, defaults to ' + param.default
+            else
+                default_info = 'optional'
+
+            res += "\n    #{param.name} (#{param.type}, #{default_info})"
+            if param.help
+                res += ': ' + param.help
+
+        if @additional_params?
+            res += '\n    #{additional_params.name} (list of strings)'
+            if additional_params.help
+                res += ': ' + additional_params.help
+        return res
+
 
 
 
@@ -325,6 +364,19 @@ class Help extends Command
 
         u.reply targ.get_help(commands.join(' '))
         return
+
+class New extends Command
+    help_text: 'Creates a new environment'
+    params: [
+        {name: 'template', type: 'string', required: true, help: "The environment template to use to build this environment.  Pass 'blank' to create an empty environment"}
+        {name: 'prod', type: 'boolean', required: true, help: 'if true, we treat this like production; we protect against accidentally deleting things, and we monitor for downtime'}
+        {name: 'region', type: 'string', help: 'The AWS region to host this environment in.  Defaults to same as bubblebot.'}
+        {name: 'vpc', type: 'string', help: 'The AWS VPC id to host this environment in.  Defaults to same as bubblebot.'}
+    ]
+
+    run: (template, prod, region, vpc) ->
+
+
 
 
 #The initial command structure for the bot
