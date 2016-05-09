@@ -3,6 +3,7 @@ bbserver = exports
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand()
+        @db = new bbdb.BBDatabase()
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
@@ -71,6 +72,8 @@ bbserver.Server = class Server
             context.user_id = user_id
             context.orginal_message = msg
 
+            context.db = @db
+
             u.set_logger u.create_logger {
                 log: log_stream.log.bind(log_stream)
                 reply: @slack_client.reply.bind(@slack_client)
@@ -125,10 +128,27 @@ parse_command = (msg) ->
     return args
 
 
-
+#Base class for building a command tree: ie, a command that isn't directly
+#executable but has a bunch of subcommands.
+#
+#Children can add commands by:
+#  -calling add with an explicit command
+#
+#  -Adding a [function name]_cmd: {} argument for each function on the tree
+#   we want to expose as a command, where {} is an object with arguments to pass
+#   to bbserver.build_command.
+#
+#  -Or overriding the get_subcommands method altogether
+#
 bbserver.CommandTree = class CommandTree
     constructor: (@subcommands) ->
         @subcommands = {}
+
+        #Go through and look for functions that we want to expose as commands
+        for k, v of this
+            if typeoof(v) is 'function' and @[k + '_cmd']?
+               cmd = bbserver.build_command u.extend {run: v.bind(this)}, @[k + '_cmd']
+               @add k, cmd
 
     get_subcommands: -> @subcommands
 
@@ -178,8 +198,67 @@ bbserver.CommandTree = class CommandTree
         return res.join('\n')
 
 
+#Renders JSON in a format designed to be viewed by a human over slack
+bbserver.pretty_print = (obj, indent = 0) ->
+    indent_string = (new Array(indent * 4)).join ' '
+
+    #Handle the simple cases of things we can just display as is
+    if not obj?
+        return indent_string + 'null'
+    if typeof(obj) in ['string', 'number']
+        return indent_string + obj
+
+    if Array.isArray obj
+        #if everything in the array is simple, just list it
+        all_simple = true
+        for entry in obj
+            if entry? and typeof(entry) not in ['string', 'number']
+                all_simple = false
+                break
+
+        if all_simple
+            return indent_string + obj.join(', ')
+
+        #otherwise, we're going to treat it as an object with numeric keys
+        keys = [0...obj.length]
+    else
+        keys = Object.keys(obj)
 
 
+    res = []
+    for key in keys
+        res.push indent_string + key + ':\n'
+        res.push bbserver.pretty_print(obj[key], indent + 1)
+    return res.join ''
+
+
+
+#Helper function for building new commands.  Options should contain run,
+#and optionally help_text, params and additional_params, which are passed
+#straight through to class Command below.
+#
+#Can also add a reply parameter.  If true, will reply with the return value (after
+#running it through bbserver.pretty_print); if a string, will reply with that string.
+bbserver.build_command = (options) ->
+    cmd = new bbserver.Command()
+
+    if options.reply
+        old_run = options.run
+        options.run = (args...) ->
+            res = old_run args...
+            if typeof options.reply is 'string'
+                u.reply options.reply
+            else
+                message = bbserver.pretty_print(res)
+                if message.indexOf('\n') is -1
+                    u.reply 'Result: ' + message
+                else
+                    u.reply 'Result:\n' + message
+
+    u.extend cmd, options
+    return cmd
+
+#Base class for building commands.  Children should add a run(args) method
 bbserver.Command = class Command
     #See CommandTree::execute above
     execute: (prev_args, args) ->
@@ -257,10 +336,22 @@ class RootCommand extends CommandTree
 
 
     get_commands: ->
+        #We put all the environments in the default command namespace to save
+        #typing.  If there's a name conflict, the command takes precedence, and the
+        #user can explicitly say "env" to access the environment
         return u.extend {}, @commands.env.get_commands(), @commands
 
+
 #A command tree that lets you navigate environments
-class EnvTree
+class EnvTree extends CommandTree
+    get_commands: ->
+        commands = {}
+        for id in u.db().list_objects 'environment'
+            commands[id] = new environments.Environment id
+        return commands
+
+
+
 
 
 
@@ -271,3 +362,4 @@ http = require 'http'
 u = require './utilities'
 slack = require './slack'
 clouds = require './clouds'
+bbdb = require './bbdb'

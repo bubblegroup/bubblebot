@@ -128,6 +128,10 @@ u.get_context = ->
     Fiber.current?.current_context ?= {}
     return Fiber.current?.current_context ? null
 
+#Shortcut for getting the current context's databse
+u.db = -> u.get_context()?.db
+
+
 #Pauses the current fiber for this # of ms
 u.pause = (ms) ->
     block = u.Block 'pause'
