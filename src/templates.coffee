@@ -13,3 +13,29 @@ templates.PGDatabase = class PGDatabase
 
 #The schema for bubblebot
 templates.BubblebotDatabase extends PGDatabase
+    migrations: [
+        "
+        --install psql
+        --check database default datatype for default schmea
+
+        CREATE TABLE bbobjects (
+            type varchar(512),
+            id varchar(512),
+            parent varchar(512),
+            properties jsonb
+        "
+    ]
+
+    rollbacks: [
+
+    ]
+
+    max: -> @migrations.length - 1
+
+    get: (num) -> @migrations[num]
+
+    get_dev: -> null
+
+    get_rollback_dev: -> null
+
+    get_rollback: (num) -> @rollbacks[num]
