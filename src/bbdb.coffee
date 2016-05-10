@@ -2,6 +2,9 @@ bbdb = exports
 
 #Represents a connection to the database that powers bubble bot
 bbdb.BBDatabase = class BBDatabase
+    constructor: (@cloud) ->
+        @endpoint = @cloud.get_bbdb().get_endpoint()
+
     #given the type and optionally the parent id, returns a list of
     #ids of all objects that have this type
     list_objects: (type, parent) ->
@@ -15,3 +18,8 @@ bbdb.BBDatabase = class BBDatabase
     #Given an object, sets the property with the given name
     set_property: (type, id, name, value) ->
 
+    #Creates a new object, optionally with the given parent and initial properties
+    create_object: (type, id, parent, initial_properties) ->
+
+    #Returns true if an object with this type and id exists
+    exists: (type, id) ->

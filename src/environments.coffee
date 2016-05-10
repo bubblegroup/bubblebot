@@ -34,8 +34,25 @@ environments.Environment = class Environment extends BubblebotObject
     constructor: (id) -> super 'environment', id
 
 
+#Represents a database
+environments.Database = class Database extends BubblebotObject
+    constructor: (id) -> super 'environment', id
 
+    #Runs any outstanding migrations from this template on the database
+    fully_apply: (template) ->
+        max = template.max()
+        current = @get_migration template
+        if current < max
+            for i in [current + 1..max]
+                @apply_template current, i
 
+    #Applies the development migration.  This does not get cached to S3.
+    apply_dev: (template) ->
 
+    #Given a template, check what the current migration number is
+    get_migration: (template) ->
+
+    #Runs the given migration on the database (first saving that migration to S3 + confirming it hasn't changed)
+    apply_template: (template, migration) ->
 
 bbserver = require './bbserver'

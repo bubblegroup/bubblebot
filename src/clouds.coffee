@@ -45,6 +45,10 @@ clouds.AWSCloud = class AWSCloud
 
         return instance
 
+    #Returns the database instance we use to run bubblebot, creating it if it does not exist
+    get_bbdb: ->
+
+
 
 #We keep a cache of AWS data in memory to avoid constantly pinging the API
 class Cache
@@ -413,10 +417,14 @@ class BBEnvironment extends Environment
     allow_outside_ssh: -> true
 
 
+class RDSInstance
+    constructor: (@environment, @id) ->
+
+    #Returns the endpoint we can access this instance at
+    get_endpoint: -> throw new Error 'not implemented'
+
 
 class Instance
-    #Id should be the id of the instance, or data should be the full output of
-    #describeInstances
     constructor: (@environment, @id) ->
 
     toString: -> 'Instance ' + @id

@@ -3,7 +3,9 @@ bbserver = exports
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand()
-        @db = new bbdb.BBDatabase()
+        @cloud = new clouds.AWSCloud()
+        @db = new bbdb.BBDatabase(@cloud)
+
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
@@ -73,6 +75,7 @@ bbserver.Server = class Server
             context.orginal_message = msg
 
             context.db = @db
+            context.cloud = @cloud
 
             u.set_logger u.create_logger {
                 log: log_stream.log.bind(log_stream)
@@ -368,14 +371,33 @@ class Help extends Command
 class New extends Command
     help_text: 'Creates a new environment'
     params: [
+        {name: 'id', type: 'string', required: true, help:"The id of the new environment"}
         {name: 'template', type: 'string', required: true, help: "The environment template to use to build this environment.  Pass 'blank' to create an empty environment"}
         {name: 'prod', type: 'boolean', required: true, help: 'if true, we treat this like production; we protect against accidentally deleting things, and we monitor for downtime'}
         {name: 'region', type: 'string', help: 'The AWS region to host this environment in.  Defaults to same as bubblebot.'}
         {name: 'vpc', type: 'string', help: 'The AWS VPC id to host this environment in.  Defaults to same as bubblebot.'}
     ]
 
-    run: (template, prod, region, vpc) ->
+    run: (id, template, prod, region, vpc) ->
+        if u.db().exists name
+            u.reply 'An environment with id ' + id + ' already exists!'
+            return
+        if name is 'bubblebot'
+            u.reply "Sorry, you cannot name an environment 'bubblebot'"
+            return
 
+        #fill in missing values from bubble bot environment
+        bb_environment = u.context().cloud.get_bb_environment()
+        region ?= bubblebot.get_region()
+        vpc ?= bb_environment.get_vpc()
+
+        u.db().create_object 'environment', id, null, {prod, template, region, vpc}
+
+        if template isnt 'blank'
+            throw new Error 'templates not implemented'
+
+        u.reply 'Environment successfully created!'
+        return
 
 
 
@@ -385,6 +407,7 @@ class RootCommand extends CommandTree
         @commands = {}
         @commands.help = new Help(@root_command)
         @commands.env = new EnvTree()
+        @commands.new = new New()
 
 
     get_commands: ->
