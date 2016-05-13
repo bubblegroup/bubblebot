@@ -89,6 +89,8 @@ DEFAULTS =
 
     bubblebot_role_bbserver: 'bbserver'
 
+    bubblebot_role_bbdb: 'bbdb'
+
     install_directory: '/home/ec2-user/bubblebot'
 
     run_file: 'run.js'

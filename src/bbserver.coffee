@@ -422,7 +422,7 @@ class EnvTree extends CommandTree
     get_commands: ->
         commands = {}
         for id in u.db().list_objects 'environment'
-            commands[id] = new environments.Environment id
+            commands[id] = new bbobjects.Environment id
         return commands
 
 
@@ -438,3 +438,4 @@ u = require './utilities'
 slack = require './slack'
 clouds = require './clouds'
 bbdb = require './bbdb'
+bbobjects = require './bbojbects'

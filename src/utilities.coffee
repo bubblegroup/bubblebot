@@ -131,6 +131,9 @@ u.get_context = ->
 #Shortcut for getting the current context's databse
 u.db = -> u.get_context()?.db
 
+#Shortcut for getting the current context's cloud
+u.cloud = -> u.get_context()?.cloud
+
 
 #Pauses the current fiber for this # of ms
 u.pause = (ms) ->

@@ -19,6 +19,9 @@
     //The size we use for the bubblebot server
     "bubblebot_instance_type": "t2.nano",
     
+    //The size we use for the bubblebot database
+    "bbbdb_instance_type": "db.t2.micro",
+    
     //The slack token we use
     "slack_token": "MY_TOKEN",
     

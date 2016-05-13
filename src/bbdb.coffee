@@ -1,9 +1,11 @@
 bbdb = exports
 
 #Represents a connection to the database that powers bubble bot
-bbdb.BBDatabase = class BBDatabase
+bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
     constructor: (@cloud) ->
-        @endpoint = @cloud.get_bbdb().get_endpoint()
+        bbdb = @cloud.get_bbdb()
+
+        @endpoint = bbdb.get_endpoint()
 
     #given the type and optionally the parent id, returns a list of
     #ids of all objects that have this type
@@ -23,3 +25,10 @@ bbdb.BBDatabase = class BBDatabase
 
     #Returns true if an object with this type and id exists
     exists: (type, id) ->
+
+    #Returns the immediate parent, or if parent_type is set, searches upwards til it
+    #finds an ancestor of that type
+    find_parent: (type, id, parent_type) ->
+
+
+bbobjects = require './bbobjects'
