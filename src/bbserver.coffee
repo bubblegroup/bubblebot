@@ -211,6 +211,10 @@ bbserver.pretty_print = (obj, indent = 0) ->
     if typeof(obj) in ['string', 'number']
         return indent_string + obj
 
+    #If we've defined a pretty print function on the object, use that
+    if typeof(obj.pretty_print) is 'function'
+        return obj.pretty_print()
+
     if Array.isArray obj
         #if everything in the array is simple, just list it
         all_simple = true
@@ -391,10 +395,8 @@ class New extends Command
         region ?= bubblebot.get_region()
         vpc ?= bb_environment.get_vpc()
 
-        u.db().create_object 'environment', id, null, {prod, template, region, vpc}
-
-        if template isnt 'blank'
-            throw new Error 'templates not implemented'
+        environment = bbobjects.instance 'Environment', id
+        environment.create prod, template, region, vpc
 
         u.reply 'Environment successfully created!'
         return

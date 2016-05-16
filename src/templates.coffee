@@ -21,7 +21,8 @@ templates.BubblebotDatabase extends PGDatabase
         CREATE TABLE bbobjects (
             type varchar(512),
             id varchar(512),
-            parent varchar(512),
+            parent_id varchar(512),
+            parent_type varchar(512),
             properties jsonb
         "
     ]

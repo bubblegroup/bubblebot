@@ -1,15 +1,97 @@
 environments = exports
 
-bbobjects.instance = (type, id) -> new bbobjects[type] id
+#Retrieves an object with the given type and id
+bbobjects.instance = (type, id) ->
+    if not bbobjects[type]
+        throw new Error 'missing type: ' + type
+    if not (bbobjects[type] instanceof BubblebotObject)
+        throw new Error type + ' is not a BubblebotObject'
+    return new bbobjects[type] type, id
+
+#Returns the bubblebot environment
+bbobjects.bubblebot_environment = ->
+    environment = bbobjects.instance 'Environment', 'bubblebot'
+    return environment
+
+
+#Constant we use to tag resources for things that don't use the database
+INITIALIZED = 'initialized'
+
+#Returns the bubblebot server (creating it if it does not exist)
+#
+#We do not manage the bubblebot server in the environment.
+bbobjects.get_bbserver = ->
+    instances = @get_bb_environment().get_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver'))
+
+    #Clean up any bubblebot server instances not tagged as initialized -- they represent
+    #abortive attempts at creating the server
+    good = []
+    for instance in instances
+        if instance.get_tags()[config.get('status_tag')] isnt INITIALIZED
+            u.log 'found an uninitialized bubbblebot server.  Terminating it...'
+            instance.terminate()
+        else
+            good.push instance
+
+    if good.length > 1
+        throw new Error 'Found more than one bubblebot server!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbserver')
+    else if good.length is 1
+        return good[0]
+
+    #We didn't find it, so create it...
+    image_id = config.get('bubblebot_image_id')
+    instance_type = config.get('bubblebot_instance_type')
+    environment = @bbobjects.bubblebot_environment()
+
+    id = environment.create_server_raw image_id, instance_type, config.get('bubblebot_role_bbserver'), 'Bubble Bot'
+
+    @tag_resource id, 'Name', name
+    @tag_resource id, config.get('bubblebot_role_tag'), role
+
+    instance = bbobjects.instance 'EC2Instance', id
+
+    u.log 'bubblebot server created, waiting for it to ready...'
+    instance.wait_for_ssh()
+
+    u.log 'bubblebot server ready, installing software...'
+
+    #Install node and supervisor
+    command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
+    software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.3')).install(instance)
+
+    environment.tag_resource(instance.id, config.get('status_tag'), INITIALIZED)
+
+    u.log 'bubblebot server has base software installed'
+
+    return instance
+
+
+#There are a couple special objects that we do not manage in the database
+HARDCODED =
+    Environment:
+        bubblebot:
+            prod: -> true
+            region: -> config.get 'bubblebot_region'
+            vpc: -> config.get 'bubblebot_vpc'
 
 #generic class for objects tracked in the bubblebot database
 bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     constructor: (@type, @id) ->
         super()
+        if HARDCODED[@type]?[@id]
+            @hardcoded = HARDCODED[@type]?[@id]
 
-    #Retrieves the id of the parent.  If type is null, retrieves the immediate parent; if not,
+    toString: -> @type + ' ' + @id
+
+    pretty_print: -> @toString()
+
+    #Retrieves the parent.  If type is null, retrieves the immediate parent; if not,
     #searches up the parent chain til it finds one
-    parent: (type) -> u.db().find_parent @type, @id, type
+    parent: (parent_type) ->
+        [parent_type, parent_id] = u.db().find_parent @type, @id, parent_type
+        if not parent_id?
+            return null
+        return bbobjects.instance parent_type, parent_id
 
     parent_cmd:
         params: [{name: 'type', help: 'If specified, searches up the parent tree til it finds this type'}]
@@ -17,12 +99,16 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         reply: true
 
     #Retrieves the environment that this is in
-    environment: ->
+    environment: -> @parent 'Environment'
 
-        @parent 'environment'
+    environment_cmd:
+        help_text: 'returns the environment that this is in'
 
     #Gets the given property of this object
-    get: (name) -> u.db().get_property @type, @id, name
+    get: (name) ->
+        if @hardcoded
+            return @hardcoded[name]?() ? null
+        u.db().get_property @type, @id, name
 
     get_cmd:
         params: [{name: 'name', required: true}]
@@ -31,6 +117,8 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Sets the given property of this object
     set: (name, value) ->
+        if @hardcoded
+            throw new Error 'we do not support setting properties on this object'
         u.db().set_property @type, id, name, value
 
     set_cmd:
@@ -39,15 +127,37 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         reply: 'Property successfully set'
 
     #returns all the properties of this object
-    properties: -> u.db().get_properties @type, @id
+    properties: ->
+        if @hardcoded
+            res = {}
+            for k, v of @hardcoded
+                res[k] = v()
+            return res
+        u.db().get_properties @type, @id
 
     properties_cmd:
         help_text: 'gets all the properties for this object'
         reply: true
 
+    #Creates this object in the database
+    create: (parent_type, parent_id, initial_properties ?= {}) ->
+        if @hardcoded
+            throw new Error 'we do not support creating this object'
+        u.db().create_object @type, @id, parent_type, parent_id, initial_properties
+
+    #Returns true if this object exists in the database
+    exists: ->
+        if @hardcoded
+            return true
+        return u.db().exists @type, @id
+
 
 bbobjects.Environment = class Environment extends BubblebotObject
-    constructor: (id) -> super 'environment', id
+    create: (prod, template, region, vpc) ->
+        super null, null, {prod, template, region, vpc}
+
+        if template isnt 'blank'
+            throw new Error 'templates not implemented'
 
     #Given a key, value pair, returns a list of instanceids that match that pair
     get_instances_by_tag: (key, value) ->
@@ -69,7 +179,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             for instance in reservation.Instances ? []
                 id = instance.InstanceId
                 instance_cache.set id, instance
-                res.push new Instance this, id
+                res.push bbobjects.instance 'EC2Instance', id
 
         #filter out terminated instances
         res = (instance for instance in res when instance.get_state() not in ['terminated', 'shutting-down'])
@@ -121,8 +231,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 throw new Error 'Could not retrieve private key for ' + keyname + '; deleted public key'
             throw err
 
-    #creates and returns a new ec2 server in this environment
-    create_server: (ImageId, InstanceType, role, name) ->
+    #Creates and returns a new ec2 server in this environment, and returns the id
+    #
+    #ImageId and InstanceType are the ami and type to create this with
+    create_server_raw: (ImageId, InstanceType, role, name, parent) ->
         KeyName = @get_keypair_name()
         SecurityGroupIds = [@get_webserver_security_group()]
         SubnetId = @get_subnet()
@@ -142,11 +254,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         }
 
         id = results.Instances[0].InstanceId
-
-        @tag_resource id, 'Name', name
-        @tag_resource id, config.get('bubblebot_role_tag'), role
-
-        return new Instance this, id
+        return id
 
     #Retrieves a cloudwatch log stream
     get_log_stream: (group_name, stream_name) ->
@@ -174,7 +282,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
 
         #If this is not bubblebot, add the bubblebot security group
-        if not (this instanceof BBEnvironment)
+        if @id isnt 'bubblebot'
             bubblebot_sg = u.cloud().get_bb_environment().get_webserver_security_group()
             #Allow bubblebot to connect on any port
             rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}]}
@@ -333,9 +441,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
         return data
 
 
-    get_region: -> throw new Error 'not yet implemented'
+    get_region: -> @get 'region'
 
-    get_vpc: -> throw new Error 'not yet implemented'
+    get_vpc: -> @get 'vpc'
 
 
     tag_resource: (id, Key, Value) ->
@@ -364,25 +472,19 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Gets the underlying AWS service object
     get_svc: (service) -> new AWS[service](aws_config @get_region())
 
-
-#Special hard-coded environment that we use to run the bubble bot
-bbobjects.BBEnvironment = class BBEnvironment extends Environment
-    constructor: -> super 'environment', 'bubblebot'
-
-    get_region: -> config.get('bubblebot_region')
-
-    get_vpc: -> config.get('bubblebot_vpc')
-
-    #We allow direct SSH connections to bubblebot to allow for deployments.
-    #The security key for connecting should NOT ever be saved locally!
-    allow_outside_ssh: -> true
-
+    allow_outside_ssh: ->
+        #We allow direct SSH connections to bubblebot to allow for deployments.
+        #The security key for connecting should NEVER be saved locally!
+        if @id is 'bubblebot'
+            true
+        else
+            throw new Error 'not implemented!'
 
 
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
-    constructor: (id) -> super 'ec2instance', id
-
-    toString: -> 'Instance ' + @id
+    #Creates in the database (does not create the actual instance)
+    create: (parent, name, role) ->
+        super parent.type, parent.id, {name, role}
 
     run: (command, options) ->
         return ssh.run @get_address(), @environment().get_private_key(), command, options
@@ -493,8 +595,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
 #Represents a database
 bbobjects.Database = class Database extends BubblebotObject
-    constructor: (id) -> super 'environment', id
-
     #Gets the actual RDB instance
     get_instance: -> u.cloud().
 
