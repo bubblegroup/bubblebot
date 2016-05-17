@@ -19,7 +19,8 @@ INITIALIZED = 'initialized'
 
 #Returns the bubblebot server (creating it if it does not exist)
 #
-#We do not manage the bubblebot server in the environment.
+#We do not manage the bubblebot server in the database, since we need to be able to find it
+#even when we are running the command line script.
 bbobjects.get_bbserver = ->
     instances = @get_bb_environment().get_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver'))
 
