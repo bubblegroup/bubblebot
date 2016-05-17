@@ -72,11 +72,17 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         #otherwise, interpet this as a new conversation
         @emit 'new_conversation', message.user, text
 
+    #Sends a message to the indicated user
+    message: (user_id, msg) ->
+        block = u.Block 'sending message'
+        @send_im user_id, msg, block.make_cb()
+        block.wait()
+
     #Sends a message to the current user
     reply: (msg) ->
-        user_id = u.get_context()?.user_id
+        user_id = u.context()?.user_id
         if not user_id?
-            throw new Error 'tried to reply but no user / context: context is ' + u.get_context() + ' and user id is ' + user_id
+            throw new Error 'tried to reply but no user / context: context is ' + u.context() + ' and user id is ' + user_id
         block = u.Block 'replying'
         @send_im user_id, msg, block.make_cb()
         block.wait()
@@ -90,7 +96,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         @api.sendMessage(msg, dm.id, cb)
 
     #Asks the given user a question, and returns their reply
-    ask: (user_id, msg) ->
+    ask: (user_id, msg, dont_cancel) ->
         #Only one thread can be trying to talk to a single user at a time...
         #We set a long timeout because we'd rather not timeout from multiple
         #threads waiting on the same user
@@ -120,13 +126,24 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
                     err.reason = u.USER_TIMEOUT
                 throw err
 
-            if response.toLowerCase().trim() in ['cancel', 'abort']
+            if not dont_cancel and response.toLowerCase().trim() in ['cancel', 'abort']
                 err = new Error 'Got a request to cancel from the user'
                 err.reason = u.CANCEL
 
             clearTimeout reminder
 
             return response
+
+    #Asks the given user to confirm something, and returns true if they want to continue,
+    #false otherwise
+    confirm: (user_id, msg) ->
+        while true
+            response = @ask user_id, msg, true
+            if response.toLowerCase().trim() in ['cancel', 'abort', 'no', 'n']
+                return false
+            if response.toLowerCase().trim() in ['yes', 'y', 'okay', 'ok']
+                return true
+            u.reply "Oops, I don't understand what you mean by '#{response}'.  Try yes / y or no / n instead."
 
     #Sends a message to the announcements channel
     announce: (msg) ->

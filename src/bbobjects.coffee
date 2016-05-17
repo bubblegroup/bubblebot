@@ -82,6 +82,17 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         if HARDCODED[@type]?[@id]
             @hardcoded = HARDCODED[@type]?[@id]
 
+    #We want to check to see if there is a template defined for this object...
+    #if so, we add those commands to the existing list of subcommands
+    get_subcommands: ->
+        template_commands = {}
+        if typeof(@template) is 'function'
+            template = @template()
+            if typeof(template?.get_subcommands) is 'function'
+                template_commands = template.get_subcommands()
+
+        return u.extend {}, template_commands, @subcommands
+
     toString: -> @type + ' ' + @id
 
     pretty_print: -> @toString()
@@ -98,6 +109,11 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         params: [{name: 'type', help: 'If specified, searches up the parent tree til it finds this type'}]
         help_text: 'finds either the immediate parent, or an ancestor of a given type'
         reply: true
+
+    #Returns the immediate children of this object, optionally filtering by child type
+    children: (child_type) ->
+        list = u.db().children @type, @id, child_type
+        return (bbobjects.instance child_type, child_id for [child_type, child_id] in list)
 
     #Retrieves the environment that this is in
     environment: -> @parent 'Environment'
@@ -153,12 +169,23 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return u.db().exists @type, @id
 
 
+#Represents a bubblebot user, ie a Slack user.  User ids are the slack ids
+bbobjects.User = class User extends BubblebotObject
+    name: -> throw new Error 'not implemented'
+
+
 bbobjects.Environment = class Environment extends BubblebotObject
     create: (prod, template, region, vpc) ->
         super null, null, {prod, template, region, vpc}
 
         if template isnt 'blank'
-            throw new Error 'templates not implemented'
+            @template().initialize this
+
+    template: ->
+        template = @get 'template'
+        if not template or template is 'blank'
+            return null
+        return templates[template] ? null
 
     #Given a key, value pair, returns a list of instanceids that match that pair
     get_instances_by_tag: (key, value) ->
@@ -482,10 +509,102 @@ bbobjects.Environment = class Environment extends BubblebotObject
             throw new Error 'not implemented!'
 
 
+bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
+    #Adds it to the database
+    create: (environment) ->
+        prefix = environment.id + '_'
+        if @id.indexOf(prefix) isnt 0
+            throw new Error 'ServiceInstance ids should be of the form [environment id]_[template]'
+
+        template = @id[prefix.length..]
+        if not templates[template]
+            throw new Error 'could not find template ' + template
+
+        super environment.type, environment.id
+
+    #Returns the template for this service or null if not found
+    template: ->
+        prefix = @parent().id + '_'
+        template = @id[prefix.length..]
+        if not template
+            return null
+        return templates[template] ? null
+
+    #Request that other users don't deploy to this service
+    block: (explanation) ->
+        blocker_id = u.context().user_id
+        @set 'blocked', {blocker_id, explanation}
+        u.reply 'Okay, deploying is now blocked'
+        u.announce 'Deploying is now blocked on ' + this + ' (' + explanation + ')'
+
+    block_cmd:
+        params: [{name: 'explanation', required: true}]
+        help_text: 'Ask other users not to deploy to this service til further notice.  Can be cancelled with "unblock"'
+
+    #Remove a request created with block
+    unblock: ->
+        {blocker_id, explanation} = (@get('blocked') ? {blocker_id: null})
+        if not blocker_id
+            u.reply 'Deploying was not blocked...'
+            return
+
+        if blocker_id isnt u.context().user_id
+            okay = u.ask 'Deploying is blocked by ' + bbobjects.instance('User', blocker_id).name() + '... are you sure you want to override it?'
+            if not okay
+                return
+            u.message blocker_id, 'Fyi, ' + bbobjects.instance('User', u.context().user_id).name() + ' removed your block on ' + this
+
+        @set 'blocked', null
+        u.reply 'Okay, deploying is unblocked'
+        u.announce 'Deploying is now unblocked on ' + this
+
+    unblock_cmd:
+        help_text: 'Removes a block on deploying created with the "block" command'
+
+
+    #Deploys this version to this service
+    deploy: (version) ->
+        #See if a user is blocking deploys
+        {blocker_id, explanation} = (@get('blocked') ? {blocker_id: null})
+        if blocker_id and blocker_id isnt u.context().user_id
+            name = bbobjects.instance('User', blocker_id).name()
+            u.reply name + ' has requested that no one deploys to this right now, because: ' + explanation
+            command = u.context().command.path[...-1].concat(['unblock'])
+            u.reply 'To override this, say: ' + command
+            return
+
+        @template().deploy this, version
+
+    deploy_cmd:
+        params: [{name: 'version', required: true, help: 'The version to deploy'}]
+        help_text: 'Deploys the given version to this service.  Ensures that the new version is tested and ahead of the current version'
+
+    #Returns the current version of this service
+    version: -> @get 'version'
+
+    version_cmd:
+        help_text: 'Returns the current version of this service'
+        reply: true
+
+
+
+
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Creates in the database (does not create the actual instance)
-    create: (parent, name, role) ->
-        super parent.type, parent.id, {name, role}
+    create: (parent, name, template) ->
+        super parent.type, parent.id, {name, template}
+
+    #The template for this ec2instance (ie, what software to install)
+    template: ->
+        template = @get 'template'
+        if not template
+            return null
+        return templates[template] ? null
+
+    #Installs the software onto this instance and marks it as installed
+    install: ->
+        @template().install this
+        @set 'installed', true
 
     run: (command, options) ->
         return ssh.run @get_address(), @environment().get_private_key(), command, options
@@ -671,3 +790,4 @@ stable_stringify = require 'json-stable-stringify'
 fs = require 'fs'
 cloudwatchlogs = require './cloudwatchlogs'
 bbserver = require './bbserver'
+templates = require './templates'

@@ -32,5 +32,22 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
     #Returns [parent_type, parent_id], or [null, null] if not found
     find_parent: (type, id, parent_type) ->
 
+    #Lists all immediate children.  If child_type is set, filters by child type
+    #
+    #Returns [[child_type, child_id], [child_type, child_id]...]
+    children: (type, id, child_type) ->
+
+    #Creates an entry in the history table
+    add_history: (history_type, history_id, reference, properties) ->
+
+    #Returns the last n_entries from the given history
+    recent_history: (history_type, history_id, n_entries) ->
+
+    #Finds entries for the given parameters
+    find_entries: (history_type, history_id, reference) ->
+
+    #Deletes entries for the given parameters
+    delete_entries: (history_type, history_id, reference) ->
+
 
 bbobjects = require './bbobjects'

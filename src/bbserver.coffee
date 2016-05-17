@@ -33,7 +33,9 @@ bbserver.Server = class Server
         logger = u.create_logger {
             log: log_stream.log.bind(log_stream)
             reply: -> throw new Error 'cannot reply: not in a conversation!'
+            message: @slack_client.message.bind(@slack_client)
             ask: -> throw new Error 'cannot ask: not in a conversation!'
+            confirm: -> throw new Error 'not in a conversation!'
             announce: @slack_client.announce.bind(@slack_client)
             report: @slack_client.report.bind(@slack_client)
         }
@@ -68,22 +70,25 @@ bbserver.Server = class Server
     #Called by our slack client
     new_conversation: (user_id, msg) ->
         u.ensure_fiber =>
-            context = u.get_context()
+            context = u.context()
             context.user_id = user_id
             context.orginal_message = msg
+            context.server = this
 
             context.db = @db
 
             u.set_logger u.create_logger {
                 log: log_stream.log.bind(log_stream)
                 reply: @slack_client.reply.bind(@slack_client)
+                message: @slack_client.message.bind(@slack_client)
                 ask: (msg, override_user_id) => @slack_client.ask override_user_id ? user_id, msg
+                confirm: (msg, override_user_id) => @slack_client.confirm override_user_id ? user_id, msg
                 announce: @slack_client.announce.bind(@slack_client)
                 report: @slack_client.report.bind(@slack_client)
             }
             try
                 args = parse_command msg
-                u.get_context().parsed_message = args
+                u.context().parsed_message = args
                 @root_command.execute [], args
             catch err
                 cmd = context.parsed_message ? context.orginal_message
@@ -296,13 +301,17 @@ bbserver.Command = class Command
                     processed_args.push param.default
                 else if param.required
                     if params.dont_ask
-                        u.reply "Oops, we're missing some required information: " + param.name + '.  To run, say ' + prev_args.join(' ') + ' ' + @display_args()
+                        u.reply "Oops, we're missing some required information: " + param.name + '.  To run, say ' + u.build_command(prev_args) + ' ' + @display_args()
                         return
                     else
                         processed_args.push do_cast u.ask "I need a bit more information.  What's the value for #{param.name}?"
 
         if @additional_params?
             processed_args.push args[@params?.length ? 0..]
+
+        #Store the command broken into the path and and arg components so that we
+        #can see what we were called with
+        u.context().command = {path: prev_args, args: processed_args}
 
         @run processed_args
 

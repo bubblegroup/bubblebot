@@ -24,6 +24,17 @@ templates.BubblebotDatabase extends PGDatabase
             parent_id varchar(512),
             parent_type varchar(512),
             properties jsonb
+        )
+
+        CREATE TABLE history (
+            history_type varchar(512),
+            history_id varchar(512),
+            timestamp bigint,
+            reference varchar(512),
+            properties jsonb
+        )
+        --Needs to be searchable by history_type / history_id / timestamp
+        --Needs to be searchable by history_type / history_id / reference
         "
     ]
 
@@ -40,3 +51,23 @@ templates.BubblebotDatabase extends PGDatabase
     get_rollback_dev: -> null
 
     get_rollback: (num) -> @rollbacks[num]
+
+
+#Extend this to build environment templates
+templates.Environment = class Environment
+    initialize: (environment) ->
+
+
+#Extend this to build service templates
+#
+#Children should define a codebase function that returns a codebase template
+templates.Service = class Service
+    deploy: (service, version) ->
+        codebase = @codebase()
+
+
+
+
+
+
+

@@ -76,21 +76,26 @@ u.report = (msg) -> u.get_logger().report msg
 #Announces a message in to all users (And logs to current context)
 u.announce = (msg) -> u.get_logger().announce msg
 
+#Sends a message to the given user
+u.message = (user_id, msg) -> u.get_logger().message user_id, msg
+
 #Replies to the current user
 u.reply = (msg) -> u.get_logger().reply msg
 
 #Asks the current user a question and returns their response
 u.ask = (msg) -> return u.get_logger().ask msg
 
+u.confirm = (msg) -> return u.get_logger().confirm msg
+
 #Logs a message to the current context
 u.log = (msg) -> u.get_logger().log msg
 
 #Gets the current context's logger
-u.get_logger = -> u.get_context()?.logger ? u.get_default_logger()
+u.get_logger = -> u.context()?.logger ? u.get_default_logger()
 
 #Sets the current context's logger
 u.set_logger = (logger) ->
-    context = u.get_context()
+    context = u.context()
     if not context
         throw new Error 'no context!'
     context.logger = logger
@@ -124,18 +129,33 @@ u.set_default_logger = (logger) ->
 
 #Gets the global environment for the current fiber, or null
 #if we are off-fiber
-u.get_context = ->
+u.context = ->
     Fiber.current?.current_context ?= {}
     return Fiber.current?.current_context ? null
 
 #Shortcut for getting the current context's databse
-u.db = -> u.get_context()?.db
+u.db = -> u.context()?.db
 
 #Pauses the current fiber for this # of ms
 u.pause = (ms) ->
     block = u.Block 'pause'
     setTimeout block.make_cb(), ms
     block.wait()
+
+
+#Generates a command for the user to type in based on an array of args... takes care of adding quotes
+#if necessary
+u.build_command = (args) ->
+    print_arg = (arg) ->
+        arg = String(arg)
+        if arg.indexOf(' ') is -1
+            return arg
+        else if arg.indexOf('"') is -1
+            return '"' + arg + '"'
+        else
+            return "'" + arg + "'"
+    return (print_arg arg for arg in args).join(' ')
+
 
 
 #Tries running the function multiple times until it runs without an error
