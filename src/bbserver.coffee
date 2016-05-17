@@ -3,8 +3,7 @@ bbserver = exports
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand()
-        @cloud = new clouds.AWSCloud()
-        @db = new bbdb.BBDatabase(@cloud)
+        @db = new bbdb.BBDatabase()
 
 
     #should listen on port 8081 for commands such as shutdown
@@ -28,8 +27,7 @@ bbserver.Server = class Server
         @slack_client = new slack.SlackClient(this)
         @slack_client.on 'new_conversation', @new_conversation.bind(this)
 
-        cloud = new clouds.AWSCloud()
-        log_stream = cloud.get_bb_environment().get_log_stream('bubblebot', 'bubblebot_server')
+        log_stream = bbojbects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
 
         #Create the default log environment for the server
         logger = u.create_logger {
@@ -75,7 +73,6 @@ bbserver.Server = class Server
             context.orginal_message = msg
 
             context.db = @db
-            context.cloud = @cloud
 
             u.set_logger u.create_logger {
                 log: log_stream.log.bind(log_stream)
@@ -391,8 +388,8 @@ class New extends Command
             return
 
         #fill in missing values from bubble bot environment
-        bb_environment = u.context().cloud.get_bb_environment()
-        region ?= bubblebot.get_region()
+        bb_environment = bbobjects.bubblebot_environment()
+        region ?= bb_environment.get_region()
         vpc ?= bb_environment.get_vpc()
 
         environment = bbobjects.instance 'Environment', id
@@ -438,6 +435,5 @@ bbserver.SHUTDOWN_ACK = 'graceful shutdown command received'
 http = require 'http'
 u = require './utilities'
 slack = require './slack'
-clouds = require './clouds'
 bbdb = require './bbdb'
 bbobjects = require './bbojbects'

@@ -284,7 +284,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         #If this is not bubblebot, add the bubblebot security group
         if @id isnt 'bubblebot'
-            bubblebot_sg = u.cloud().get_bb_environment().get_webserver_security_group()
+            bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
             #Allow bubblebot to connect on any port
             rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}]}
 
@@ -596,8 +596,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
 #Represents a database
 bbobjects.Database = class Database extends BubblebotObject
-    #Gets the actual RDB instance
-    get_instance: -> u.cloud().
 
     #Runs any outstanding migrations from this template on the database
     fully_apply: (template) ->

@@ -45,15 +45,9 @@ commands.publish = (access_key) ->
             u.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
             throw err
 
-        cloud = new clouds.AWSCloud()
-
         u.log 'Searching for bubblebot server...'
 
-        bbserver = cloud.get_bbserver()
-
-        if not bbserver
-            u.log 'There is no bubble bot server in this environment.  Creating one...'
-            bbserver = cloud.create_bbserver()
+        bbserver = bbobjects.get_bbserver()
 
         u.log 'Found bubblebot server'
 
@@ -132,7 +126,6 @@ commands.print_help = ->
 
 
 u = require './utilities'
-clouds = require './clouds'
 fs = require 'fs'
 os = require 'os'
 config = require './config'

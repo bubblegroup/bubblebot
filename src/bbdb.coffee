@@ -2,8 +2,8 @@ bbdb = exports
 
 #Represents a connection to the database that powers bubble bot
 bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
-    constructor: (@cloud) ->
-        bbdb = @cloud.get_bbdb()
+    constructor: ->
+        bbdb = throw new Error 'not implemented'
 
         @endpoint = bbdb.get_endpoint()
 
