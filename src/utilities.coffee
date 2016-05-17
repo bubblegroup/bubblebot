@@ -136,6 +136,9 @@ u.context = ->
 #Shortcut for getting the current context's databse
 u.db = -> u.context()?.db
 
+#Shortcut for getting the current user
+u.current_user = -> u.context()?.current_user?() ? null
+
 #Pauses the current fiber for this # of ms
 u.pause = (ms) ->
     block = u.Block 'pause'

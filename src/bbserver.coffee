@@ -74,6 +74,7 @@ bbserver.Server = class Server
             context.user_id = user_id
             context.orginal_message = msg
             context.server = this
+            context.current_user = -> bbobjects.instance 'User', user_id
 
             context.db = @db
 

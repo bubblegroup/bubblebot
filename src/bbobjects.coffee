@@ -168,6 +168,14 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
             return true
         return u.db().exists @type, @id
 
+    #Gets the history type for this item
+    history_type: (event_type) -> @type + '_' + event_type
+
+    #Adds an item to the history of this object
+    add_history: (event_type, reference, properties) ->
+        u.db().add_history @history_type(), @id, reference, properties
+
+
 
 #Represents a bubblebot user, ie a Slack user.  User ids are the slack ids
 bbobjects.User = class User extends BubblebotObject
@@ -563,7 +571,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
 
     #Deploys this version to this service
-    deploy: (version) ->
+    deploy: (version, rollback) ->
         #See if a user is blocking deploys
         {blocker_id, explanation} = (@get('blocked') ? {blocker_id: null})
         if blocker_id and blocker_id isnt u.context().user_id
@@ -573,10 +581,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             u.reply 'To override this, say: ' + command
             return
 
-        @template().deploy this, version
+        @template().deploy this, version, rollback
 
     deploy_cmd:
-        params: [{name: 'version', required: true, help: 'The version to deploy'}]
+        params: [{name: 'version', required: true, help: 'The version to deploy'}, {name: 'rollback', type: 'boolean', help: 'If true, allows deploying versions that are not ahead of the current version'}]
         help_text: 'Deploys the given version to this service.  Ensures that the new version is tested and ahead of the current version'
 
     #Returns the current version of this service
