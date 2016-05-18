@@ -68,7 +68,13 @@ templates.Environment = class Environment
 templates.Service = class Service
     deploy: (instance, version, rollback) ->
         codebase = @codebase()
-        version = codebase.canonicalize version
+
+        #Get the canonical version
+        canonical = codebase.canonicalize version
+        if not canonical
+            u.reply 'Could not resolve version ' + version
+            return
+        version = canonical
 
         #Don't redeploy the version that is already deployed
         if instance.version() is version
@@ -208,6 +214,12 @@ templates.Service = class Service
             test.run version
 
 
+#Implements the codebase interface using git
+templates.GitCodebase = class Codebase
+    constructor: (@repo) ->
 
+    canonicalize: ->
 
+    ahead_of_msg: ->
 
+    merge: ->
