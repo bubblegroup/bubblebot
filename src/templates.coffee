@@ -229,22 +229,30 @@ templates.SingleBoxService = class SingleBoxService
     get_tests: -> @tests
 
     replace: (instance) ->
-        environment = instance.environment()
         build = @ec2build()
         size = @get_size(instance)
         switcher = @switcher(instance)
 
         #Create the new server
         u.announce 'Building a replacement server for ' + instance
-        new_ec2instance = build.build environment, size
+        new_ec2instance = build.build instance, size, String(instance)
 
         #See if there is an old server
         old_ec2instance = switcher.get_instance()
 
         #Perform the switch
-        @switcher.switch new_ec2instance
-        #Notify the new box that it is active
-        build.is_active new_ec2_instance
+        switcher.switch new_ec2instance
+        try
+            #Notify the new box that it is active
+            build.make_active new_ec2instance
+        catch err
+            u.report 'Switched service ' + instance + ' to point to ' + new_ec2instance.id + ', but make_active failed!'
+            u.report 'Error was: ' + err.stack ? err
+            u.report 'Reverting to old instance (' + old_ec2instance.id + ') and terminating new instance'
+            switcher.switch old_ec2instance
+            new_ec2instance.terminate()
+            return
+
         #Begin the graceful shutdown process for the old instance, if there is one
         if old_ec2instance
             build.graceful_shutdown old_ec2instance
@@ -262,7 +270,7 @@ templates.SingleBoxService = class SingleBoxService
 
     #Sets the size of the box for this service
     set_size: (instance, new_size) ->
-        valid_sizes = @ec2build().valid_sizes()
+        valid_sizes = @ec2build().valid_sizes(instance)
         if size not in valid_sizes
             u.reply 'Cannot set size ' + new_size + ': should be one of ' + valid_sizes.join(', ')
             return

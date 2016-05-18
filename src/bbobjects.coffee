@@ -15,7 +15,11 @@ bbobjects.bubblebot_environment = ->
 
 
 #Constant we use to tag resources for things that don't use the database
-INITIALIZED = 'initialized'
+BUILDING = 'building'
+BUILD_FAILED = 'build failed'
+BUILD_COMPLETE = 'build complete'
+ACTIVE = 'active'
+FINISHED = 'finished'
 
 #Returns the bubblebot server (creating it if it does not exist)
 #
@@ -28,7 +32,7 @@ bbobjects.get_bbserver = ->
     #abortive attempts at creating the server
     good = []
     for instance in instances
-        if instance.get_tags()[config.get('status_tag')] isnt INITIALIZED
+        if instance.get_tags()[config.get('status_tag')] isnt BUILD_COMPLETE
             u.log 'found an uninitialized bubbblebot server.  Terminating it...'
             instance.terminate()
         else
@@ -44,10 +48,10 @@ bbobjects.get_bbserver = ->
     instance_type = config.get('bubblebot_instance_type')
     environment = @bbobjects.bubblebot_environment()
 
-    id = environment.create_server_raw image_id, instance_type, config.get('bubblebot_role_bbserver'), 'Bubble Bot'
+    id = environment.create_server_raw image_id, instance_type
 
-    @tag_resource id, 'Name', name
-    @tag_resource id, config.get('bubblebot_role_tag'), role
+    @tag_resource id, 'Name', 'Bubble Bot'
+    @tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
 
     instance = bbobjects.instance 'EC2Instance', id
 
@@ -60,7 +64,7 @@ bbobjects.get_bbserver = ->
     command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
     software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.3')).install(instance)
 
-    environment.tag_resource(instance.id, config.get('status_tag'), INITIALIZED)
+    environment.tag_resource(instance.id, config.get('status_tag'), BUILD_COMPLETE)
 
     u.log 'bubblebot server has base software installed'
 
@@ -166,6 +170,10 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         if @hardcoded
             throw new Error 'we do not support creating this object'
         u.db().create_object @type, @id, parent_type, parent_id, initial_properties
+
+    #Deletes this object from the database
+    delete: ->
+        u.db().delete_object @type, id
 
     #Returns true if this object exists in the database
     exists: ->
@@ -283,7 +291,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         MinCount = 1
         InstanceInitiatedShutdownBehavior = 'stop'
 
-        results = @ec2 'runInstances', {
+        params = {
             ImageId
             MaxCount
             MinCount
@@ -294,7 +302,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
             InstanceInitiatedShutdownBehavior
         }
 
+        u.log 'Creating new ec2 instance: ' + JSON.stringify params
+
+        results = @ec2 'runInstances', params
         id = results.Instances[0].InstanceId
+        u.log 'EC2 succesfully created with id ' + id
         return id
 
     #Retrieves a cloudwatch log stream
@@ -606,14 +618,95 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         help_text: 'Replaces the underlying boxes for this service'
 
 
+#Represents the AMI and software needed to build an ec2 instance
+#
+#The id should match the ec2_build_template for this build
+bbobjects.EC2Build = class EC2Build extends BubblebotObject
+    #Creates in the database.  We need to do this to store AMIs for each region
+    create: ->
+        super null, null, {}
+
+    #Retrieves the ec2 build template
+    template: -> templates[@id] ? throw new Error 'could not find ec2 build template with id ' + @id
+
+    #Retrieves the codebase object for this build
+    codebase: -> @template().codebase()
+
+    #Creates a server with the given size owned by the given parent
+    build: (parent, size, name) ->
+        environment = parent.environment()
+        ami = @get_ami environment.get_region()
+
+        id = environment.create_server_raw ami, size
+        ec2instance = bbobjects.instance 'EC2Instance', id
+        try
+            ec2instance.create parent, name, BUILDING, @id
+
+            #wait for ssh
+            ec2instance.wait_for_ssh()
+            u.log ec2instance + ' is available over ssh, installing software'
+
+            #install software
+            @template().software().install ec2instance
+            u.log 'done installing software on ' + ec2instance + ', verifying...'
+
+            #verify software is installed
+            @template().verify ec2instance
+            u.log 'installation on ' + ec2instance + ' verified, marking build complete'
+
+            ec2instance.set_status BUILD_COMPLETE
+
+            return ec2instance
+
+        catch err
+            #if we had an error building it, set the status to build failed
+            ec2instance.set_status BUILD_FAILED
+            throw err
+
+
+
+    #Gets the current AMI for this build in the given region.  If there isn't one, creates it.
+    get_ami: (region) ->
+        key = 'current_ami_' + region
+        ami = @get key
+        if not ami
+            @replace_ami region
+        return @get key
+
+    get_ami_cmd
+
+    #Replaces the ami for this
+    replace_ami: (region) ->
+
+    make_active: (ec2instance) ->
+        ec2instance.set_status ACTIVE
+
+
+    graceful_shutdown: (ec2instance) ->
+        ec2instance.set_status FINISHED
+
+    default_size: (instance) ->
+
+    valid_sizes: (instance) ->
+
+
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
-    #Creates in the database (does not create the actual instance)
-    create: (parent, name, template) ->
-        super parent.type, parent.id, {name, template}
+    #Creates in the database and tags it with the name in the AWS console
+    create: (parent, name, status, build_template_id) ->
+        super parent.type, parent.id, {name, status, build_template_id}
+
+        @environment().tag_resource @id, 'Name', name + ' (' + status + ')'
+
+    #Updates the status and adds a ' (status)' to the name in the AWS console
+    set_status: (status) ->
+        @set 'status', status
+
+        new_name = @get('name') + ' (' + status + ')'
+        @environment().tag_resource @id, 'Name', new_name
 
     #The template for this ec2instance (ie, what software to install)
     template: ->
-        template = @get 'template'
+        template = @get 'build_template_id'
         if not template
             return null
         return templates[template] ? null
@@ -685,6 +778,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         data = @environment().ec2 'terminateInstances', {InstanceIds: [@id]}
         if not data.TerminatingInstances?[0]?.InstanceId is @id
             throw new Error 'failed to terminate! ' + JSON.stringify(data)
+
+        #delete the data...
+        @delete()
 
     #Writes the given private key to the default location on the box
     install_private_key: (path) ->

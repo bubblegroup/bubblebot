@@ -23,6 +23,9 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
     #Creates a new object, optionally with the given parent and initial properties
     create_object: (type, id, parent_type, parent_id, initial_properties) ->
 
+    #Deletes this object from the database
+    delete_object: (type, id) ->
+
     #Returns true if an object with this type and id exists
     exists: (type, id) ->
 
