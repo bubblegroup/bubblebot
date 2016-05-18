@@ -108,6 +108,15 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
         return u.extend {}, template_commands, @subcommands
 
+    #If we want to call a command added via a template from our own code, this returns
+    #the function (pre-bound)
+    get_template_command: (name) ->
+        template = @template()
+        fn = template?[name]
+        if typeof(fn) isnt 'function'
+            throw new Error 'no template command named ' + name
+        return fn.bind(template, this)
+
     toString: -> @type + ' ' + @id
 
     pretty_print: -> @toString()
@@ -555,6 +564,29 @@ bbobjects.Environment = class Environment extends BubblebotObject
         else
             throw new Error 'not implemented!'
 
+    #Returns the elastic ip for this environment with the given name.  If no such
+    #elastic ip exists, creates it
+    get_elastic_ip: (name) ->
+        key = 'elastic_ip_' + name
+
+        #See if we already have it
+        eip_id = @get key
+        if eip_id
+            return bbobjects.instance 'ElasticIPAddress', eip_id
+
+        #If not, create it
+        allocation = @ec2 'allocateAddress', {Domain: 'vpc'}
+        eip_instance = bbobjects.instance 'ElasticIPAddress', allocation.AllocationId
+
+        #add it to the database
+        eip_instance.create this, this.id + ' ' + name
+
+        #store it for future retrieval
+        @set key, eip_instance.id
+
+        return eip_instance
+
+
 
 bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Adds it to the database
@@ -941,6 +973,47 @@ bbobjects.Database = class Database extends BubblebotObject
     apply_template: (template, migration) ->
 
 
+#Represents an elastic ip address.  The id should be the amazon allocation id.
+#
+#Supports the switcher API used by SingleBoxService
+bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
+    create: (parent, name) ->
+        super parent.type, parent.id, {name}
+        @environment().tag_resource @id, 'Name', name
+
+    #fetches the amazon metadata for this address and caches it
+    refresh: ->
+        data = @environment().ec2 'describeAddresses', {'AllocationIds': [@id]}
+        eip_cache.set @id, data.Addresses?[0]
+
+    #Retrieves the amazon metadata for this address.  If force_refresh is true,
+    #forces us not to use our cache
+    get_data: (force_refresh) ->
+        if force_refresh or not eip_cache.get(@id)
+            @refresh()
+        return eip_cache.get(@id)
+
+    #Retrieves the instance currently pointed at by this address, or null if missing
+    get_instance: ->
+        id = @get_data()?.InstanceId
+        if id
+            return bbobjects.instance 'EC2Instance', id
+        else
+            return null
+
+    #retrieves the ip address
+    get_endpoint: -> @get_data()?.PublicIp ? null
+
+    #Switches this elastic ip to point at a new instance
+    switch: (new_instance) ->
+        @environment().ec2 'associateAddress', {
+            AllocationId: @id
+            AllowReassociation: true
+            InstanceId: new_instance.id
+        }
+
+
+
 
 #Given a region, gets the API configuration
 aws_config = (region) ->
@@ -979,6 +1052,7 @@ class Cache
         @last_access = new_last_access
 
 instance_cache = new Cache(60 * 1000)
+eip_cache = new Cache(60 * 1000)
 key_cache = new Cache(60 * 60 * 1000)
 sg_cache = new Cache(60 * 60 * 1000)
 vpc_to_subnets = new Cache(60 * 60 * 1000)
