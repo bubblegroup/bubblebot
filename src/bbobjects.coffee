@@ -714,7 +714,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
         #Build an instance to create the AMI from
         template = @template()
-        ec2instance = @_build environment, template.ami_build_size(), 'AMI build for ' + this, template.base_ami(), template.ami_software(), false
+        ec2instance = @_build environment, template.ami_build_size(), 'AMI build for ' + this, template.base_ami(region), template.ami_software(), false
 
         #Create the ami
         new_ami = environment.create_ami_from_server ec2instance, @id
@@ -801,11 +801,6 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         if not template
             return null
         return templates[template] ? null
-
-    #Installs the software onto this instance and marks it as installed
-    install: ->
-        @template().install this
-        @set 'installed', true
 
     run: (command, options) ->
         return ssh.run @get_address(), @environment().get_private_key(), command, options

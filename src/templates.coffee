@@ -377,3 +377,81 @@ class template.Test = class Test
     #Called to erase a record of a successful test pass
     mark_untested: (version) ->
         u.db().delete_entries 'Test_Passed', @id, version
+
+
+#Base class for creating EC2Build templates
+#
+#Children should define:
+#
+#codebase: -> returns the codebase object for this build
+#verify: (ec2instance) -> verifies that the build is complete (ie, if stuff should be running, that it's running)
+#software: -> returns the software that gets run on top of the AMI
+#ami_software: -> returns the software that gets run to create the AMI
+#termination_delay: -> how long to wait before terminating an instance after a graceful shutdown
+#default_size: (instance) -> see function of same name on bbobjects.EC2Build
+
+#
+class template.EC2Build = class EC2Build
+    #The size of the box we use to build the AMI on
+    ami_build_size: -> 't2.nano'
+
+    #The AMI we use as a base for creating our more-specific AMI.
+    #
+    #Defaults to the 64-bit HVM (SSD) EBS-Backed Amazon Linux AMI for the given region
+    #
+    #Should update from http://aws.amazon.com/amazon-linux-ami/ periodically
+    # (Does not seem to be a straightforward way of getting this chart from the API)
+    base_ami: (region) ->
+        BY_REGION =
+            'us-east-1': 'ami-f5f41398'
+            'us-west-2': 'ami-d0f506b0'
+            'us-west-1': 'ami-6e84fa0e'
+            'eu-west-1': 'ami-b0ac25c3'
+            'eu-central-1': 'ami-d3c022bc'
+            'ap-southeast-1': 'ami-1ddc0b7e'
+            'ap-northeast-2': 'ami-cf32faa1'
+            'ap-northeast-1': 'ami-29160d47'
+            'ap-southeast-2': 'ami-0c95b86f'
+            'sa-east-1': 'ami-fb890097'
+            'cn-north-1': 'ami-05a66c68'
+            'us-gov-west-1': 'ami-e3ad1282'
+
+        return BY_REGION[region]
+
+    #Informs the box that it is now active.  Defaults to no-op.
+    make_active: (ec2instance) ->
+
+    #Informs the box that it should begin a graceful shutdown.  Defaults to no-op.
+    graceful_shutdown: (ec2instance) ->
+
+    #Returns a list of valid sizes for this build.  Can optionally pass in an object
+    #that we use to look at for more details (ie, whether or not it is production, etc.)
+    #
+    #This default implementation returns all the latest available sizes
+    valid_sizes: (instance) -> [
+        't2.nano'
+        't2.micro'
+        't2.small'
+        't2.medium'
+        't2.large'
+        'm4.large'
+        'm4.xlarge'
+        'm4.2xlarge'
+        'm4.4xlarge'
+        'm4.10xlarge'
+        'c4.large'
+        'c4.xlarge'
+        'c4.2xlarge'
+        'c4.4xlarge'
+        'c4.8xlarge'
+        'x1.32xlarge'
+        'r3.large'
+        'r3.xlarge'
+        'r3.2xlarge'
+        'r3.4xlarge'
+        'r3.8xlarge'
+        'g2.2xlarge'
+        'g2.8xlarge	'
+    ]
+
+
