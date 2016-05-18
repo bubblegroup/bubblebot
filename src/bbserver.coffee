@@ -152,7 +152,7 @@ bbserver.CommandTree = class CommandTree
 
         #Go through and look for functions that we want to expose as commands
         for k, v of this
-            if typeoof(v) is 'function' and @[k + '_cmd']?
+            if typeof(v) is 'function' and @[k + '_cmd']?
                cmd = bbserver.build_command u.extend {run: v.bind(this)}, @[k + '_cmd']
                @add k, cmd
 

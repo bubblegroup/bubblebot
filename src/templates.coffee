@@ -214,6 +214,66 @@ templates.Service = class Service
             test.run version
 
 
+#Base class for services that have a single box.  They take a template,
+#an array of tests, and a switcher function that takes the service instance
+#and returns the switcher that controls where traffic is routed
+templates.SingleBoxService = class SingleBoxService
+    constructor: (@build_id, @tests, @switcher) ->
+        super()
+
+    #Retrieve the ec2build object for this service
+    ec2build: -> bbobjects.instance 'EC2Build', @build_id
+
+    codebase: -> @ec2build().codebase()
+
+    get_tests: -> @tests
+
+    replace: (instance) ->
+        environment = instance.environment()
+        build = @ec2build()
+        size = @get_size(instance)
+        switcher = @switcher(instance)
+
+        #Create the new server
+        u.announce 'Building a replacement server for ' + instance
+        new_ec2instance = build.build environment, size
+
+        #See if there is an old server
+        old_ec2instance = switcher.get_instance()
+
+        #Perform the switch
+        @switcher.switch new_ec2instance
+        #Notify the new box that it is active
+        build.is_active new_ec2_instance
+        #Begin the graceful shutdown process for the old instance, if there is one
+        if old_ec2instance
+            build.graceful_shutdown old_ec2instance
+        u.announce new_ec2instance + ' is now the active server for ' + instance
+
+    #Gets the size of the box for this service
+    get_size: (instance) ->
+        size = instance.get 'size'
+        size ?= @ec2build().default_size(instance)
+        return size
+
+    get_size_cmd:
+        help_text: 'Gets the size of the box for this service'
+        reply: true
+
+    #Sets the size of the box for this service
+    set_size: (instance, new_size) ->
+        valid_sizes = @ec2build().valid_sizes()
+        if size not in valid_sizes
+            u.reply 'Cannot set size ' + new_size + ': should be one of ' + valid_sizes.join(', ')
+            return
+        instance.set 'size', new_size
+
+    set_size_cmd:
+        params: [{name: 'new_size', type: 'number', required: true}]
+        help_text: 'Sets the size of the box for this service'
+        reply: 'Size successfully set'
+
+
 #Implements the codebase interface using git.  Should pass in a git repo as in github.coffee
 templates.GitCodebase = class GitCodebase
     constructor: (@repo) ->

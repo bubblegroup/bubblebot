@@ -83,13 +83,18 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
             @hardcoded = HARDCODED[@type]?[@id]
 
     #We want to check to see if there is a template defined for this object...
-    #if so, we add those commands to the existing list of subcommands
+    #if so, we add those commands to the existing list of subcommands.
+    #
+    #We assume the first parameter to the command function is this object, and we bind it
+    #in (with the template itself as the 'this' parameter)
     get_subcommands: ->
         template_commands = {}
         if typeof(@template) is 'function'
             template = @template()
-            if typeof(template?.get_subcommands) is 'function'
-                template_commands = template.get_subcommands()
+            for k, v of template
+                if typeof(v) is 'function' and template[k + '_cmd']?
+                   cmd = bbserver.build_command u.extend {run: v.bind(template, this)}, @[k + '_cmd']
+                   template_commands[k] = cmd
 
         return u.extend {}, template_commands, @subcommands
 
@@ -270,7 +275,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Creates and returns a new ec2 server in this environment, and returns the id
     #
     #ImageId and InstanceType are the ami and type to create this with
-    create_server_raw: (ImageId, InstanceType, role, name, parent) ->
+    create_server_raw: (ImageId, InstanceType) ->
         KeyName = @get_keypair_name()
         SecurityGroupIds = [@get_webserver_security_group()]
         SubnetId = @get_subnet()
@@ -594,7 +599,11 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         help_text: 'Returns the current version of this service'
         reply: true
 
+    #Replaces the underlying boxes for this service
+    replace: -> @template().replace this
 
+    replace_cmd:
+        help_text: 'Replaces the underlying boxes for this service'
 
 
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
