@@ -7,9 +7,9 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
 
         @endpoint = bbdb.get_endpoint()
 
-    #given the type and optionally the parent id, returns a list of
-    #ids of all objects that have this type
-    list_objects: (type, parent) ->
+    #given the type, optionally the parent_type and parent_id, and optionally
+    #a list of key: value pairs, finds all objects that match
+    list_objects: (type, parent_type, parent_id, values) ->
 
     #Given an object, returns the property with the given name
     get_property: (type, id, name) ->

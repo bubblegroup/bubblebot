@@ -22,6 +22,13 @@ ACTIVE = 'active'
 FINISHED = 'finished'
 TERMINATING = 'terminating'
 
+#Environment types
+PROD = 'prod'
+QA = 'qa'
+DEV = 'dev'
+
+
+
 #Returns the bubblebot server (creating it if it does not exist)
 #
 #We do not manage the bubblebot server in the database, since we need to be able to find it
@@ -71,17 +78,51 @@ bbobjects.get_bbserver = ->
 
     return instance
 
+#Returns all the environments in our database
+bbobjects.list_environments = -> (bbobjects.instance 'Environment', id for id in u.db().list_objects 'Environment')
 
-bbobjects.list_environments = ->
+#Gets the default development environment for the given region, creating it if it does not exist
+bbobjects.get_default_dev_environment = (region) ->
+    #The default dev environment is always named default_dev_[region]
+    id = 'default_dev_' + region
+    environment = bbobjects.instance 'Environment', id
+    #create it if it does not exist
+    if not environment.exists()
+        vpc = prompt_for_vpc(region)
+        environment.create DEV, 'blank', region, vpc
+    return environment
 
-bbobjects.get_default_enviroment = (region) ->
+#Lists the regions in a VPC, and prompts for the user to pick one
+#(or picks the first one if there is no user id)
+prompt_for_vpc = (region) ->
+    ec2 = new AWS.ec2(aws_config region)
+    block = u.Block 'listing vpcs'
+    ec2.describeVpcs {}, block.make_cb()
+    results = block.wait()
+
+    if (results.Vpcs ? []).length is 0
+        throw new Error 'there are no VPCs available for region ' + region + ': please create one'
+
+    #in interactive mode, prompt the user to pick:
+    if u.context().user_id
+        vpc_id = null
+        while vpc_id not in (vpc.VpcId for vpc in results.Vpcs)
+            u.reply 'Please pick a VPC for region ' + region
+            u.reply 'Options are:\n' + ('  ' + vpc.VpcId + ': ' + vpc.State + ' ' + vpc.CidrBlock for vpc in results.Vpcs ? []).join('\n'
+            vpc_id = u.ask 'Pick an id (or type "cancel" to abort)'
+
+    #otherwise, pick the first one
+    else
+        vpc_id = results.Vpcs[0].VpcId
+
+    return vpc_id
 
 
 #There are a couple special objects that we do not manage in the database
 HARDCODED =
     Environment:
         bubblebot:
-            prod: -> true
+            type: -> PROD
             region: -> config.get 'bubblebot_region'
             vpc: -> config.get 'bubblebot_vpc'
 
@@ -211,8 +252,8 @@ bbobjects.User = class User extends BubblebotObject
 
 
 bbobjects.Environment = class Environment extends BubblebotObject
-    create: (prod, template, region, vpc) ->
-        super null, null, {prod, template, region, vpc}
+    create: (type, template, region, vpc) ->
+        super null, null, {type, template, region, vpc}
 
         if template isnt 'blank'
             @template().initialize this
@@ -740,9 +781,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     replace_ami: (region) ->
         u.reply 'Replacing AMI for ' + this + ' in region ' + region
 
-        environment = bbobjects.get_default_enviroment region
-        if not environment
-            throw new Error 'no default environment for region ' + region
+        environment = bbobjects.get_default_dev_environment region
 
         #Build an instance to create the AMI from
         template = @template()
