@@ -34,7 +34,8 @@ DEV = 'dev'
 #We do not manage the bubblebot server in the database, since we need to be able to find it
 #even when we are running the command line script.
 bbobjects.get_bbserver = ->
-    instances = @get_bb_environment().get_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver'))
+    environment = bbobjects.bubblebot_environment
+    instances = environment.get_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver'))
 
     #Clean up any bubblebot server instances not tagged as initialized -- they represent
     #abortive attempts at creating the server
@@ -54,7 +55,6 @@ bbobjects.get_bbserver = ->
     #We didn't find it, so create it...
     image_id = config.get('bubblebot_image_id')
     instance_type = config.get('bubblebot_instance_type')
-    environment = @bbobjects.bubblebot_environment()
 
     id = environment.create_server_raw image_id, instance_type
 
@@ -81,8 +81,14 @@ bbobjects.get_bbserver = ->
 #Returns all the environments in our database
 bbobjects.list_environments = -> (bbobjects.instance 'Environment', id for id in u.db().list_objects 'Environment')
 
-#Gets the default development environment for the given region, creating it if it does not exist
+#Gets the default development environment for the given region, creating it if it does not exist.
+#
+#If region is blank, returns the overall default dev environment (which is put in the same
+#region as bubblebot)
 bbobjects.get_default_dev_environment = (region) ->
+    #if region isn't set, use the bubblebot region
+    region ?= bbobjects.bubblebot_environment().region()
+
     #The default dev environment is always named default_dev_[region]
     id = 'default_dev_' + region
     environment = bbobjects.instance 'Environment', id
