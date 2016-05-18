@@ -282,3 +282,30 @@ template.MultiGitCodebase = class MultiGitCodebase
                 return null
             results.push res.commit
         return results.join(' ')
+
+
+#Base class for building tests.  Tests should have a globally-unique id that we use
+#to store results in the database
+#
+#children should define _run(version) -> which executes the test and returns true / false
+#based on success or failure status
+class template.Test = class Test
+    constructor: (@id) ->
+
+    is_tested: (version) -> u.db().find_entries('Test_Passed', @id, version).length > 0
+
+    run: (version) ->
+        u.reply 'Running test ' + @id + ' on version ' + version
+        result = @_run version
+        if result
+            u.reply 'Test ' + @id + ' passed on version ' + version
+            @mark_tested version
+        else
+            u.reply 'Test ' + @id + ' failed on version ' + version
+
+    mark_tested: (version) ->
+        u.db().add_history 'Test_Passed', @id, version
+
+    #Called to erase a record of a successful test pass
+    mark_untested: (version) ->
+        u.db().delete_entries 'Test_Passed', @id, version
