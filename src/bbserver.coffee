@@ -67,6 +67,9 @@ bbserver.Server = class Server
     #TODO: allow this to be modified and saved in the db.
     get_admins: -> [@slack_client.get_slack_owner()]
 
+    #Schedules a task to run at a future time
+    schedule_once: (task, data, timeout) -> throw new Error 'not ipmlemented'
+
     #Called by our slack client
     new_conversation: (user_id, msg) ->
         u.ensure_fiber =>
@@ -75,6 +78,7 @@ bbserver.Server = class Server
             context.orginal_message = msg
             context.server = this
             context.current_user = -> bbobjects.instance 'User', user_id
+            context.schedule_once = @schedule_once.bind(this)
 
             context.db = @db
 
@@ -430,8 +434,8 @@ class RootCommand extends CommandTree
 class EnvTree extends CommandTree
     get_commands: ->
         commands = {}
-        for id in u.db().list_objects 'environment'
-            commands[id] = new bbobjects.Environment id
+        for environment in bbobjects.list_environments()
+            commands[id] = environment
         return commands
 
 

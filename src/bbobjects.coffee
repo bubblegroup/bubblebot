@@ -20,6 +20,7 @@ BUILD_FAILED = 'build failed'
 BUILD_COMPLETE = 'build complete'
 ACTIVE = 'active'
 FINISHED = 'finished'
+TERMINATING = 'terminating'
 
 #Returns the bubblebot server (creating it if it does not exist)
 #
@@ -69,6 +70,11 @@ bbobjects.get_bbserver = ->
     u.log 'bubblebot server has base software installed'
 
     return instance
+
+
+bbobjects.list_environments = ->
+
+bbobjects.get_default_enviroment = (region) ->
 
 
 #There are a couple special objects that we do not manage in the database
@@ -308,6 +314,22 @@ bbobjects.Environment = class Environment extends BubblebotObject
         id = results.Instances[0].InstanceId
         u.log 'EC2 succesfully created with id ' + id
         return id
+
+    #Given a server id, returns an AMI id
+    create_ami_from_server: (server_id, name) ->
+        results = @ec2 'createImage', {
+            InstanceId: server_id
+            Name: name
+            NoReboot: false
+        }
+
+        return results.ImageId
+
+    #De-registers an AMI
+    deregister_ami: (ami) ->
+        @ec2 'deregisterImage', {
+            ImageId: ami
+        }
 
     #Retrieves a cloudwatch log stream
     get_log_stream: (group_name, stream_name) ->
@@ -632,10 +654,9 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     #Retrieves the codebase object for this build
     codebase: -> @template().codebase()
 
-    #Creates a server with the given size owned by the given parent
-    build: (parent, size, name) ->
+    #Used internally by build and create ami to build a machine
+    _build: (parent, size, name, ami, software, do_verify) ->
         environment = parent.environment()
-        ami = @get_ami environment.get_region()
 
         id = environment.create_server_raw ami, size
         ec2instance = bbobjects.instance 'EC2Instance', id
@@ -647,14 +668,14 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
             u.log ec2instance + ' is available over ssh, installing software'
 
             #install software
-            @template().software().install ec2instance
+            software.install ec2instance
             u.log 'done installing software on ' + ec2instance + ', verifying...'
 
-            #verify software is installed
-            @template().verify ec2instance
-            u.log 'installation on ' + ec2instance + ' verified, marking build complete'
-
-            ec2instance.set_status BUILD_COMPLETE
+            #verify software is installed and mark complete
+            if do_verify
+                @template().verify ec2instance
+                u.log 'installation on ' + ec2instance + ' verified, marking build complete'
+                ec2instance.set_status BUILD_COMPLETE
 
             return ec2instance
 
@@ -663,7 +684,11 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
             ec2instance.set_status BUILD_FAILED
             throw err
 
-
+    #Creates a server with the given size owned by the given parent
+    build: (parent, size, name) ->
+        ami = @get_ami environment.get_region()
+        software = @template().software()
+        @_build parent, size, name, ami, software
 
     #Gets the current AMI for this build in the given region.  If there isn't one, creates it.
     get_ami: (region) ->
@@ -673,21 +698,86 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
             @replace_ami region
         return @get key
 
-    get_ami_cmd
+    get_ami_cmd:
+        params: [{name: 'region', required: true, help: 'The region to retrieve the AMI for'}]
+        help_text: 'Retrieves the current AMI for this build in the given region.  If one does not exist, creates it.'
+        reply: true
 
-    #Replaces the ami for this
+
+    #Replaces the ami for this region
     replace_ami: (region) ->
+        u.reply 'Replacing AMI for ' + this + ' in region ' + region
 
+        environment = bbobjects.get_default_enviroment region
+        if not environment
+            throw new Error 'no default environment for region ' + region
+
+        #Build an instance to create the AMI from
+        template = @template()
+        ec2instance = @_build environment, template.ami_build_size(), 'AMI build for ' + this, template.base_ami(), template.ami_software(), false
+
+        #Create the ami
+        new_ami = environment.create_ami_from_server ec2instance, @id
+
+        #Retrieve the existing AMI if there is one
+        key = 'current_ami_' + region
+        old_ami = @get key
+
+        #Save it as the new default AMI for this region
+        @set key, new_ami
+
+        msg = 'Replaced AMI for ' + this + ' in region ' + region + ': new AMI ' + new_ami
+        u.reply msg
+        u.announce msg
+
+        #destroy the server we used to create the ami
+        ec2instance.terminate()
+
+        #destroy the old ami if there was one
+        if old_ami
+            try
+                environment.deregister_ami old_ami
+            catch err
+                u.report 'Failure trying to deregister old AMI: ' + old_ami
+                u.report 'Failure was: ' + err.stack ? err
+
+        return
+
+    replace_ami_cmd:
+        params: [{name: 'region', required: true, help: 'The region to replace the AMI for'}]
+        help_text: 'Replaces the current AMI for this build in the given region'
+
+    #Tells this ec2 instance that it is receiving external traffic.
+    #Some builds might want notification given to the box.
+    #We also update our status
     make_active: (ec2instance) ->
+        #Set the status
         ec2instance.set_status ACTIVE
 
+        #Inform the instance, if appropriate
+        @template().make_active ec2instance
 
+    #Tells this ec2 instance to perform a graceful shutdown, and schedules a termination
     graceful_shutdown: (ec2instance) ->
+        template = @template()
+
+        #set the status to finished
         ec2instance.set_status FINISHED
 
-    default_size: (instance) ->
+        #Schedule a termination
+        termination_delay = template.termination_delay()
+        u.context().schedule_once 'terminate_instance', {id: ec2instance.id}, termination_delay
 
-    valid_sizes: (instance) ->
+        #Tell the server to begin its graceful shutdown
+        template.graceful_shutdown ec2instance
+
+    #Returns the default server size for this build.  Can optionally pass in an object
+    #that we use to look at for more details (ie, whether or not it is production, etc.)
+    default_size: (instance) -> @template().default_size instance
+
+    #Returns a list of valid sizes for this build.  Can optionally pass in an object
+    #that we use to look at for more details (ie, whether or not it is production, etc.)
+    valid_sizes: (instance) -> @template().valid_sizes instance
 
 
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
@@ -699,6 +789,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
+        u.log 'setting status of ' + this + ' to ' + status
         @set 'status', status
 
         new_name = @get('name') + ' (' + status + ')'
@@ -775,12 +866,20 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     terminate: ->
         u.log 'Terminating server ' + @id
+
+        #first update the status if we have this in the database
+        if @exists()
+            @set_status TERMINATING
+
+        #then do the termination...
         data = @environment().ec2 'terminateInstances', {InstanceIds: [@id]}
         if not data.TerminatingInstances?[0]?.InstanceId is @id
             throw new Error 'failed to terminate! ' + JSON.stringify(data)
 
-        #delete the data...
-        @delete()
+        #then delete the data if it exists
+        if @exists()
+            @delete()
+
 
     #Writes the given private key to the default location on the box
     install_private_key: (path) ->
