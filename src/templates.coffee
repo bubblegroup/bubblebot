@@ -214,12 +214,71 @@ templates.Service = class Service
             test.run version
 
 
-#Implements the codebase interface using git
-templates.GitCodebase = class Codebase
+#Implements the codebase interface using git.  Should pass in a git repo as in github.coffee
+templates.GitCodebase = class GitCodebase
     constructor: (@repo) ->
 
-    canonicalize: ->
+    canonicalize: (version) -> return @repo.resolve_commit version
 
-    ahead_of_msg: ->
+    ahead_of: (first, second) -> return @repo.ahead_of first, second
 
-    merge: ->
+    ahead_of_msg: (first, second) ->
+        if not @repo.ahead_of first, second
+            return 'Commit ' + first + ' is not ahead of ' + second
+        throw new Error 'it is ahead of! ' + first + ', ' + second
+
+    merge: (base, head) ->
+        res = @repo.merge base, head
+        if res.success
+            return res.commit
+        else
+            return null
+
+#Implements the codebase interface using multiple git repositories.  A version is defined
+#as a space-separated list of commits in the order that the repos are passed in to the constructor
+template.MultiGitCodebase = class MultiGitCodebase
+    constructor: (@repos) ->
+
+    canonicalize: (version) ->
+        commits = version.split(' ')
+        results = []
+        for repo, idx in @repos
+            canonical = rep.resolve_commit commits[idx]?.trim()
+            #if any commit can't be resolved, the overall version can't be resolved so return null
+            if not canonical?
+                return null
+            results.push canonical
+
+        return results.join ' '
+
+    #True if each version is ahead of each other version
+    ahead_of: (first, second) ->
+        first = first.split(' ')
+        second = second.split(' ')
+        for repo, idx in @repos
+            f = first[idx]
+            s = second[idx]
+            if not repo.ahead_of f, s
+                return false
+        return true
+
+    ahead_of_msg: (first, second) ->
+        first = first.split(' ')
+        second = second.split(' ')
+        for repo, idx in @repos
+            f = first[idx]
+            s = second[idx]
+            if not repo.ahead_of f, s
+                return 'Commit ' + f + ' is not ahead of commit ' + s + ' in repo ' + repo
+        throw new Error 'is ahead of! ' + first + ' -- ' + second
+
+    merge: (base, head) ->
+        base = base.split(' ')
+        head = head.split(' ')
+        results = []
+        for repo, idx in @repos
+            res = @repo.merge base[idx], head[idx]
+            if not res.success
+                return null
+            results.push res.commit
+        return results.join(' ')

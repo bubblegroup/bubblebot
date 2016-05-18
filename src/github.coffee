@@ -3,6 +3,8 @@ github = exports
 github.Repo = class Repo
     constructor: (@org, @project, @username, @access_token, @abbrev = 10) ->
 
+    toString: -> 'Github:' + @org + '/' + @project
+
     #Returns either the canonical form, or null if not found
     resolve_commit: (commit) ->
         if not commit
