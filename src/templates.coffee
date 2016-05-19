@@ -1,5 +1,39 @@
 templates = exports
 
+#For each type of template, we define the functions we use to determine whether
+#this is an instance of the template.  We use this for templates.verify and templates.list
+interfaces =
+    Environment: ['initialize']
+    Service: ['codebase', 'get_tests', 'deploy']
+    Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge']
+    Test: ['is_tested', 'run', '_run', 'mark_tested', 'mark_untested']
+    EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size']
+
+
+
+#Given the name of a template interface, and the id of a template, confirms that this
+#is a valid template id or throws an error
+templates.verify = (interface, id) ->
+    if not templates[id]
+        throw new Error 'could not find ' + interface + ' with id ' + id
+    for fn in interfaces[interface]
+        if typeof(templates[id][fn]) isnt 'function'
+            throw new Error 'id ' + id + ' is not a valid ' + interface + ' (missing ' + fn + ')'
+
+
+
+#List all the registered templates that match this interface
+templates.list = (interface) ->
+    res = []
+    for name, template of templates
+        okay = true
+        for fn in interfaces[interface]
+            if typeof(template[fn]) isnt 'function'
+                okay = false
+                break
+        if okay
+            res.push name
+    return res
 
 
 #Represents a series of migrations on a pg database
@@ -73,6 +107,9 @@ templates.BubblebotDatabase extends PGDatabase
 #Extend this to build environment templates
 templates.Environment = class Environment
     initialize: (environment) ->
+
+#A blank environment...
+templates.blank = new Environment()
 
 
 #Extend this to build service templates
@@ -321,7 +358,7 @@ templates.GitCodebase = class GitCodebase
 
 #Implements the codebase interface using multiple git repositories.  A version is defined
 #as a space-separated list of commits in the order that the repos are passed in to the constructor
-template.MultiGitCodebase = class MultiGitCodebase
+templates.MultiGitCodebase = class MultiGitCodebase
     constructor: (@repos) ->
 
     canonicalize: (version) ->
@@ -374,7 +411,7 @@ template.MultiGitCodebase = class MultiGitCodebase
 #
 #children should define _run(version) -> which executes the test and returns true / false
 #based on success or failure status
-class template.Test = class Test
+class templates.Test = class Test
     constructor: (@id) ->
 
     is_tested: (version) -> u.db().find_entries('Test_Passed', @id, version).length > 0
@@ -408,7 +445,7 @@ class template.Test = class Test
 #default_size: (instance) -> see function of same name on bbobjects.EC2Build
 
 #
-class template.EC2Build = class EC2Build
+class templates.EC2Build = class EC2Build
     #The size of the box we use to build the AMI on
     ami_build_size: -> 't2.nano'
 

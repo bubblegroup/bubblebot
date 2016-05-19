@@ -150,7 +150,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
             template = @template()
             for k, v of template
                 if typeof(v) is 'function' and template[k + '_cmd']?
-                   cmd = bbserver.build_command u.extend {run: v.bind(template, this)}, @[k + '_cmd']
+                   cmd = bbserver.build_command u.extend {run: v.bind(template, this), target: template}, @[k + '_cmd']
                    template_commands[k] = cmd
 
         return u.extend {}, template_commands, @subcommands
@@ -280,16 +280,66 @@ bbobjects.User = class User extends BubblebotObject
 
 bbobjects.Environment = class Environment extends BubblebotObject
     create: (type, template, region, vpc) ->
+        templates.verify 'Environment', template
+
         super null, null, {type, template, region, vpc}
 
-        if template isnt 'blank'
-            @template().initialize this
+        @template().initialize this
+
 
     template: ->
         template = @get 'template'
-        if not template or template is 'blank'
+        if not template
             return null
         return templates[template] ? null
+
+
+    #Creates a server for development purposes
+    create_box: (build_id, hours, size, name) ->
+        ec2build = bbobjects.instance 'EC2Build', build_id
+        if size is 'go'
+            size = ec2build.default_size this
+        box = ec2build.build this, size, name
+
+    create_box_cmd: ->
+        params: [
+            {
+                name: 'build_id'
+                help: 'The software to install on this server'
+                required: true
+                type: 'list'
+                options: templates.list.bind(null, 'EC2Build')
+            },
+            {
+                name: 'hours'
+                help: 'How many hours before asking if we can delete this server'
+                type: 'number'
+                required: true
+            }
+        ]
+        questions: (build_id, hours) ->
+            ec2build = bbobjects.instance 'EC2Build', build_id
+            default_size = ec2build.default_size this
+            return {
+                name: 'size'
+                help: 'What size should this server be? (Type "go" to use default of ' + default_size + ')'
+                type: 'list'
+                options: => ec2build.valid_sizes(this)
+                default: default_size
+                next: => {
+                    name: 'name'
+                    help: 'What to call this server'
+                }
+            }
+
+
+
+
+
+
+
+
+
 
     #Given a key, value pair, returns a list of instanceids that match that pair
     get_instances_by_tag: (key, value) ->
@@ -604,8 +654,6 @@ bbobjects.Environment = class Environment extends BubblebotObject
             Tags: [{Key, Value}]
         }
 
-
-
     #Calls ec2 and returns the results
     ec2: (method, parameters) -> @aws 'EC2', method, parameters
 
@@ -664,8 +712,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             throw new Error 'ServiceInstance ids should be of the form [environment id]_[template]'
 
         template = @id[prefix.length..]
-        if not templates[template]
-            throw new Error 'could not find template ' + template
+        templates.verify 'Service', template
 
         super environment.type, environment.id
 
@@ -746,6 +793,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 bbobjects.EC2Build = class EC2Build extends BubblebotObject
     #Creates in the database.  We need to do this to store AMIs for each region
     create: ->
+        templates.verify 'EC2Build', @id
         super null, null, {}
 
     #Retrieves the ec2 build template
@@ -881,6 +929,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Creates in the database and tags it with the name in the AWS console
     create: (parent, name, status, build_template_id) ->
+        templates.verify 'EC2Build', build_template_id
         super parent.type, parent.id, {name, status, build_template_id}
 
         @environment().tag_resource @id, 'Name', name + ' (' + status + ')'

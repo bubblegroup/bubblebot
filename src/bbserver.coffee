@@ -245,7 +245,7 @@ bbserver.CommandTree = class CommandTree
         #Go through and look for functions that we want to expose as commands
         for k, v of this
             if typeof(v) is 'function' and @[k + '_cmd']?
-               cmd = bbserver.build_command u.extend {run: v.bind(this)}, @[k + '_cmd']
+               cmd = bbserver.build_command u.extend {run: v.bind(this), target: this}, @[k + '_cmd']
                @add k, cmd
 
     get_subcommands: -> @subcommands
@@ -360,47 +360,72 @@ bbserver.build_command = (options) ->
     u.extend cmd, options
     return cmd
 
+
+#Casts the value into the expected type (boolean, string, number)
+do_cast = (param, val) ->
+    #Typing "go" always goes with the default value if there is one.
+    if val is 'go' and param.default
+        return param.default
+
+    if not param.type or param.type is 'string'
+        return String(val)
+    else if param.type is 'boolean'
+        if val.toLowerCase() in ['no', 'false']
+            return false
+        else if val.toLowerCase() in ['yes', 'true']
+            return true
+        else
+            return do_cast param, u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting no / false or yes / true, though.  Try again? (Or type 'cancel' to abort)"
+    else if param.type is 'number'
+        res = parseFloat val
+        if isNaN res
+            return do_cast param, u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting a number, though.  Try again? (Or type 'cancel' to abort)"
+        return res
+    else if param.type is 'list'
+        options = param.options()
+        if val in options()
+            return val
+        else
+            return do_cast param, "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting one of: #{options.join(', ')}"
+
+    else
+        throw new Error "unrecognized parameter type for #{param.name}: #{param.type}"
+
+
 #Base class for building commands.  Children should add a run(args) method
 bbserver.Command = class Command
     #See CommandTree::execute above
     execute: (prev_args, args) ->
         processed_args = []
 
+
+
         for param, idx in @params ? []
-            #Casts the value into the expected type (boolean, string, number)
-            do_cast = (val) ->
-                if not param.type or param.type is 'string'
-                    return String(val)
-                else if param.type is 'boolean'
-                    if val.toLowerCase() in ['no', 'false']
-                        return false
-                    else if val.toLowerCase() in ['yes', 'true']
-                        return true
-                    else
-                        return do_cast u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting no / false or yes / true, though.  Try again? (Or type 'cancel' to abort)"
-                else if param.type is 'number'
-                    res = parseFloat val
-                    if isNaN res
-                        return do_cast u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting a number, though.  Try again? (Or type 'cancel' to abort)"
-                    return res
-
-                else
-                    throw new Error "unrecognized parameter type for #{param.name}: #{param.type}"
-
             if args[idx]?
-                processed_args.push do_cast args[idx]
+                processed_args.push do_cast param, args[idx]
             else
                 if param.default?
                     processed_args.push param.default
                 else if param.required
-                    if params.dont_ask
-                        u.reply "Oops, we're missing some required information: " + param.name + '.  To run, say ' + u.build_command(prev_args) + ' ' + @display_args()
-                        return
-                    else
-                        processed_args.push do_cast u.ask "I need a bit more information.  What's the value for #{param.name}?"
+                    processed_args.push do_cast param, u.ask "What's the value for #{param.name}?" + (if param.help then '  (' + param.help + ')' else '') + (if param.type is 'list' then '  Options: ' + param.options().join(', ') else '')
 
+        #If we take an array of additional parameters, add that in from the remainder of the command line
         if @additional_params?
             processed_args.push args[@params?.length ? 0..]
+
+        #If we have non-command line questions defined, evaluate those and add those in
+        if typeof(@questions) is 'function'
+            next = @questions
+            while next
+                #Call the question-getter function bound to whatever the target of the command is,
+                #and passing through all the args we have so far
+                next = next.call @target, processed_args...
+                if next?
+                    processed_args.push do_cast next, u.ask next.help + (if param.type is 'list' then '  Options: ' + param.options().join(', ') else '')
+
+                    #See if there is a next question
+                    next = next.next
+
 
         #Store the command broken into the path and and arg components so that we
         #can see what we were called with
