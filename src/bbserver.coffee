@@ -65,6 +65,7 @@ bbserver.Server = class Server
             message = 'Uncaught exception: ' + (err.stack ? err)
             u.report message
 
+        @load_tasks()
         setTimeout =>
             @start_task_engine()
         , 10 * 1000
@@ -72,6 +73,12 @@ bbserver.Server = class Server
     #Returns the list of admins.  Defaults to the owner of the slack channel.
     #TODO: allow this to be modified and saved in the db.
     get_admins: -> [@slack_client.get_slack_owner()]
+
+    #Loads pre-built tasks
+    load_tasks: ->
+        for k, v of tasks.builtin
+            @register_task k, v
+
 
     #registers a handler for a given task name
     register_task: (task, fn) ->
@@ -128,6 +135,7 @@ bbserver.Server = class Server
             if not @_registered_tasks[task_fn]
                 throw new Error 'no task named ' + task_fn
 
+            @build_context()
             @_registered_tasks[task_fn] data
 
         catch err
@@ -146,17 +154,21 @@ bbserver.Server = class Server
             u.db().complete_task task_data.id
 
 
+    #Adds things to the current context.
+    build_context: ->
+        context = u.context()
+        context.server = this
+        context.schedule_once = @schedule_once.bind(this)
+        context.db = @db
+
     #Called by our slack client
     new_conversation: (user_id, msg) ->
         u.ensure_fiber =>
             context = u.context()
+            @build_context()
             context.user_id = user_id
             context.orginal_message = msg
-            context.server = this
             context.current_user = -> bbobjects.instance 'User', user_id
-            context.schedule_once = @schedule_once.bind(this)
-
-            context.db = @db
 
             u.set_logger u.create_logger {
                 log: log_stream.log.bind(log_stream)
@@ -527,3 +539,4 @@ u = require './utilities'
 slack = require './slack'
 bbdb = require './bbdb'
 bbobjects = require './bbojbects'
+tasks = require './tasks'
