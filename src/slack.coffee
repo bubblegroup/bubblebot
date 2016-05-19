@@ -87,6 +87,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         @send_im user_id, msg, block.make_cb()
         block.wait()
 
+    #Gets the slack data for a given user
     get_user_info: (user_id) -> @api.dataStore.getUserById(user_id)
 
     #Sends an im to the given user

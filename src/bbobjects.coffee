@@ -254,7 +254,28 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
 #Represents a bubblebot user, ie a Slack user.  User ids are the slack ids
 bbobjects.User = class User extends BubblebotObject
-    name: -> throw new Error 'not implemented'
+    #gets the slack client
+    slack: -> u.context().server.slack_client
+
+    toString: -> 'User ' + @id + ' (' + @name() + ')'
+
+    name: -> @slack().get_user_info().name
+
+    name_cmd:
+        help_text: 'shows the name of this user'
+        reply: true
+
+    profile: -> @slack().get_user_info().profile
+
+    profile_cmd:
+        help_text: 'shows the slack profile for this user'
+        reply: true
+
+    slack_info: -> @slack().get_user_info()
+
+    slack_info_cmd:
+        help_text: 'shows all the slack data for this user'
+        reply: true
 
 
 bbobjects.Environment = class Environment extends BubblebotObject
