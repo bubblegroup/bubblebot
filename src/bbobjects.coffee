@@ -256,6 +256,24 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     add_history: (event_type, reference, properties) ->
         u.db().add_history @history_type(), @id, reference, properties
 
+    #Returns the user who created this
+    creator: ->
+        user_id = @get 'creator'
+        if user_id
+            return bbobjects.instance 'User', user_id
+
+    creator_cmd:
+        help_text: 'Gets the user who created this'
+
+    #Returns the user who owns this
+    owner: ->
+        user_id = @get 'owner'
+        if user_id
+            return bbobjects.instance 'User', user_id
+
+    owner_cmd:
+        help_text: 'Gets the user who owns this'
+
 
 
 #Represents a bubblebot user, ie a Slack user.  User ids are the slack ids
@@ -283,6 +301,18 @@ bbobjects.User = class User extends BubblebotObject
         help_text: 'shows all the slack data for this user'
         reply: true
 
+#If the user enters a really high value for hours, double-checks to see if it is okay
+bbobjects.validate_destroy_hours = (hours) ->
+    week = 7 * 24
+    if hours > week
+        if not bbserver.do_cast 'boolean', u.ask "You entered #{hours} hours, which is over a week (#{week} hours)... are you sure you want to keep it that long?"
+            hours = bbserver.do_cast 'number', u.ask 'Okay, how many hours should we go for?'
+
+        if hours > week
+            u.report 'Fyi, ' + u.current_user().name() + ' created a test server for ' + hours + ' hours...'
+
+    return hours
+
 
 bbobjects.Environment = class Environment extends BubblebotObject
     create: (type, template, region, vpc) ->
@@ -309,7 +339,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         #Make sure we remind the user to destroy this when finished
         interval = hours * 60 * 60 * 1000
-        u.context().schedule_once interval, 'follow_up_on_instance', {id: box.id, interval}
+        u.context().schedule_once interval, 'follow_up_on_instance', {id: box.id}
 
         u.reply 'Okay, your box is ready:\n' + box.describe()
 
@@ -327,6 +357,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 help: 'How many hours before asking if we can delete this server'
                 type: 'number'
                 required: true
+                validate: bbobjects.validate_destroy_hours
             }
         ]
         questions: (build_id, hours) ->

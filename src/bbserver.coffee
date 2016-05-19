@@ -34,10 +34,10 @@ bbserver.Server = class Server
         #Create the default log environment for the server
         logger = u.create_logger {
             log: log_stream.log.bind(log_stream)
-            reply: -> throw new Error 'cannot reply: not in a conversation!'
+            reply: @slack_client.reply.bind(@slack_client)
             message: @slack_client.message.bind(@slack_client)
-            ask: -> throw new Error 'cannot ask: not in a conversation!'
-            confirm: -> throw new Error 'not in a conversation!'
+            ask: (msg, override_user_id) => @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+            confirm: (msg, override_user_id) => @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
             announce: @slack_client.announce.bind(@slack_client)
             report: @slack_client.report.bind(@slack_client)
         }
@@ -86,12 +86,16 @@ bbserver.Server = class Server
 
     #Schedules a task to run at a future time
     schedule_once: (timeout, task, data) ->
+        if not @_registered_tasks[task]
+            throw new Error 'task ' + task + ' is not registered!'
         u.db().schedule_task Date.now() + timeout, task, data
 
     #Schedules a function to run on a regular basis
     #
     #If a task with the same name is already scheduled, does nothing
     schedule_recurring: (schedule_name, interval, task, data) ->
+        if not @_registered_tasks[task]
+            throw new Error 'task ' + task + ' is not registered!'
         u.db().upsert_task schedule_name, {interval, is_recurring_task: true, task, data}
 
 
@@ -123,6 +127,7 @@ bbserver.Server = class Server
 
     run_task: (task_data) ->
         try
+            u.log 'Beginning task run: ' + JSON.stringify(task_data)
             #Recurring tasks have the task name and data stored as sub-properties
             if task_data.properties.is_recurring_task
                 task_fn = task_data.properties.task
@@ -137,9 +142,15 @@ bbserver.Server = class Server
 
             @build_context()
             @_registered_tasks[task_fn] data
+            u.log 'Task completed successfully: ' + JSON.stringify(task_data)
 
         catch err
-            u.report 'Unexpected error running task ' + JSON.stringify(task_data) + '.  Error was: ' + (err.stack ? err)
+            #If the user cancels this task, or times out replying, reschedule it in 12 hours
+            if err.reason in [u.CANCEL, u.USER_TIMEOUT]
+                u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
+                @schedule_once task_data.task, task_data.properties, 12 * 60 * 60 * 1000
+            else
+                u.report 'Unexpected error running task ' + JSON.stringify(task_data) + '.  Error was: ' + (err.stack ? err)
         finally
             #We always want to make sure scheduled tasks get rescheduled
             if task_data.properties.is_recurring_task
@@ -170,15 +181,6 @@ bbserver.Server = class Server
             context.orginal_message = msg
             context.current_user = -> bbobjects.instance 'User', user_id
 
-            u.set_logger u.create_logger {
-                log: log_stream.log.bind(log_stream)
-                reply: @slack_client.reply.bind(@slack_client)
-                message: @slack_client.message.bind(@slack_client)
-                ask: (msg, override_user_id) => @slack_client.ask override_user_id ? user_id, msg
-                confirm: (msg, override_user_id) => @slack_client.confirm override_user_id ? user_id, msg
-                announce: @slack_client.announce.bind(@slack_client)
-                report: @slack_client.report.bind(@slack_client)
-            }
             try
                 args = parse_command msg
                 u.context().parsed_message = args
@@ -186,9 +188,9 @@ bbserver.Server = class Server
             catch err
                 cmd = context.parsed_message ? context.orginal_message
 
-                if err.reason = u.CANCEL
+                if err.reason is u.CANCEL
                     u.reply 'Cancelled: ' + cmd
-                else if err.reason = u.USER_TIMEOUT
+                else if err.reason is u.USER_TIMEOUT
                     u.reply 'Timed out waiting for your reply: ' + cmd
                 else
                     u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
@@ -361,35 +363,53 @@ bbserver.build_command = (options) ->
     return cmd
 
 
-#Casts the value into the expected type (boolean, string, number)
-do_cast = (param, val) ->
+#Casts the value into the expected type (boolean, string, number).
+#Re-queries the user if necessary.
+#
+#Either takes a string, or an object with details
+bbserver.do_cast = do_cast = (param, val) ->
+    if typeof(param) is 'string'
+        param = {type: param}
+
     #Typing "go" always goes with the default value if there is one.
     if val is 'go' and param.default
         return param.default
 
+    #If name is set, we use that in the feedback
+    if param.name
+        feedback = "Hey, for parameter '#{param.name}' you typed #{val}... "
+    else
+        feedback = "Hey, you typed #{val}..."
+    prompt = "Try again? (Or type 'cancel' to abort)"
+
     if not param.type or param.type is 'string'
-        return String(val)
+        result = String(val)
     else if param.type is 'boolean'
         if val.toLowerCase() in ['no', 'false']
-            return false
+            result =  false
         else if val.toLowerCase() in ['yes', 'true']
-            return true
+            result = true
         else
-            return do_cast param, u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting no / false or yes / true, though.  Try again? (Or type 'cancel' to abort)"
+            result = do_cast param, u.ask feedback + "we're expecting no / false or yes / true, though.  " + prompt
     else if param.type is 'number'
-        res = parseFloat val
+        result = parseFloat val
         if isNaN res
-            return do_cast param, u.ask "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting a number, though.  Try again? (Or type 'cancel' to abort)"
-        return res
+            result = do_cast param, u.ask feedback + "we're expecting a number, though.  " + prompt
     else if param.type is 'list'
         options = param.options()
         if val in options()
-            return val
+            result = val
         else
-            return do_cast param, "Hey, for parameter '#{param.name}' you typed #{val}... we're expecting one of: #{options.join(', ')}"
+            result = do_cast param, feedback + "we're expecting one of: #{options.join(', ')}  " + prompt
 
     else
         throw new Error "unrecognized parameter type for #{param.name}: #{param.type}"
+
+    #If we have a validation function defined, run it
+    if param.validate
+        result = param.validate result
+
+    return result
 
 
 #Base class for building commands.  Children should add a run(args) method
@@ -397,8 +417,6 @@ bbserver.Command = class Command
     #See CommandTree::execute above
     execute: (prev_args, args) ->
         processed_args = []
-
-
 
         for param, idx in @params ? []
             if args[idx]?
