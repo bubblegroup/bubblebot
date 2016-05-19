@@ -35,6 +35,23 @@ templates.BubblebotDatabase extends PGDatabase
         )
         --Needs to be searchable by history_type / history_id / timestamp
         --Needs to be searchable by history_type / history_id / reference
+
+
+        CREATE TABLE scheduler (
+            id bigserial,            --uid of task instance
+            timestamp bigint,        --when we should run it
+            owner bigint,            --who claimed the task
+            task varchar(512),       --name of the task
+            properties jsonb         --data to pass to the task
+        )
+        --need to search by id
+        --need to search by timestamp
+        --need to search by task
+
+        CREATE TABLE scheduler_owners (
+            owner_id bigserial,
+            last_access bigint
+        )
         "
     ]
 

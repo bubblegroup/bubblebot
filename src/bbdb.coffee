@@ -53,4 +53,31 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
     delete_entries: (history_type, history_id, reference) ->
 
 
+    #Scheduler support
+
+    #Sets the given task to run at the given timestamp with the given properties
+    schedule_task: (timestamp, task, properties) ->
+
+    #If there is a task with the same name already in the scheduler, update the properties.
+    #Otherwise, insert a new task scheduled to run now.
+    upsert_task: (task, properties) ->
+
+    #Retrieves the first task that a) is unclaimed and b) is ready to go.
+    #
+    #Marks the retrieved task as claimed.
+    #
+    #owner_id represents who we want to say is claiming the task.  Should pass in null
+    #if unknown, and a new one will be generated.
+    #
+    #Return {owner_id, task_data}.  Task_data will be null if there is nothing
+    get_next_task: (owner_id) ->
+
+    #Indicates that we finished a task and can remove it from the scheduler
+    complete_task: (id) ->
+
+    #Indicate that for some reason we could not complete the task, so we need to release it
+    release_task: (id) ->
+
+
+
 bbobjects = require './bbobjects'

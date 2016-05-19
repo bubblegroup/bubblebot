@@ -5,6 +5,8 @@ bbserver.Server = class Server
         @root_command = new RootCommand()
         @db = new bbdb.BBDatabase()
 
+        @_registered_tasks = {}
+
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
@@ -63,12 +65,86 @@ bbserver.Server = class Server
             message = 'Uncaught exception: ' + (err.stack ? err)
             u.report message
 
+        setTimeout =>
+            @start_task_engine()
+        , 10 * 1000
+
     #Returns the list of admins.  Defaults to the owner of the slack channel.
     #TODO: allow this to be modified and saved in the db.
     get_admins: -> [@slack_client.get_slack_owner()]
 
+    #registers a handler for a given task name
+    register_task: (task, fn) ->
+        @_registered_tasks[task] = fn
+
     #Schedules a task to run at a future time
-    schedule_once: (task, data, timeout) -> throw new Error 'not ipmlemented'
+    schedule_once: (timeout, task, data) ->
+        u.db().schedule_task Date.now() + timeout, task, data
+
+    #Schedules a function to run on a regular basis
+    #
+    #If a task with the same name is already scheduled, does nothing
+    schedule_recurring: (schedule_name, interval, task, data) ->
+        u.db().upsert_task schedule_name, {interval, is_recurring_task: true, task, data}
+
+
+    #Executes scheduled tasks
+    start_task_engine: ->
+        @owner_id = null
+
+        u.SyncRun =>
+            #exponential backoff if we are having trouble retrieving tasks
+            task_engine_backoff = 5000
+            while true
+                try
+                    {@owner_id, task_data} = u.db().get_next_task @owner_id
+
+                    if task_data?
+                        u.SyncRun =>
+                            @run_task task_data
+
+                    else
+                        #No scheduled tasks right now, so pause for 10 seconds then try again
+                        u.pause 10000
+
+                    task_engine_backoff = 5000
+                catch err
+                    u.report 'Error trying to retrieve task: ' + (err.stack ? err)
+                    u.pause task_engine_backoff
+                    task_engine_backoff = task_engine_backoff * 2
+
+
+    run_task: (task_data) ->
+        try
+            #Recurring tasks have the task name and data stored as sub-properties
+            if task_data.properties.is_recurring_task
+                task_fn = task_data.properties.task
+                data = task_data.properties.data
+
+            else
+                task_fn = task_data.task
+                data = task_data.properties
+
+            if not @_registered_tasks[task_fn]
+                throw new Error 'no task named ' + task_fn
+
+            @_registered_tasks[task_fn] data
+
+        catch err
+            u.report 'Unexpected error running task ' + JSON.stringify(task_data) + '.  Error was: ' + (err.stack ? err)
+        finally
+            #We always want to make sure scheduled tasks get rescheduled
+            if task_data.properties.is_recurring_task
+                try
+                    @schedule_once task_data.task, task_data.properties, task_data.properties.interval
+                catch err
+                    #if we can't reschedule it, we should not mark it as complete
+                    u.db().release_task task_data.id
+                    throw err
+
+            #Mark the task as complete.
+            u.db().complete_task task_data.id
+
 
     #Called by our slack client
     new_conversation: (user_id, msg) ->

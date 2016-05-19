@@ -843,7 +843,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
         #Schedule a termination
         termination_delay = template.termination_delay()
-        u.context().schedule_once 'terminate_instance', {id: ec2instance.id}, termination_delay
+        u.context().schedule_once termination_delay, 'terminate_instance', {id: ec2instance.id}
 
         #Tell the server to begin its graceful shutdown
         template.graceful_shutdown ec2instance
