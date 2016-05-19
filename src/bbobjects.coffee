@@ -231,6 +231,12 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     create: (parent_type, parent_id, initial_properties ?= {}) ->
         if @hardcoded
             throw new Error 'we do not support creating this object'
+
+        user_id = u.context().user_id
+        if user_id
+            initial_properties.creator = user_id
+            initial_properties.owner = user_id
+
         u.db().create_object @type, @id, parent_type, parent_id, initial_properties
 
     #Deletes this object from the database
@@ -297,9 +303,15 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Creates a server for development purposes
     create_box: (build_id, hours, size, name) ->
         ec2build = bbobjects.instance 'EC2Build', build_id
-        if size is 'go'
-            size = ec2build.default_size this
+
+        u.reply 'beginning build of box... '
         box = ec2build.build this, size, name
+
+        #Make sure we remind the user to destroy this when finished
+        interval = hours * 60 * 60 * 1000
+        u.context().schedule_once interval, 'follow_up_on_instance', {id: box.id, interval}
+
+        u.reply 'Okay, your box is ready:\n' + box.describe()
 
     create_box_cmd: ->
         params: [
@@ -332,6 +344,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 }
             }
 
+        help_text: 'Creates a new server in this environment for testing or other purposes'
 
 
 
