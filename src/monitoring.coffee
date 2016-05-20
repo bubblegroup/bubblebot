@@ -13,6 +13,7 @@ monitoring.Monitor = class Monitor
         @frequencies = {}
         @health = {}
         @downtime = {}
+        @last_service_times = {}
 
         @start_time = Date.now()
 
@@ -89,9 +90,18 @@ monitoring.Monitor = class Monitor
                     downtime = Date.now() - down
 
                     for service, threshold of policy.thresholds ? {}
+                        #If we haven't reported to this service yet and are over the threshold...
                         if not services[service] and downtime > threshold
-                            services[service] = true
-                            @report_down service, object, downtime
+                            #If there's a limit on how frequently we can report to this service,
+                            #make sure we are within the limit
+                            if policy.limits?[service] and @last_service_times[uid]?[service]
+                                within_limit = (Date.now() - @last_service_times[uid][service]) > policy.limits[service]
+                            else
+                                within_limit = true
+
+                            if within_limit
+                                services[service] = true
+                                @report_down service, object, downtime
 
                     #Wait for a second before checking again
                     u.pause 1000
@@ -120,6 +130,11 @@ monitoring.Monitor = class Monitor
         return false
 
     report_down: (service, object, downtime) ->
+        #Record that we've reported down to this service
+        uid = @_get_uid(object)
+        @last_service_times[uid] ?= {}
+        @last_service_times[uid][service] = Date.now()
+
         if service is 'announce'
             u.announce 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime)
         else if service is 'report'
@@ -162,10 +177,14 @@ monitoring.Monitor = class Monitor
             policy = object.get_monitoring_policy()
             res.push ''
             res.push String(object) + ':'
-            res.push '  Frequency: ' + policy.frequency
+            res.push '  Frequency: ' + u.format_time(policy.frequency)
             res.push '  Upstream: ' + (String(dep) for dep in policy.upstream ? []).join(', ')
             for service, threshold in policy.thresholds ? {}
-                res.push '  ' + service + ': ' + threshold + ' ms'
+                if policy.limits?[service]
+                    limit_text = '  (limit every ' + u.format_time(policy.limits[service]) + ')'
+                else
+                    limit_text = ''
+                res.push '  ' + service + ': ' + threshold + ' ms' + limit_text
 
         return res.join '\n'
 
