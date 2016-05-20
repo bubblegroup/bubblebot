@@ -264,6 +264,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     creator_cmd:
         help_text: 'Gets the user who created this'
+        reply: true
 
     #Returns the user who owns this
     owner: ->
@@ -273,7 +274,29 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     owner_cmd:
         help_text: 'Gets the user who owns this'
+        reply: true
 
+    #Prints out a multi line human readable description
+    describe: ->
+        res = @toString()
+        res += '\n\n'
+        for k, v of @describe_keys()
+            if v?
+                res += '\n' + k + ': ' + String(v)
+
+        return res
+
+    #A list of things used by describe.  Can be extended by children
+    describe_keys: -> {
+        Parent: @parent()
+        Owner: @owner()
+        Environment: @environment()
+    }
+
+
+    describe_cmd:
+        help_text: 'Describes this'
+        reply: true
 
 
 #Represents a bubblebot user, ie a Slack user.  User ids are the slack ids
@@ -321,6 +344,13 @@ bbobjects.Environment = class Environment extends BubblebotObject
         super null, null, {type, template, region, vpc}
 
         @template().initialize this
+
+    describe_keys: -> u.extend super(), {
+        template: @template()
+        type: @get 'type'
+        region: @get_region()
+        vpc: @get_vpc()
+    }
 
 
     template: ->
@@ -376,12 +406,6 @@ bbobjects.Environment = class Environment extends BubblebotObject
             }
 
         help_text: 'Creates a new server in this environment for testing or other purposes'
-
-
-
-
-
-
 
 
 
@@ -760,6 +784,13 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
         super environment.type, environment.id
 
+
+    describe_keys: -> u.extend super(), {
+        template: @template()
+        version: @version()
+        endpoint: @endpoint()
+    }
+
     #Returns the template for this service or null if not found
     template: ->
         prefix = @parent().id + '_'
@@ -767,6 +798,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         if not template
             return null
         return templates[template] ? null
+
+    #Returns the endpoint that this service is accessible at
+    endpoint: -> @template().endpoint this
 
     #Request that other users don't deploy to this service
     block: (explanation) ->
@@ -842,6 +876,11 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
     #Retrieves the ec2 build template
     template: -> templates[@id] ? throw new Error 'could not find ec2 build template with id ' + @id
+
+    describe_keys: -> u.extend super(), {
+        template: @id
+        codebase: @codebase()
+    }
 
     #Retrieves the codebase object for this build
     codebase: -> @template().codebase()
@@ -986,6 +1025,15 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         new_name = @get('name') + ' (' + status + ')'
         @environment().tag_resource @id, 'Name', new_name
 
+    describe_keys: -> u.extend super(), {
+        name: @get 'name'
+        status: @get 'status'
+        aws_status: @get_state()
+        template: @template()
+        public_dns: @get_public_dns()
+        address: @get_address()
+    }
+
     #The template for this ec2instance (ie, what software to install)
     template: ->
         template = @get 'build_template_id'
@@ -1107,7 +1155,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     constructor: (@environment, @id) ->
 
     #Returns the endpoint we can access this instance at
-    get_endpoint: -> throw new Error 'not implemented'
+    endpoint: -> throw new Error 'not implemented'
 
 
 
@@ -1145,6 +1193,11 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
         data = @environment().ec2 'describeAddresses', {'AllocationIds': [@id]}
         eip_cache.set @id, data.Addresses?[0]
 
+    describe_keys: -> u.extend super(), {
+        instance: @get_instance()
+        endpoint: @endpoint()
+    }
+
     #Retrieves the amazon metadata for this address.  If force_refresh is true,
     #forces us not to use our cache
     get_data: (force_refresh) ->
@@ -1161,7 +1214,7 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
             return null
 
     #retrieves the ip address
-    get_endpoint: -> @get_data()?.PublicIp ? null
+    endpoint: -> @get_data()?.PublicIp ? null
 
     #Switches this elastic ip to point at a new instance
     switch: (new_instance) ->

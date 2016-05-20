@@ -118,6 +118,7 @@ templates.blank = new Environment()
 # codebase() returns a codebase template
 # get_tests() returns an array of tests
 # replace: (instance) -> should replace the actual boxes with new boxes
+# endpoint: -> should return the endpoint
 #
 templates.Service = class Service
     deploy: (instance, version, rollback) ->
@@ -281,6 +282,8 @@ templates.SingleBoxService = class SingleBoxService
     codebase: -> @ec2build().codebase()
 
     get_tests: -> @tests
+
+    endpoint: (instance) -> @switcher(instance).endpoint()
 
     replace: (instance) ->
         build = @ec2build()

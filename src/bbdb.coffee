@@ -5,7 +5,7 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
     constructor: ->
         bbdb = throw new Error 'not implemented'
 
-        @endpoint = bbdb.get_endpoint()
+        @endpoint = bbdb.endpoint()
 
     #given the type, optionally the parent_type and parent_id, and optionally
     #a list of key: value pairs, finds all objects that match
