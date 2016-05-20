@@ -4,6 +4,7 @@ bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand()
         @db = new bbdb.BBDatabase()
+        @_monitor = new monitoring.Monitor(this)
 
         @_registered_tasks = {}
 
@@ -65,10 +66,17 @@ bbserver.Server = class Server
             message = 'Uncaught exception: ' + (err.stack ? err)
             u.report message
 
+        #Start up the task engine
         @load_tasks()
         setTimeout =>
             @start_task_engine()
         , 10 * 1000
+
+        #Tell the environments to start themselves up
+        u.SyncRun =>
+            @build_context()
+            for environment in bbobjects.list_environments()
+                @startup()
 
     #Returns the list of admins.  Defaults to the owner of the slack channel.
     #TODO: allow this to be modified and saved in the db.
@@ -79,6 +87,7 @@ bbserver.Server = class Server
         for k, v of tasks.builtin
             @register_task k, v
 
+    monitor: (object) -> @_monitor object
 
     #registers a handler for a given task name
     register_task: (task, fn) ->
@@ -242,7 +251,7 @@ parse_command = (msg) ->
 #
 bbserver.CommandTree = class CommandTree
     constructor: (@subcommands) ->
-        @subcommands = {}
+        @subcommands ?= {}
 
         #Go through and look for functions that we want to expose as commands
         for k, v of this
@@ -572,8 +581,6 @@ class EnvTree extends CommandTree
 
 
 
-
-
 bbserver.SHUTDOWN_ACK = 'graceful shutdown command received'
 
 
@@ -583,3 +590,4 @@ slack = require './slack'
 bbdb = require './bbdb'
 bbobjects = require './bbojbects'
 tasks = require './tasks'
+monitoring = require './monitoring'

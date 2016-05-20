@@ -132,6 +132,21 @@ HARDCODED =
             region: -> config.get 'bubblebot_region'
             vpc: -> config.get 'bubblebot_vpc'
 
+
+#Implementation of the Child command tree which lists all the children of a bubble object
+class ChildCommand extends bbserver.CommandTree
+    constructor: (@bbobject) ->
+
+    get_subcommands: ->
+        subs = {}
+        for child in @bbobject.children()
+            if subs[child.id]
+                subs[child.id + '_' + child.type.toLowerCase()] = child
+            else
+                subs[child.id] = child
+        return subs
+
+
 #generic class for objects tracked in the bubblebot database
 bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     constructor: (@type, @id) ->
@@ -139,11 +154,16 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         if HARDCODED[@type]?[@id]
             @hardcoded = HARDCODED[@type]?[@id]
 
+        #Add the 'child' command
+        @add 'child', new ChildCommand this
+
     #We want to check to see if there is a template defined for this object...
     #if so, we add those commands to the existing list of subcommands.
     #
     #We assume the first parameter to the command function is this object, and we bind it
     #in (with the template itself as the 'this' parameter)
+    #
+    #We also add all the children as sub-commands (we can also access them through 'child')
     get_subcommands: ->
         template_commands = {}
         if typeof(@template) is 'function'
@@ -153,7 +173,19 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
                    cmd = bbserver.build_command u.extend {run: v.bind(template, this), target: template}, @[k + '_cmd']
                    template_commands[k] = cmd
 
-        return u.extend {}, template_commands, @subcommands
+        children = (new ChildCommand this).get_subcommands()
+
+        return u.extend {}, children, template_commands, @subcommands
+
+
+    #Gets called when we start the server up.  Recursively calls on children.
+    #Children should call super() to continue recursion, and perform any startup logic
+    #such as setting up monitoring
+    #
+    #We also call this in @create, by default, so should be idempotent to be safe
+    startup: ->
+        child.startup() for child in @children()
+
 
     #If we want to call a command added via a template from our own code, this returns
     #the function (pre-bound)
@@ -185,6 +217,11 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     children: (child_type) ->
         list = u.db().children @type, @id, child_type
         return (bbobjects.instance child_type, child_id for [child_type, child_id] in list)
+
+    children_cmd:
+        params [{name: 'child_type', help: 'If specified, filters to the given type'}]
+        help_text: 'lists all the children of this object.  to access a specific child, use the "child" command'
+        reply: true
 
     #Retrieves the environment that this is in
     environment: -> @parent 'Environment'
@@ -238,6 +275,9 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
             initial_properties.owner = user_id
 
         u.db().create_object @type, @id, parent_type, parent_id, initial_properties
+
+        #perform any startup logic
+        @startup()
 
     #Deletes this object from the database
     delete: ->
@@ -858,6 +898,39 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         help_text: 'Returns the current version of this service'
         reply: true
 
+    #On startup, we make sure we are monitoring this
+    startup: ->
+        super()
+        u.context().server.monitor this
+
+    #Returns a description of how this service should be monitored
+    get_monitoring_policy: -> @template().get_monitoring_policy this
+
+    #Returns true if this service is in maintenance mode (and thus should not be monitored)
+    maintenance: ->
+        #if we don't have a version set, we are in maintenance mode
+        if not @version()
+            return true
+
+        #if the maintenance property is set, we are in maintenance mode
+        if @get 'maintenance'
+            return true
+
+        return false
+
+    maintenance_cmd:
+        help_text: 'Returns whether we are in maintenance mode'
+        reply: true
+
+    #Sets whether or not we should enter maintenance mode
+    set_maintenance: (on) ->
+        @set 'maintenance', on
+        u.reply 'Maintenance mode is ' + (if on then 'on' else 'off')
+
+    set_maintenance_cmd:
+        params: {name: 'on', type: 'boolean', required: true, help: 'If true, turns maintenance mode on, if false, turns it off'}
+        help_text: 'Turns maintenance mode on or off'
+
     #Replaces the underlying boxes for this service
     replace: -> @template().replace this
 
@@ -1113,6 +1186,19 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         #then delete the data if it exists
         if @exists()
             @delete()
+
+    #Terminates this server
+    clean: (confirm) ->
+        if confirm
+            @terminate()
+            u.reply 'Server succesfully terminated'
+        else
+            u.reply 'Okay, aborting'
+
+    clean_cmd: ->
+        help_text: 'Terminates this server'
+        questions: ->
+            {name: 'confirm',  type: 'boolean', help: 'Are you sure you want to terminate this server?'}
 
 
     #Writes the given private key to the default location on the box

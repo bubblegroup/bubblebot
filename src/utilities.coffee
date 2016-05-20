@@ -35,6 +35,25 @@ u.extend = (dest, srcs...) ->
 u.json_deep_copy = (obj) -> JSON.parse JSON.stringify obj
 
 
+#converts a duration in ms to something human readable
+u.format_time = (ms) ->
+    seconds = Math.floor(ms / 1000)
+    minutes = Math.floor(seconds / 60)
+    hours = Math.floor(minutes / 60)
+    days = Math.floor(hours / 24)
+
+    minutes = minutes % 60
+    seconds = seconds % 60
+    hours = hours % 24
+
+    add = (name, amt) -> if amt is 1 then "1 #{name}, " else if amt > 0 then "#{amt} #{name}s, " else ""
+
+    return add('day', days) + add('hour', hours) + add('minute', minutes) + seconds + ' seconds'
+
+#converts 0.0234 -> 2.3%
+u.format_percent = (decimal) ->
+    return String(Math.floor(decimal * 1000) / 10) + '%'
+
 
 #Returns {private_key, public_key}
 u.generate_key_pair = ->
