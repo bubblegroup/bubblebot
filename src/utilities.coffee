@@ -256,9 +256,22 @@ class Lock
 
 
 #Some standard error codes
-u.TIMEOUT = 'timeout'               #generic timeout (lots of things could cause this)
-u.CANCEL = 'cancel'                 #user cancelled the command
-u.USER_TIMEOUT = 'user_timeout'     #timed out waiting on a user reply
+u.TIMEOUT = 'timeout'                 #generic timeout (lots of things could cause this)
+u.CANCEL = 'cancel'                   #user cancelled the command
+u.USER_TIMEOUT = 'user_timeout'       #timed out waiting on a user reply
+U.EXTERNAL_CANCEL = 'external_cancel' #was cancelled from off-fiber
+
+#Marks this fiber as cancelled, and schedules it to run
+u.cancel_fiber = (fiber) ->
+    fiber._externally_cancelled = true
+    setTimeout ->
+        start_fiber_run fiber
+    , 1
+
+#Un-marks the current fiber as being cancelled... useful in error handling code
+#so that we can continue cleaning up
+u.uncancel_fiber = ->
+    Fiber.current._externally_cancelled = false
 
 
 
@@ -282,7 +295,16 @@ class Block
         if not @name?
             throw new Error 'blocks must be named'
 
+    #See if this fiber has been marked as cancelled externally: if so, throw a cancellation error.
+    check_cancelled: ->
+        if Fiber.current._externally_cancelled
+            err = new Error 'this fiber was cancelled'
+            err.reason = U.EXTERNAL_CANCEL
+            throw err
+
     wait: (timeout) ->
+        @check_cancelled()
+
         old_timeout = Fiber.current._u_fiber_timeout
         if timeout?
             Fiber.current._u_fiber_timeout = timeout
@@ -296,6 +318,8 @@ class Block
             @yielded = true
             Fiber.yield()
             @yielded = false
+
+            @check_cancelled()
 
             check_fiber_timeout(@name)
 
@@ -349,6 +373,11 @@ u.ensure_fiber = (fn) ->
     else
         u.SyncRun fn
 
+#A list of all ongoing fibers
+u.active_fibers = []
+
+fiber_id_counter = 0
+
 # #### u.SyncRun
 #Runs the callback in a fiber.  Safe to call either from within a fiber or from non-fiber
 #code... runs it in on a setImmediate block, so this function returns immediately.
@@ -360,11 +389,18 @@ u.SyncRun = SyncRun = (cb) ->
         f = null
         run_fn = ->
             try
+                #track the fiber
+                u.active_fibers.push f
+                f._fiber_id = fiber_id_counter
+                fiber_id_counter++
+
                 cb()
             catch err
                 throw err
             finally
                 f.fiber_is_finished = true #fibers will restart if run is called after they finished!
+
+                u.active_fibers.remove f
 
                 #Keeping a reference to the fiber will hold it in memory permanently
                 f = null

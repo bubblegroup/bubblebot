@@ -74,7 +74,7 @@ bbserver.Server = class Server
 
         #Tell the environments to start themselves up
         u.SyncRun =>
-            @build_context()
+            @build_context('startup')
             for environment in bbobjects.list_environments()
                 @startup()
 
@@ -117,6 +117,8 @@ bbserver.Server = class Server
         @owner_id = null
 
         u.SyncRun =>
+            @build_context('task engine')
+
             #exponential backoff if we are having trouble retrieving tasks
             task_engine_backoff = 5000
             while true
@@ -139,6 +141,7 @@ bbserver.Server = class Server
 
 
     run_task: (task_data) ->
+        external_cancel = false
         try
             u.log 'Beginning task run: ' + JSON.stringify(task_data)
             #Recurring tasks have the task name and data stored as sub-properties
@@ -153,7 +156,7 @@ bbserver.Server = class Server
             if not @_registered_tasks[task_fn]
                 throw new Error 'no task named ' + task_fn
 
-            @build_context()
+            @build_context('running task ' + JSON.stringify(task_data))
             @_registered_tasks[task_fn] data
             u.log 'Task completed successfully: ' + JSON.stringify(task_data)
 
@@ -162,6 +165,10 @@ bbserver.Server = class Server
             if err.reason in [u.CANCEL, u.USER_TIMEOUT]
                 u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
                 @schedule_once task_data.task, task_data.properties, 12 * 60 * 60 * 1000
+            #If the task was cancelled externally, just log it
+            else if err.reason in U.EXTERNAL_CANCEL
+                u.uncancel_fiber()
+                u.log 'Task cancelled externally: ' + JSON.stringify(task_data)
             else
                 u.report 'Unexpected error running task ' + JSON.stringify(task_data) + '.  Error was: ' + (err.stack ? err)
         finally
@@ -179,8 +186,9 @@ bbserver.Server = class Server
 
 
     #Adds things to the current context.
-    build_context: ->
+    build_context: (name) ->
         context = u.context()
+        context.name = name
         context.server = this
         context.schedule_once = @schedule_once.bind(this)
         context.db = @db
@@ -189,7 +197,7 @@ bbserver.Server = class Server
     new_conversation: (user_id, msg) ->
         u.ensure_fiber =>
             context = u.context()
-            @build_context()
+            @build_context(msg)
             context.user_id = user_id
             context.orginal_message = msg
             context.current_user = -> bbobjects.instance 'User', user_id
@@ -205,6 +213,9 @@ bbserver.Server = class Server
                     u.reply 'Cancelled: ' + cmd
                 else if err.reason is u.USER_TIMEOUT
                     u.reply 'Timed out waiting for your reply: ' + cmd
+                else if err.reason in U.EXTERNAL_CANCEL
+                    u.uncancel_fiber()
+                    u.reply 'Cancelled (via the cancel cmd): ' + cmd
                 else
                     u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
                     if context.user_id not in @get_admins()
@@ -556,6 +567,65 @@ class New extends Command
         u.reply 'Environment successfully created!'
         return
 
+get_fiber_user = (fiber) ->
+    if fiber.current_context.user_id
+        return ' ' + bbobjects.instance('User', fiber.current_context.user_id).name()
+
+get_fiber_display = (fiber) -> fiber.current_context?.parsed_message ? fiber.current_context?.name
+
+get_full_fiber_display = (fiber) -> fiber._fiber_id + get_fiber_user(fiber) + ': ' + get_fiber_display(fiber)
+
+#Command for listing all ongoing processes
+class PS extends Command
+    help_text: 'List currently running commands'
+    params: [
+        {name: 'all', type: 'boolean', help: 'If true, lists commands by other users, not just you'}
+    ]
+
+    run: (all) ->
+        to_display = []
+        anonymous = 0
+
+        for fiber in u.active_fibers
+            #only include fibers that have a name
+            if get_fiber_display fiber
+                if all or fiber.current_context.user_id is u.current_user().id
+                    to_display.push fiber
+            else
+                anonymous++
+
+        res = (get_full_fiber_display fiber for fiber in to_display)
+
+        if all
+            res.push anonymous + ' anonymous fibers'
+
+        u.reply res.join('\n')
+
+class Cancel extends Command
+    help_text: 'Cancels running commands.  By default, cancels all commands that you started'
+    params: [
+        {name: 'command', type: 'number', help: 'The number of the specific command to cancel'}
+    ]
+
+    run: (command) ->
+        to_cancel = []
+        for fiber in u.active_fibers
+            if command
+                if fiber._fiber_id is command
+                    to_cancel.push fiber
+            else
+                if fiber.current_context?.user_id is u.current_user().id
+                    to_cancel.push fiber
+
+        res = (get_full_fiber_display fiber for fiber in to_display)
+
+        for fiber in to_cancel
+            u.cancel_fiber fiber
+
+        u.reply 'Cancelled the following:\n\n' + res.join('\n')
+
+
+
 
 
 #The initial command structure for the bot
@@ -566,6 +636,8 @@ class RootCommand extends CommandTree
         @commands.env = new EnvTree()
         @commands.new = new New()
         @commands.servers = new ServersTree()
+        @commands.ps = new PS()
+        @commands.cancel = new Cancel()
 
 
     get_commands: ->
