@@ -152,7 +152,7 @@ HARDCODED =
 class ChildCommand extends bbserver.CommandTree
     constructor: (@bbobject) ->
 
-    get_subcommands: ->
+    get_commands: ->
         subs = {}
         for child in @bbobject.children()
             if subs[child.id]
@@ -179,7 +179,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     #in (with the template itself as the 'this' parameter)
     #
     #We also add all the children as sub-commands (we can also access them through 'child')
-    get_subcommands: ->
+    get_commands: ->
         template_commands = {}
         if typeof(@template) is 'function'
             template = @template()
@@ -188,7 +188,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
                    cmd = bbserver.build_command u.extend {run: v.bind(template, this), target: template}, @[k + '_cmd']
                    template_commands[k] = cmd
 
-        children = (new ChildCommand this).get_subcommands()
+        children = (new ChildCommand this).get_commands()
 
         return u.extend {}, children, template_commands, @subcommands
 

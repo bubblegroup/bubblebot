@@ -251,7 +251,7 @@ parse_command = (msg) ->
 #   we want to expose as a command, where {} is an object with arguments to pass
 #   to bbserver.build_command.
 #
-#  -Or overriding the get_subcommands method altogether
+#  -Or overriding the get_commands method altogether
 #
 bbserver.CommandTree = class CommandTree
     constructor: (@subcommands) ->
@@ -263,27 +263,27 @@ bbserver.CommandTree = class CommandTree
                cmd = bbserver.build_command u.extend {run: v.bind(this), target: this}, @[k + '_cmd']
                @add k, cmd
 
-    get_subcommands: -> @subcommands
+    get_commands: -> @subcommands
 
     #Adds a subcommand
     add: (name, command) ->
         @subcommands[name] = command
 
     #Lists all available subcommands
-    list: -> (k for k, v of @get_subcommands())
+    list: -> (k for k, v of @get_commands())
 
     #Gets the subcommand, returning null if not found
-    get: (command) -> @get_subcommands()[command] ? null
+    get: (command) -> @get_commands()[command] ? null
 
     #Executes a command.  Previous args is the path through the outer tree to this tree,
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
     execute: (prev_args, args) ->
         if args.length is 0
-            msg = 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are: ' + (k for k, v of @get_subcommands()).join ', '
+            msg = 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are: ' + (k for k, v of @get_commands()).join ', '
             args = parse_command msg
 
         first = args[0]
-        subcommand = @get_subcommands()[first.toLowerCase()]
+        subcommand = @get_commands()[first.toLowerCase()]
 
         if subcommand
             return subcommand.execute prev_args.concat(first), args[1..]
@@ -304,7 +304,7 @@ bbserver.CommandTree = class CommandTree
         else
             res.push "The command '#{prev} has the following sub-commands:\n'
 
-        for name, command of @get_subcommands()
+        for name, command of @get_commands()
             full = prev + ' ' + name
             res.push full + ' ' + command.display_args(full)
 
@@ -565,6 +565,7 @@ class RootCommand extends CommandTree
         @commands.help = new Help(@root_command)
         @commands.env = new EnvTree()
         @commands.new = new New()
+        @commands.servers = new ServersTree()
 
 
     get_commands: ->
@@ -582,6 +583,13 @@ class EnvTree extends CommandTree
             commands[id] = environment
         return commands
 
+#A command tree that lets you navigate servers
+class ServersTree extends CommandTree
+    get_commands: ->
+        commands = {}
+        for instance in bbobjects.get_all_instances()
+            commands[instance.id] = instance
+        return commands
 
 
 
