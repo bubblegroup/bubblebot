@@ -82,10 +82,14 @@ bbserver.Server = class Server
     #TODO: allow this to be modified and saved in the db.
     get_admins: -> [@slack_client.get_slack_owner()]
 
-    #Loads pre-built tasks
+    #Loads pre-built tasks and schedules
     load_tasks: ->
         for k, v of tasks.builtin
             @register_task k, v
+
+        for schedule_name, {interval, task, data} of tasks.schedules
+            @schedule_recurring schedule_name, interval, task, data
+
 
     monitor: (object) -> @_monitor object
 

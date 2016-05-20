@@ -81,6 +81,21 @@ bbobjects.get_bbserver = ->
 #Returns all the environments in our database
 bbobjects.list_environments = -> (bbobjects.instance 'Environment', id for id in u.db().list_objects 'Environment')
 
+#Returns all the regions that we have at least one environment in
+bbobjects.list_regions = ->
+    regions = {}
+    for environment in bbobjects.list_environments()
+        regions[environment.get_region()] = true
+    return (region for region, _ of regions)
+
+#Returns a list of every ec2 instance (and possibly other types) that we see in the environment
+bbobjects.get_all_instances = ->
+    res = []
+    environments = (bbobjects.get_default_dev_environment region for region in bbobjects.list_regions())
+    for environment in environments
+        res.push environment.describe_instances()...
+    return res
+
 #Gets the default development environment for the given region, creating it if it does not exist.
 #
 #If region is blank, returns the overall default dev environment (which is put in the same
@@ -409,6 +424,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         #Make sure we remind the user to destroy this when finished
         interval = hours * 60 * 60 * 1000
+        instance.set 'expiration_time', Date.now() + (interval * 2)
         u.context().schedule_once interval, 'follow_up_on_instance', {id: box.id}
 
         u.reply 'Okay, your box is ready:\n' + box.describe()
@@ -750,6 +766,20 @@ bbobjects.Environment = class Environment extends BubblebotObject
         vpc_to_subnets.set(vpc_id, data)
         return data
 
+    #Policy for deleting instances directly owned by this environment.
+    #
+    #The rule is they need to have an expiration set on them if they persist for longer than
+    #6 hours
+    should_delete: (instance) ->
+        #if it is newer than 6 hours, we are fine
+        if Date.now() - instance.launch_time() < 6 * 60 * 60 * 1000
+            return false
+
+        #otherwise, check the expiration time
+        expires = instance.get 'expiration_time'
+        if not expires
+            return true
+        return Date.now() > expires
 
     get_region: -> @get 'region'
 
@@ -824,6 +854,23 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
         super environment.type, environment.id
 
+    #Checks if we are still using this instance
+    should_delete: (ec2instance) ->
+        #If we are active, delete any expiration time, and don't delete
+        if ec2instance.get('status') is ACTIVE
+            ec2instance.set 'expiration_time', null
+            return false
+
+        #Otherwise, see if there is an expiration time set
+        else
+            expiration = ec2instance.get 'expiration_time'
+            #if there isn't an expiration time, set it for 2 hours
+            if not expiration
+                ec2instance.set 'expiration_time', Date.now() + 2 * 60 * 60 * 1000
+                return false
+            #otherwise, see if we are expired
+            else
+                return Date.now() > expiration
 
     describe_keys: -> u.extend super(), {
         template: @template()
@@ -1098,14 +1145,23 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         new_name = @get('name') + ' (' + status + ')'
         @environment().tag_resource @id, 'Name', new_name
 
-    describe_keys: -> u.extend super(), {
-        name: @get 'name'
-        status: @get 'status'
-        aws_status: @get_state()
-        template: @template()
-        public_dns: @get_public_dns()
-        address: @get_address()
-    }
+    describe_keys: ->
+        expiration = @get('expiration_time')
+        if expiration
+            expires_in = u.format_time(expiration - Date.now())
+
+        return u.extend super(), {
+            name: @get 'name'
+            status: @get 'status'
+            aws_status: @get_state()
+            template: @template()
+            public_dns: @get_public_dns()
+            address: @get_address()
+            bubblebot_role: @bubblebot_role()
+            tags: (k + ': ' +v for k, v of @get_tags()).join(', ')
+            age: u.format_time(Date.now() - @launch_time())
+            expires_in
+        }
 
     #The template for this ec2instance (ie, what software to install)
     template: ->
@@ -1142,6 +1198,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         else
             u.pause 10000
             @wait_for_running(retries - 1)
+
+    #When the server was launched
+    launch_time: -> new Date(@get_data().LaunchTime)
 
     #waits for the server to accept ssh connections
     wait_for_ssh: () ->
@@ -1234,6 +1293,8 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         for tag in @get_data().Tags ? []
             tags[tag.Key] = tag.Value
         return tags
+
+    bubblebot_role: -> @get_tags[config.get('bubblebot_role_tag')]
 
 
 
