@@ -2,7 +2,7 @@ bbserver = exports
 
 bbserver.Server = class Server
     constructor: ->
-        @root_command = new RootCommand()
+        @root_command = new RootCommand(this)
         @db = new bbdb.BBDatabase()
         @_monitor = new monitoring.Monitor(this)
 
@@ -45,7 +45,7 @@ bbserver.Server = class Server
 
         u.set_default_logger logger
 
-        u.announce 'Bubblebot is running!  Send me a PM for me info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() +
+        u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() +
 
         #Handle uncaught exceptions.
         #We want to report them, with a rate limit of 10 per 30 minutes
@@ -625,12 +625,24 @@ class Cancel extends Command
         u.reply 'Cancelled the following:\n\n' + res.join('\n')
 
 
+class Monitor extends Command
+    constructor: (@server) ->
 
+    help_text: 'Prints out monitoring information'
+    params: [
+        {name: 'show policies', type: 'boolean', help: 'If set, shows the monitoring policies instead of the current status'
+    ]
+
+    run: (show_policies) ->
+        if show_policies
+            u.reply @server._monitor.policies()
+        else
+            u.reply @server._monitor.statuses()
 
 
 #The initial command structure for the bot
 class RootCommand extends CommandTree
-    constructor: ->
+    constructor: (@server) ->
         @commands = {}
         @commands.help = new Help(@root_command)
         @commands.env = new EnvTree()
@@ -638,6 +650,7 @@ class RootCommand extends CommandTree
         @commands.servers = new ServersTree()
         @commands.ps = new PS()
         @commands.cancel = new Cancel()
+        @commands.monitor = new Monitor(@server)
 
 
     get_commands: ->
