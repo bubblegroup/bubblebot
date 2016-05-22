@@ -8,7 +8,6 @@ bbserver.Server = class Server
 
         @_registered_tasks = {}
 
-
     #should listen on port 8081 for commands such as shutdown
     start: ->
         server = http.createServer (req, res) =>

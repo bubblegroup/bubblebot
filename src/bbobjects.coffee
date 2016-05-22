@@ -70,7 +70,10 @@ bbobjects.get_bbserver = ->
 
     #Install node and supervisor
     command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
-    software.supervisor('bubblebot', command, config.get('install_directory')).add(software.node('4.4.3')).install(instance)
+
+    to_install = software.supervisor('bubblebot', command, config.get('install_directory'))
+    to_install.add(software.node('4.4.3')).add(software.metrics())
+    to_install.install(instance)
 
     environment.tag_resource(instance.id, config.get('status_tag'), BUILD_COMPLETE)
 

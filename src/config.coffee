@@ -2,6 +2,24 @@ config = exports
 
 _config = null
 
+
+plugins = {}
+
+plugin_names = ['metrics']
+
+#Sets the given plugin
+config.set_plugin = (name, plugin) ->
+    if name not in plugin_names
+        throw new Error 'unrecognized plugin name: ' + name
+    plugins[name] ?= []
+    plugins[name].push plugin
+
+#Gets the plugins installed for the given name
+config.get_plugins = (name) ->
+    if name not in plugin_names
+        throw new Error 'unrecognized plugin name: ' + name
+    return plugins[name] ? []
+
 #Initializes bubblebot with a set of configuration options
 #If options is null, loads the configuration from disk
 config.init = (options) ->

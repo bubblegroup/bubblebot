@@ -95,3 +95,17 @@ software.node = create (version) ->
     return pkg
 
 
+#Installs the server metrics plugin
+software.metrics = create ->
+    metrics_plugins = config.get_plugin 'metrics'
+
+    if metrics_plugins.length is 0
+        u.log 'WARNING: no metrics plugin installed... metrics package will not do anything'
+
+    pkg = new Software()
+    for plugin in metrics_plugins
+        pkg.add plugin.get_server_metrics_software()
+
+    return pkg
+
+
