@@ -416,7 +416,15 @@ bbobjects.User = class User extends BubblebotObject
     add_to_group: (groupname) ->
         if not @exists()
             @create()
+
+        #See if they currently have access to talk to bubblebot
+        can_talk_to_us = @is_in_group bbobjects.BASIC
+
         @set GROUP_PREFIX + groupname, true
+
+        #If they didn't have permission to talk to us, but now do, welcome them!
+        if not can_talk_to_us and @is_in_group bbobjects.BASIC
+            u.message @id, "Hi!  I'm Bubblebot.  Feel free to ask me to do useful stuff.  To start learning about what I can do, type 'help'"
 
     add_to_group_cmd:
         params: [{name: 'groupname', required: true, help: 'The group to add this user to'}]
