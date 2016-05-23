@@ -5,7 +5,7 @@ _config = null
 
 plugins = {}
 
-plugin_names = ['metrics']
+plugin_names = ['metrics', 'alerting']
 
 #Sets the given plugin
 config.set_plugin = (name, plugin) ->

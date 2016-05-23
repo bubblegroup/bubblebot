@@ -129,6 +129,11 @@ monitoring.Monitor = class Monitor
 
         return false
 
+    get_alerting_plugin: (service) ->
+        for plugin in config.get_plugins('alerting')
+            if plugin.name() is service
+                return plugin
+
     report_down: (service, object, downtime) ->
         #Record that we've reported down to this service
         uid = @_get_uid(object)
@@ -144,7 +149,11 @@ monitoring.Monitor = class Monitor
             u.announce 'Monitoring: automatically replacing ' + object
             object.replace()
         else
-            u.report 'Monitoring: unrecognized reporting service ' + service
+            plugin = @get_alerting_plugin(service)
+            if plugin
+                plugin.report_down object, downtime
+            else
+                u.report 'Monitoring: unrecognized reporting service ' + service
 
 
     report_up: (service, object, downtime) ->
@@ -155,7 +164,11 @@ monitoring.Monitor = class Monitor
         else if service is 'replace'
             true #no op
         else
-            u.report 'Monitoring: unrecognized reporting service ' + service
+            plugin = @get_alerting_plugin(service)
+            if plugin
+                plugin.report_up object, downtime
+            else
+                u.report 'Monitoring: unrecognized reporting service ' + service
 
     #Returns a description of the current status of all monitored objects
     statuses: ->
