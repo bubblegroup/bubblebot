@@ -696,6 +696,7 @@ class RootCommand extends CommandTree
         @commands.cancel = new Cancel()
         @commands.monitor = new Monitor(@server)
         @commands.users = new UsersTree()
+        @commands.security_groups = new SecurityGroupsTree()
 
 
     get_commands: ->
@@ -728,6 +729,45 @@ class UsersTree extends CommandTree
         for user in bbobjects.list_users()
             commands[user.id] = user
         return commands
+
+class SecurityGroupsTree extends CommandTree
+    get_commands: ->
+        commands = {}
+
+        #Make sure all the builtin ones exists in the database
+        for groupname, description of bbobjects.BUILTIN_GROUP_DESCRIPTION[groupname]
+            group = bbobjects.instance('SecurityGroup', groupname)
+            if not group.exists()
+                group.create()
+
+        for group in bbobjects.list_all 'SecurityGroup'
+            commands[group.id] = group
+
+        #Creates a new security group
+        commands.new = bbserver.build_command {
+            run: (groupname, about) ->
+                if groupname is 'new'
+                    u.reply 'You are not allowed to name a group "new", sorry'
+                    return
+                new_group = bbobjects.instance('SecurityGroup', groupname)
+                if new_group.exists()
+                    u.reply 'Group ' + groupname + ' already exists'
+                    return
+
+                new_group.create about
+
+            target: null
+
+            params: [
+                {name: 'groupname', required: true, help: 'The name of the group to create'}
+                {name: 'about', required: true, help: 'A description of the purpose of this new group'}
+            ]
+
+            help: 'Creates a new security group'
+        }
+
+        return commands
+
 
 
 bbserver.SHUTDOWN_ACK = 'graceful shutdown command received'

@@ -33,6 +33,12 @@ bbobjects.TRUSTED = 'trusted' #can escalate themselves to admin privileges (noti
 bbobjects.BASIC = 'basic'     #can perform unrestricted commands
 bbobjects.IGNORE = 'ignore'   #bot will ignore requests from this user
 
+BUILTIN_GROUP_DESCRIPTION[bbobjects.ADMIN] = 'Administrators with full control over bubblebot'
+BUILTIN_GROUP_DESCRIPTION[bbobjects.TRUSTED]  = 'Trusted users who are allowed to grant themselves administrative access in an emergency (using the "sudo" command)'
+BUILTIN_GROUP_DESCRIPTION[bbobjects.BASIC] = 'Users who can give commands to bubblebot'
+BUILTIN_GROUP_DESCRIPTION[bbobjects.IGNORE] = 'Users who are ignored by bubblebot'
+
+
 #Returns the bubblebot server (creating it if it does not exist)
 #
 #We do not manage the bubblebot server in the database, since we need to be able to find it
@@ -483,8 +489,8 @@ CONTAINED_PREFIX = 'group_contains_'
 
 #Represents a security group
 bbobjects.SecurityGroup = class SecurityGroup
-    create: ->
-        super null, null, {}
+    create: (about) ->
+        super null, null, {about}
 
     #Adds this security group to a containing group.  Any user in this group
     #will now be counted as part of the containing group
@@ -518,6 +524,28 @@ bbobjects.SecurityGroup = class SecurityGroup
             res.push bbobjects.ADMIN
 
         return (bbobjects.instance 'SecurityGroup', id for id in res)
+
+    #Sets the message that describes what this group is about
+    set_about: (msg) ->
+        if BUILTIN_GROUP_DESCRIPTION[@id]
+            u.reply 'This is a special group defined in the bubblebot code... you are not allowed to change the description'
+            return
+        @set 'about', msg
+
+    set_about_cmd:
+        params: [{name: 'msg', required: true, help: 'The description for this security group'}]
+        help: 'Sets the "about" description for this security group'
+        reply: 'Description set'
+
+    #Returns the message that describes what this group is about
+    about: ->
+        if BUILTIN_GROUP_DESCRIPTION[@id]
+            return BUILTIN_GROUP_DESCRIPTION[@id]
+        return @get('about') ? 'No description for this group yet.  Set one with "set_about"'
+
+    about_cmd:
+        help: 'Gets a description of this security group'
+        reply: true
 
 
 #If the user enters a really high value for hours, double-checks to see if it is okay
