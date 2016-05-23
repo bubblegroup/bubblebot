@@ -37,7 +37,7 @@ BUILTIN_GROUP_DESCRIPTION[bbobjects.ADMIN] = 'Administrators with full control o
 BUILTIN_GROUP_DESCRIPTION[bbobjects.TRUSTED]  = 'Trusted users who are allowed to grant themselves administrative access in an emergency (using the "sudo" command)'
 BUILTIN_GROUP_DESCRIPTION[bbobjects.BASIC] = 'Users who can give commands to bubblebot'
 BUILTIN_GROUP_DESCRIPTION[bbobjects.IGNORE] = 'Users who are ignored by bubblebot'
-
+bbobjects.BUILTIN_GROUP_DESCRIPTION = BUILTIN_GROUP_DESCRIPTION
 
 #Returns the bubblebot server (creating it if it does not exist)
 #
@@ -468,6 +468,13 @@ bbobjects.User = class User extends BubblebotObject
             if not checked[sub_group.id]
                 if @is_in_group sub_group.id
                     return true
+
+        #If this is the admin group we are checking, see if the user has sudo privileges
+        if groupname is bbobjects.ADMIN
+            sudo_time = @get 'sudo'
+            if sudo_time and sudo_time > Date.now() - 30 * 60 * 1000
+                return true
+
         return false
 
     remove_from_group_cmd:

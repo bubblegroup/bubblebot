@@ -683,6 +683,25 @@ class Monitor extends Command
         else
             u.reply @server._monitor.statuses()
 
+            '
+class Sudo extends Command
+    constructor: ->
+
+    help: 'Temporarily grants adminstrative access... for use in emergencies if an adminstrator is not available'
+
+    questions: -> {
+        name: 'confirm'
+        type: 'boolean'
+        help: 'This will let you run dangerous commands for the next 30 minutes or until bubblebot restarts.  It should only be used if an administrator is not available.  Are you sure?'
+    }
+
+    run: (confirm) ->
+        if not confirm
+            u.reply 'Okay, aborting'
+            return
+        u.notify 'Warning!  User ' + u.current_user() + ' just ran "sudo"'
+        u.current_user().set 'sudo', Date.now()
+        u.reply 'Okay, you now have temporary administrator privileges'
 
 #The initial command structure for the bot
 class RootCommand extends CommandTree
