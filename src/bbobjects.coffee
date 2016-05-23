@@ -446,6 +446,7 @@ bbobjects.User = class User extends BubblebotObject
         help: 'Adds this user to a given security group'
         reply: 'Added successfully'
         groups: bbobjects.TRUSTED
+        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
 
     #Removes this user from the given group
     remove_from_group: (groupname) ->
@@ -458,6 +459,7 @@ bbobjects.User = class User extends BubblebotObject
         help: 'Removes this user from a given security group'
         reply: 'Removed successfully'
         groups: bbobjects.TRUSTED
+        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
 
     #Checks if this user is in a given group
     is_in_group: (groupname, checked) ->
@@ -488,7 +490,7 @@ bbobjects.User = class User extends BubblebotObject
 
         return false
 
-    remove_from_group_cmd:
+    is_in_group_cmd:
         params: [{name: 'groupname', required: true, help: 'The group to check'}]
         help: 'Checks to see if this user is in a given security group'
         reply: true
@@ -521,6 +523,16 @@ bbobjects.SecurityGroup = class SecurityGroup
 
         containing.set CONTAINED_PREFIX + @id, true
 
+    add_to_group_cmd:
+        params: [{name: 'groupname', required: true, help: 'The group to add this group to'}]
+
+        help: "Adds this security group to a containing group.  Any user in this group
+        will now be counted as part of the containing group"
+
+        reply: 'Added succesfully'
+        groups: bbobjects.TRUSTED
+        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
+
     #Removes this security group from a containing group
     remove_from_group: (groupname) ->
         containing = bbobjects.instance 'SecurityGroup', groupname
@@ -528,6 +540,17 @@ bbobjects.SecurityGroup = class SecurityGroup
             containing.create()
 
         containing.set CONTAINED_PREFIX + @id, false
+
+    remove_from_group_cmd:
+        params: [{name: 'groupname', required: true, help: 'The group to remove this group from'}]
+
+        help: "Removes this security group from a containing group."
+
+        reply: 'Removed succesfully'
+
+        groups: bbobjects.TRUSTED
+
+        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
 
     #Returns an array of all the groups contained by this group
     contained_groups: ->
@@ -544,6 +567,11 @@ bbobjects.SecurityGroup = class SecurityGroup
             res.push bbobjects.ADMIN
 
         return (bbobjects.instance 'SecurityGroup', id for id in res)
+
+    contained_groups_cmd:
+        help: 'Lists the groups directly contained by this group (does not list sub-sub-groups)'
+        reply: true
+        groups: bbobjects.TRUSTED
 
     #Sets the message that describes what this group is about
     set_about: (msg) ->
