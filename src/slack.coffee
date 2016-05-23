@@ -155,9 +155,25 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             block.wait()
 
 
-    #Sends a PM to admin users
+    #Sends a PM to admin users.  We rate-limit this to avoid spamming admins if
+    #something goes wrong
     report: (msg) ->
         u.ensure_fiber =>
+
+            #Enforce rate limit
+            if @rate_limit_on
+                return
+
+            #We wont to allow 10 reports per 30 minutes
+            @rate_limit_count ?= 0
+            @rate_limit_count++
+            if @rate_limit_count is 10
+                @rate_limit_on = true
+                setTimeout =>
+                    @rate_limit_count = 0
+                    @rate_limit_on = false
+                , 30 * 60 * 1000
+
             admin_ids = @server.get_admins()
             try
                 for id in admin_ids

@@ -16,7 +16,6 @@ send_to_pagerduty = (body) ->
     if not (200 <= res.statusCode <= 299)
         msg = 'Error reporting incident to pagerduty: ' + res.statusCode + ' ' + res.body
         u.report msg
-        u.announce msg
 
 pagerduty.report_down = (object, downtime) -> send_to_pagerduty {
     service_key: get_service_key()
