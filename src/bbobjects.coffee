@@ -88,6 +88,9 @@ bbobjects.get_bbserver = ->
 #Returns all the objects of a given type
 bbobjects.list_all = (type) -> (bbobjects.instance type, id for id in u.db().list_objects type)
 
+#Returns all the users.  We get the list of ids from slack rather than from the database
+bbobjects.list_users = (bbobjects.instance 'User', slack_user.id for slack_user in u.context().server.slack_client.get_all_users() ? [])
+
 
 #Returns all the environments in our database
 bbobjects.list_environments = -> bbobjects.list_all 'Environment'

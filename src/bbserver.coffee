@@ -695,6 +695,7 @@ class RootCommand extends CommandTree
         @commands.ps = new PS()
         @commands.cancel = new Cancel()
         @commands.monitor = new Monitor(@server)
+        @commands.users = new UsersTree()
 
 
     get_commands: ->
@@ -720,6 +721,13 @@ class ServersTree extends CommandTree
             commands[instance.id] = instance
         return commands
 
+#A command tree that lets you navigate users
+class UsersTree extends CommandTree
+    get_commands: ->
+        commands = {}
+        for user in bbobjects.list_users()
+            commands[user.id] = user
+        return commands
 
 
 bbserver.SHUTDOWN_ACK = 'graceful shutdown command received'
