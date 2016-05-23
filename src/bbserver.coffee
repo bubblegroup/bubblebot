@@ -270,8 +270,13 @@ bbserver.CommandTree = class CommandTree
         #Go through and look for functions that we want to expose as commands
         for k, v of this
             if typeof(v) is 'function' and @[k + '_cmd']?
-               cmd = bbserver.build_command u.extend {run: v.bind(this), target: this}, @[k + '_cmd']
-               @add k, cmd
+                #if we specify raw, we assume the function should be immediately called with
+                #this, and the return result is a command or a command tree
+                if @[k + '_cmd'] is 'raw'
+                    @add k, v.call(this)
+                else
+                    cmd = bbserver.build_command u.extend {run: v.bind(this), target: this}, @[k + '_cmd']
+                    @add k, cmd
 
     get_commands: -> @subcommands
 
@@ -373,14 +378,16 @@ bbserver.build_command = (options) ->
         old_run = options.run
         options.run = (args...) ->
             res = old_run args...
-            if typeof options.reply is 'string'
-                u.reply options.reply
+            if typeof(options.reply) is 'string'
+                return u.reply options.reply
+
+            if typeof(options.reply) is 'function'
+                res = options.reply.call options.target, res
+            message = bbserver.pretty_print(res)
+            if message.indexOf('\n') is -1
+                u.reply 'Result: ' + message
             else
-                message = bbserver.pretty_print(res)
-                if message.indexOf('\n') is -1
-                    u.reply 'Result: ' + message
-                else
-                    u.reply 'Result:\n' + message
+                u.reply 'Result:\n' + message
 
     u.extend cmd, options
     return cmd

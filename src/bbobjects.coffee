@@ -857,6 +857,31 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
         super environment.type, environment.id
 
+    #Returns a command tree allowing access to each test
+    tests: ->
+        tree = new CommandTree()
+        tree.get_commands = ->
+            res = {}
+            for test in @template().get_tests()
+                res[test.id] = test
+            return res
+        return tree
+
+    tests_cmd: 'raw'
+
+    #Returns a human-readable display of this version
+    about_version: (version) ->
+        res = @template().codebase().pretty_print version
+        for test in @template().get_tests()
+            if test.is_tested version
+                res += 'Test ' + test.id + ': passed'
+        return res
+
+    about_version:
+        params: [{name: 'version', required: 'true', help: 'The version to display'}]
+        help_text: 'Returns information about this version.'
+        reply: true
+
     #Checks if we are still using this instance
     should_delete: (ec2instance) ->
         #If we are active, delete any expiration time, and don't delete
@@ -946,7 +971,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     version_cmd:
         help_text: 'Returns the current version of this service'
-        reply: true
+        reply: (version) -> @template().codebase().pretty_print version
 
     #On startup, we make sure we are monitoring this
     startup: ->
@@ -1130,6 +1155,61 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     #Returns a list of valid sizes for this build.  Can optionally pass in an object
     #that we use to look at for more details (ie, whether or not it is production, etc.)
     valid_sizes: (instance) -> @template().valid_sizes instance
+
+
+bbobjects.Test = class Test extends BubblebotObject
+    #Creates in the database
+    create: ->
+        templates.verify 'Test', @id
+        super null, null, {}
+
+    template: -> templates[@id] ? throw new Error 'could not find Test template with id ' + @id
+
+    is_tested: (version) -> u.db().find_entries('Test_Passed', @id, version).length > 0
+
+    #Runs the tests against this version
+    run: (version) ->
+        u.reply 'Running test ' + @id + ' on version ' + version
+        result = @template().run version
+        if result
+            u.reply 'Test ' + @id + ' passed on version ' + version
+            @mark_tested version
+        else
+            u.reply 'Test ' + @id + ' failed on version ' + version
+
+    #Returns an array of the last n_entries versions that passed the tests.  Does not count tests marked
+    #as skip_tests unless include_skipped is set to true
+    good_versions: (n_entries, include_skipped) ->
+        versions = u.db().recent_history 'Test_Passed', @id, n_entries
+        return (reference for {reference, properties} in versions when included_skipped or not properties?.skip_tests)
+
+    good_versions_cmd:
+        params: [
+            {name: 'n_entries', type: 'number', default: 10, help: 'Number of entries to return.  May return less if not including ones where we skipped the test'}
+            {name: 'include_skipped', type: 'boolean', default: false, help: 'If set, includes versions where tests were skipped instead of being run'}
+        ]
+        reply: true
+
+
+    run_cmd:
+        params: [{name: 'version', required: true, help: 'The version of the codebase to run this test against'}]
+        help_text: 'Runs this test against the given version'
+
+    #Marks this version as tested without actually running the tests
+    skip_tests: (version) ->
+        u.db().add_history 'Test_Passed', @id, version, {skip_tests: true}
+
+    skip_tests_cmd:
+        help_text: 'Marks this version as tested without actually running the tests'
+        params: [{name: 'version', required: true, help: 'The version of the codebase to mark as tested'}]
+        reply: 'Version marked as tested'
+
+    mark_tested: (version) ->
+        u.db().add_history 'Test_Passed', @id, version
+
+    #Called to erase a record of a successful test pass
+    mark_untested: (version) ->
+        u.db().delete_entries 'Test_Passed', @id, version
 
 
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject

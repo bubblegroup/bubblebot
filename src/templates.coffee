@@ -6,7 +6,7 @@ interfaces =
     Environment: ['initialize']
     Service: ['codebase', 'get_tests', 'deploy']
     Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge']
-    Test: ['is_tested', 'run', '_run', 'mark_tested', 'mark_untested']
+    Test: ['run']
     EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size']
 
 
@@ -359,6 +359,8 @@ templates.GitCodebase = class GitCodebase
         else
             return null
 
+    pretty_print: (version) -> @repo.display_commit version
+
 #Implements the codebase interface using multiple git repositories.  A version is defined
 #as a space-separated list of commits in the order that the repos are passed in to the constructor
 templates.MultiGitCodebase = class MultiGitCodebase
@@ -408,32 +410,18 @@ templates.MultiGitCodebase = class MultiGitCodebase
             results.push res.commit
         return results.join(' ')
 
+    pretty_print: (version) ->
+        version = version.split(' ')
+        return (repo.display_commit version[idx] for repo, idx in @repos).join('\n')
+
 
 #Base class for building tests.  Tests should have a globally-unique id that we use
 #to store results in the database
 #
-#children should define _run(version) -> which executes the test and returns true / false
+#children should define run(version) -> which executes the test and returns true / false
 #based on success or failure status
 class templates.Test = class Test
     constructor: (@id) ->
-
-    is_tested: (version) -> u.db().find_entries('Test_Passed', @id, version).length > 0
-
-    run: (version) ->
-        u.reply 'Running test ' + @id + ' on version ' + version
-        result = @_run version
-        if result
-            u.reply 'Test ' + @id + ' passed on version ' + version
-            @mark_tested version
-        else
-            u.reply 'Test ' + @id + ' failed on version ' + version
-
-    mark_tested: (version) ->
-        u.db().add_history 'Test_Passed', @id, version
-
-    #Called to erase a record of a successful test pass
-    mark_untested: (version) ->
-        u.db().delete_entries 'Test_Passed', @id, version
 
 
 #Base class for creating EC2Build templates
