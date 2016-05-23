@@ -857,6 +857,66 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         return eip_instance
 
+    #Gets a credential set for this environment, creating it if it does not exist
+    get_credential_set: (set_name) ->
+        set = bbobjects.instance 'CredentialSet', @id + '_' + set_name
+        if not set.exists()
+            set.create this
+        return set
+
+    #Retrieves a credential from this environment
+    get_credential: (set_name, name) -> @get_credential_set(set_name).get_credential(name)
+
+    get_credential_cmd:
+        params: [
+            {name: 'set_name', required: true, help: 'The name of the credential-set to retrieve'}
+            {name: 'name', required: true, help: 'The name of the credential to retrieve'}
+        ]
+        help_text: 'Retrieves a credential for this environment.  Use with caution!'
+
+    #Sets a credential for this environment
+    set_credential: (set_name, name, value, overwrite) ->
+        @get_credential_set(set_name).set_credential(name, value, overwrite)
+
+    set_credential_cmd:
+        params: [
+            {name: 'set_name', required: true, help: 'The name of the credential-set to set'}
+            {name: 'name', required: true, help: 'The name of the credential to set'}
+            {name: 'value', required: true, help: 'The value to set the credential to'}
+            {name: 'overwrite', type: 'boolean', help: 'If set, overrides an existing credential with that name'}
+        ]
+        help_text: 'Sets a credential for this environment'
+
+
+
+
+#Represents a collection of (possibly secure) credentials
+bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
+    #Adds it to the database
+    create: (environment) ->
+        prefix = environment.id + '_'
+        if @id.indexOf(prefix) isnt 0
+            throw new Error 'CredentialSet ids should be of the form [environment id]_[set name]'
+        super parent.type, parent.id
+
+    set_name: ->
+        prefix = environment.id + '_'
+        return @id[prefix.length...]
+
+    set_credential: (name, value, overwrite) ->
+        if not overwrite
+            prev = @get 'credential_' + name
+            if prev
+                if not bbserver.do_cast 'boolean', u.ask 'There is already a credential for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name + '.  Are you sure you want to overwrite it?'
+                    u.reply 'Okay, aborting'
+                    return
+        @set 'credential_' + name, value
+        msg = 'Credential set for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name
+        u.announce msg
+        u.reply msg
+
+    get_credential: (name) ->
+        @get 'credential_' + name
 
 
 bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
