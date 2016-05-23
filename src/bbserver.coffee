@@ -71,11 +71,20 @@ bbserver.Server = class Server
             @start_task_engine()
         , 10 * 1000
 
-        #Tell the environments to start themselves up
+        #Tell the various objects to start themselves up
         u.SyncRun =>
             @build_context('startup')
-            for environment in bbobjects.list_environments()
-                @startup()
+
+            #Make a list of each type that has a startup function
+            for typename, cls in bbobjects
+                if typeof(cls::startup) is 'function'
+                    u.log 'Startup: loading ' + typename + 's...'
+                    for id in u.db().list_objects typename
+                        u.log 'Startup: sending startup() to ' + id
+                        try
+                            bbobjects.instance(typename, id).startup()
+                        catch err
+                            u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
 
     #Returns the list of admins.  Defaults to the owner of the slack channel.
     #TODO: allow this to be modified and saved in the db.

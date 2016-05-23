@@ -7,7 +7,7 @@ interfaces =
     Service: ['codebase', 'get_tests', 'deploy']
     Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge']
     Test: ['run']
-    EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size']
+    EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size', 'get_replacement_interval']
 
 
 
@@ -498,5 +498,8 @@ class templates.EC2Build = class EC2Build
         'g2.2xlarge'
         'g2.8xlarge	'
     ]
+
+    #How often to replace the AMIs for this build
+    get_replacement_interval: -> 24 * 60 * 60 * 1000
 
 

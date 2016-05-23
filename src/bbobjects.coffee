@@ -195,14 +195,16 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
         return u.extend {}, children, template_commands, @subcommands
 
+    #Schedule a method of this object as a recurring task.  Idempotent operation; we schedule
+    #at most one [method, object, variant] combination.  variant is an optional and exists to
+    #allow multiple schedules / property combinations for the same method.
+    schedule_recurring: (method, properties, interval, variant) ->
+        schedule_name = 'call_object_method.' + @type + '.' + @id + '.' + method + '.' + (variant ? '')
+        u.context().server.schedule_recurring schedule_name, interval, 'call_object_method', {object_type: @type, object_id: @id, method, properties}
 
-    #Gets called when we start the server up.  Recursively calls on children.
-    #Children should call super() to continue recursion, and perform any startup logic
-    #such as setting up monitoring
-    #
-    #We also call this in @create, by default, so should be idempotent to be safe
-    startup: ->
-        child.startup() for child in @children()
+    #Schedule a method of this object as a one time task
+    schedule_once: (method, properties, timeout) ->
+        u.context().server.schedule_once timeout, 'call_object_method', {object_type: @type, object_id: @id, method, properties}
 
 
     #If we want to call a command added via a template from our own code, this returns
@@ -1001,9 +1003,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         reply: (version) -> @template().codebase().pretty_print version
 
     #On startup, we make sure we are monitoring this
-    startup: ->
-        super()
-        u.context().server.monitor this
+    startup: -> u.context().server.monitor this
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: -> @template().get_monitoring_policy this
@@ -1109,6 +1109,16 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         help_text: 'Retrieves the current AMI for this build in the given region.  If one does not exist, creates it.'
         reply: true
 
+    #Make sure we are scheduling replacing
+    startup: ->
+        interval = @template().get_replacement_interval()
+        if interval
+            @schedule_recurring 'replace_ami_all', {}, interval
+
+    #Replaces the AMI for all active regions
+    replace_ami_all: ->
+        for region in bbobjects.list_regions()
+            @replace_ami(region)
 
     #Replaces the ami for this region
     replace_ami: (region) ->

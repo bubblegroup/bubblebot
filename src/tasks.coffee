@@ -90,7 +90,9 @@ tasks.builtin.audit_instances = ({auto_delete_mode}) ->
         u.report "There are some instances that look like they should be deleted.
         To autodelete them, set bubblebot configuration setting audit_instances_autodelete to true.  They are:\n\n" + msg
 
-
+#Generic task for calling a method on an object
+tasks.builtin.call_object_method = ({object_type, object_id, method, properties}) ->
+    bbobjects.instance(object_type, object_id)[method] properties
 
 
 bbobjects = require './bbobjects'
