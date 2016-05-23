@@ -517,7 +517,55 @@ bbserver.Command = class Command
         #can see what we were called with
         u.context().command = {path: prev_args, args: processed_args}
 
+        msg = @check_privilege processed_args
+        if msg
+            u.reply msg
+            return
+
         @run processed_args
+
+    #Checks to see if you have the right to run this command.  Returns a message if you
+    #aren't, or nll if you are
+    check_privilege: (processed_args) ->
+        #figure out what groups are allowed to call this command
+        groups = @groups
+
+        #If groups is a function, call it
+        if typeof(groups) is 'function'
+            groups.apply @target, processed_args
+
+        #if groups is as string, turn it into an array
+        if typeof(groups) is 'string'
+            groups = [groups]
+
+        #if groups is null, assume a) that it requires admin permissions, and b) that it is dangerous
+        if not groups?
+            groups = [bbobjects.ADMIN]
+            dangerous = true
+
+        #otherwise, see if dangerous is defined
+        else
+            dangerous = @dangerous
+            if typeof(dangerous) is 'function'
+                dangerous = dangerous.apply @target, processed_args
+
+        #Go through the allowed groups and see if the user belongs to any of them
+        current_user = u.current_user()
+        found = false
+        for group in groups
+            if current_user.is_in_group group
+                found = true
+                break
+        if not found
+            return "Sorry, you apparently aren't authorized to do that"
+
+        #If dangerous is true, make the user confirm
+        if dangerous
+            if not bbserver.do_cast 'boolean', u.ask 'This is a dangerous operation.  Are you sure you want to continue?'
+                return 'Okay, aborting'
+
+        #Indicate the user can proceed
+        return null
 
     #For compatibility with the CommandTree interface... if we try to navigate into
     #a sub-command, it just returns the current command.
