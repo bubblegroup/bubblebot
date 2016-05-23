@@ -763,7 +763,7 @@ class Sudo extends Command
     questions: -> {
         name: 'confirm'
         type: 'boolean'
-        help: 'This will let you run dangerous commands for the next 30 minutes or until bubblebot restarts.  It should only be used if an administrator is not available.  Are you sure?'
+        help: 'This will let you run dangerous commands for the next 30 minutes.  It should only be used if an administrator is not available.  Are you sure?'
     }
 
     run: (confirm) ->
