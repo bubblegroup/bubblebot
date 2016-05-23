@@ -75,6 +75,9 @@ bbserver.Server = class Server
         u.SyncRun =>
             @build_context('startup')
 
+            #Make sure we have at least one user who is an admin
+            @get_admins()
+
             #Make a list of each type that has a startup function
             for typename, cls in bbobjects
                 if typeof(cls::startup) is 'function'
@@ -86,9 +89,17 @@ bbserver.Server = class Server
                         catch err
                             u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
 
-    #Returns the list of admins.  Defaults to the owner of the slack channel.
-    #TODO: allow this to be modified and saved in the db.
-    get_admins: -> [@slack_client.get_slack_owner()]
+    #Returns an array of all the admin users.  If we don't have any admin users,
+    #we set the owner of the slack channel as an admin user
+    get_admins: ->
+        admin_users = (user for user in bbobjects.list_all('User') when user.is_in_group(bbobjects.ADMIN))
+        if admin_users.length > 0
+            return admin_users
+
+        #No admins found, so make the slack owner an admin
+        owner = bbobjects.instance 'User', @slack_client.get_slack_owner()
+        owner.add_to_group bbobjects.ADMIN
+        return [owner]
 
     #Loads pre-built tasks and schedules
     load_tasks: ->
@@ -210,6 +221,21 @@ bbserver.Server = class Server
             context.orginal_message = msg
             context.current_user = -> bbobjects.instance 'User', user_id
 
+            #If we are not in the basic group, we are not allowed to talk to the bot
+            current_user = context.current_user()
+            if not current_user.is_in_group bbobjects.BASIC
+                #if we are not in the ignore group, and we haven't been reported to the admins
+                #yet, let them know we have a new user
+                @_reported_new_users ?= {}
+                if not @_reported_new_users[current_user.id]
+                    @_reported_new_users[current_user.id] = true
+                    if not current_user.is_in_group bbobjects.IGNORE
+                        u.report 'A new user is attempting to talk to bubblebot.  The user is ' + current_user + '.  Consider adding to a security group, such as ' + [bbobjects.ADMIN, bbobjects.TRUSTED, bbobjects.BASIC, bbobjects.IGNORE].join(', ')
+
+                u.log 'Ignoring command from unauthorized user ' + current_user
+                return
+
+
             try
                 args = parse_command msg
                 u.context().parsed_message = args
@@ -226,8 +252,11 @@ bbserver.Server = class Server
                     u.reply 'Cancelled (via the cancel cmd): ' + cmd
                 else
                     u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
-                    if context.user_id not in @get_admins()
-                        u.report 'User ' + @get_user_info(context.user_id).name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
+                    if context.user_id
+                        current_user = bbobjects.instance('User', context.user_id)
+                    if not current_user?.is_in_group(bbobjects.ADMIN)
+                        name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
+                        u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
 
 
 
@@ -375,7 +404,7 @@ bbserver.pretty_print = (obj, indent = 0) ->
 
 
 #Helper function for building new commands.  Options should contain run,
-#and optionally help_text, params and additional_params, which are passed
+#and optionally help, params and additional_params, which are passed
 #straight through to class Command below.
 #
 #Can also add a reply parameter.  If true, will reply with the return value (after
@@ -509,7 +538,7 @@ bbserver.Command = class Command
         return res
 
     get_help: (prev) ->
-        res = 'Usage:\n\n' + prev + ' ' + @display_args() + '\n\n' + (@help_text ? '')
+        res = 'Usage:\n\n' + prev + ' ' + @display_args() + '\n\n' + (@help ? '')
         res += '\n'
         for param in @params
             if param.required
@@ -535,7 +564,7 @@ bbserver.Command = class Command
 class Help extends Command
     additional_params: {name: 'commands'}
 
-    help_text: "Displays help for the given command.  'help' by itself will display the
+    help: "Displays help for the given command.  'help' by itself will display the
     list of top-level commands, 'help my_command my_subcommand' will display more information
     about that particular subcommand"
 
@@ -554,7 +583,7 @@ class Help extends Command
         return
 
 class New extends Command
-    help_text: 'Creates a new environment'
+    help: 'Creates a new environment'
     params: [
         {name: 'id', type: 'string', required: true, help:"The id of the new environment"}
         {name: 'template', type: 'string', required: true, help: "The environment template to use to build this environment.  Pass 'blank' to create an empty environment"}
@@ -592,7 +621,7 @@ get_full_fiber_display = (fiber) -> fiber._fiber_id + get_fiber_user(fiber) + ':
 
 #Command for listing all ongoing processes
 class PS extends Command
-    help_text: 'List currently running commands'
+    help: 'List currently running commands'
     params: [
         {name: 'all', type: 'boolean', help: 'If true, lists commands by other users, not just you'}
     ]
@@ -617,7 +646,7 @@ class PS extends Command
         u.reply res.join('\n')
 
 class Cancel extends Command
-    help_text: 'Cancels running commands.  By default, cancels all commands that you started'
+    help: 'Cancels running commands.  By default, cancels all commands that you started'
     params: [
         {name: 'command', type: 'number', help: 'The number of the specific command to cancel'}
     ]
@@ -643,7 +672,7 @@ class Cancel extends Command
 class Monitor extends Command
     constructor: (@server) ->
 
-    help_text: 'Prints out monitoring information'
+    help: 'Prints out monitoring information'
     params: [
         {name: 'show policies', type: 'boolean', help: 'If set, shows the monitoring policies instead of the current status'
     ]

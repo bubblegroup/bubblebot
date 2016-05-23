@@ -174,7 +174,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
                     @rate_limit_on = false
                 , 30 * 60 * 1000
 
-            admin_ids = @server.get_admins()
+            admin_ids = (admin.id for admin in @server.get_admins())
             try
                 for id in admin_ids
                     u.retry =>

@@ -322,7 +322,7 @@ templates.SingleBoxService = class SingleBoxService
         return size
 
     get_size_cmd:
-        help_text: 'Gets the size of the box for this service'
+        help: 'Gets the size of the box for this service'
         reply: true
 
     #Sets the size of the box for this service
@@ -335,7 +335,7 @@ templates.SingleBoxService = class SingleBoxService
 
     set_size_cmd:
         params: [{name: 'new_size', type: 'number', required: true}]
-        help_text: 'Sets the size of the box for this service'
+        help: 'Sets the size of the box for this service'
         reply: 'Size successfully set'
 
 
