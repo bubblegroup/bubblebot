@@ -172,10 +172,10 @@ templates.Service = class Service
         instance.set 'version', version
 
         #update history...
-        instance.add_history 'deploy', version
+        instance.add_history 'deploy', version, {username: u.current_user().name(), deployment_message, rollback}
 
         #Notify re: the deployment
-        u.announce u.current_user().name() ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now...'
+        u.announce u.current_user().name() ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.  Deployment message: ' + deployment_message
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
         #Replace the existing servers with the new version

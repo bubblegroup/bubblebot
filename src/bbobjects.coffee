@@ -312,7 +312,19 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Adds an item to the history of this object
     add_history: (event_type, reference, properties) ->
-        u.db().add_history @history_type(), @id, reference, properties
+        u.db().add_history @history_type(event_type), @id, reference, properties
+
+    #delete an item from the history of this object
+    delete_entries: (event_type, reference) ->
+        u.db().delete_entries @history_type(event_type), @id, reference
+
+    #finds items in the history of this object
+    find_entries: (event_type, reference) ->
+        u.db().find_entries @history_type(event_type), @id, reference
+
+    #Lists the last n_entries in the history of this object
+    recent_history: (event_type, n_entries) ->
+        u.db().recent_history @history_type(event_type), @id, n_entries
 
     #Returns the user who created this
     creator: ->
@@ -882,6 +894,21 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         help_text: 'Returns information about this version.'
         reply: true
 
+    #Returns the deployment history for this service
+    deploy_history: (n_entries) ->
+        u.db().recent_history 'deploy', n_entries
+
+    deploy_history_cmd:
+        params: [{name: 'n_entries', type: 'number', default: 10, help: 'The number of entries to return'}]
+        help_text: 'Prints the recent deployment history for this service'
+        reply: (entries) ->
+            formatted = []
+            for {timestamp, reference, properties: {username, deployment_message, rollback}} in entries
+                entry = new Date(timestamp) + ' ' + username + ' ' + reference
+                entry += '\n' + (if rollback then '(ROLLBACK) ' else '') + deployment_message
+                formatted.push entry
+            return formatted.join('\n\n')
+
     #Checks if we are still using this instance
     should_delete: (ec2instance) ->
         #If we are active, delete any expiration time, and don't delete
@@ -1165,7 +1192,7 @@ bbobjects.Test = class Test extends BubblebotObject
 
     template: -> templates[@id] ? throw new Error 'could not find Test template with id ' + @id
 
-    is_tested: (version) -> u.db().find_entries('Test_Passed', @id, version).length > 0
+    is_tested: (version) -> @find_entries('test_passed', version).length > 0
 
     #Runs the tests against this version
     run: (version) ->
@@ -1180,7 +1207,7 @@ bbobjects.Test = class Test extends BubblebotObject
     #Returns an array of the last n_entries versions that passed the tests.  Does not count tests marked
     #as skip_tests unless include_skipped is set to true
     good_versions: (n_entries, include_skipped) ->
-        versions = u.db().recent_history 'Test_Passed', @id, n_entries
+        versions = u.db().recent_history 'test_passed', n_entries
         return (reference for {reference, properties} in versions when included_skipped or not properties?.skip_tests)
 
     good_versions_cmd:
@@ -1190,14 +1217,13 @@ bbobjects.Test = class Test extends BubblebotObject
         ]
         reply: true
 
-
     run_cmd:
         params: [{name: 'version', required: true, help: 'The version of the codebase to run this test against'}]
         help_text: 'Runs this test against the given version'
 
     #Marks this version as tested without actually running the tests
     skip_tests: (version) ->
-        u.db().add_history 'Test_Passed', @id, version, {skip_tests: true}
+        @add_history 'test_passed', version, {skip_tests: true}
 
     skip_tests_cmd:
         help_text: 'Marks this version as tested without actually running the tests'
@@ -1205,11 +1231,11 @@ bbobjects.Test = class Test extends BubblebotObject
         reply: 'Version marked as tested'
 
     mark_tested: (version) ->
-        u.db().add_history 'Test_Passed', @id, version
+        @add_history 'test_passed', version
 
     #Called to erase a record of a successful test pass
     mark_untested: (version) ->
-        u.db().delete_entries 'Test_Passed', @id, version
+        @delete_entries 'test_passed', version
 
 
 bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
