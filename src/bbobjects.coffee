@@ -249,6 +249,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         params: [{name: 'type', help: 'If specified, searches up the parent tree til it finds this type'}]
         help: 'finds either the immediate parent, or an ancestor of a given type'
         reply: true
+        groups: bbobjects.BASIC
 
     #Returns the immediate children of this object, optionally filtering by child type
     children: (child_type) ->
@@ -259,12 +260,14 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         params [{name: 'child_type', help: 'If specified, filters to the given type'}]
         help: 'lists all the children of this object.  to access a specific child, use the "child" command'
         reply: true
+        groups: bbobjects.BASIC
 
     #Retrieves the environment that this is in
     environment: -> @parent 'Environment'
 
     environment_cmd:
         help: 'returns the environment that this is in'
+        groups: bbobjects.BASIC
 
     #Gets the given property of this object
     get: (name) ->
@@ -354,6 +357,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     creator_cmd:
         help: 'Gets the user who created this'
         reply: true
+        groups: bbobjects.BASIC
 
     #Returns the user who owns this
     owner: ->
@@ -364,6 +368,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     owner_cmd:
         help: 'Gets the user who owns this'
         reply: true
+        groups: bbobjects.BASIC
 
     #Prints out a multi line human readable description
     describe: ->
@@ -386,6 +391,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     describe_cmd:
         help: 'Describes this'
         reply: true
+        groups: bbobjects.BASIC
 
 
 GROUP_PREFIX = 'group_member_'
@@ -405,18 +411,21 @@ bbobjects.User = class User extends BubblebotObject
     name_cmd:
         help: 'shows the name of this user'
         reply: true
+        groups: bbobjects.BASIC
 
     profile: -> @slack().get_user_info().profile
 
     profile_cmd:
         help: 'shows the slack profile for this user'
         reply: true
+        groups: bbobjects.BASIC
 
     slack_info: -> @slack().get_user_info()
 
     slack_info_cmd:
         help: 'shows all the slack data for this user'
         reply: true
+        groups: bbobjects.BASIC
 
     #Adds this user to a security group
     add_to_group: (groupname) ->
@@ -436,6 +445,7 @@ bbobjects.User = class User extends BubblebotObject
         params: [{name: 'groupname', required: true, help: 'The group to add this user to'}]
         help: 'Adds this user to a given security group'
         reply: 'Added successfully'
+        groups: bbobjects.TRUSTED
 
     #Removes this user from the given group
     remove_from_group: (groupname) ->
@@ -447,6 +457,7 @@ bbobjects.User = class User extends BubblebotObject
         params: [{name: 'groupname', required: true, help: 'The group to remove this user from'}]
         help: 'Removes this user from a given security group'
         reply: 'Removed successfully'
+        groups: bbobjects.TRUSTED
 
     #Checks if this user is in a given group
     is_in_group: (groupname, checked) ->
@@ -481,6 +492,7 @@ bbobjects.User = class User extends BubblebotObject
         params: [{name: 'groupname', required: true, help: 'The group to check'}]
         help: 'Checks to see if this user is in a given security group'
         reply: true
+        groups: bbobjects.TRUSTED
 
     #Returns all the groups this user is directly a member of
     list_groups: ->
@@ -491,6 +503,7 @@ bbobjects.User = class User extends BubblebotObject
     list_groups_cmd:
         help: 'Lists all the groups this user is directly a member of'
         reply: true
+        groups: bbobjects.TRUSTED
 
 CONTAINED_PREFIX = 'group_contains_'
 
@@ -543,6 +556,7 @@ bbobjects.SecurityGroup = class SecurityGroup
         params: [{name: 'msg', required: true, help: 'The description for this security group'}]
         help: 'Sets the "about" description for this security group'
         reply: 'Description set'
+        groups: bbobjects.TRUSTED
 
     #Returns the message that describes what this group is about
     about: ->
@@ -553,6 +567,7 @@ bbobjects.SecurityGroup = class SecurityGroup
     about_cmd:
         help: 'Gets a description of this security group'
         reply: true
+        groups: bbobjects.TRUSTED
 
 
 #If the user enters a really high value for hours, double-checks to see if it is okay
@@ -583,6 +598,24 @@ bbobjects.Environment = class Environment extends BubblebotObject
         vpc: @get_vpc()
     }
 
+    #Returns true if this is a development environment.  Preferable to check if things
+    #are development rather than production because for a lot of things (like displaying
+    #credentials, for instance) we want to treat QA like production
+    is_development: -> @get('type') is DEV
+
+    is_development_cmd:
+        help: 'Displays whether this is a development environment'
+        reply: true
+        groups: bbobjects.BASIC
+
+    #True if this is a production environment.  See comment on is_development; better to use
+    #that for a lot of purposes
+    is_production: -> @get('type') is PROD
+
+    is_production_cmd:
+        help: 'Displays whether this is a production environment'
+        reply: true
+        groups: bbobjects.BASIC
 
     template: ->
         template = @get 'template'
@@ -639,7 +672,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         help: 'Creates a new server in this environment for testing or other purposes'
 
-
+        groups: bbobjects.BASIC
 
     #Given a key, value pair, returns a list of instanceids that match that pair
     get_instances_by_tag: (key, value) ->
@@ -1031,7 +1064,13 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {name: 'set_name', required: true, help: 'The name of the credential-set to retrieve'}
             {name: 'name', required: true, help: 'The name of the credential to retrieve'}
         ]
-        help: 'Retrieves a credential for this environment.  Use with caution!'
+        help: 'Retrieves a credential for this environment.'
+        dangerous: -> not @environment().type().is_development()
+        groups: ->
+            if @environment().type().is_development()
+                return bbobjects.BASIC
+            else
+                return bbobjects.ADMIN
 
     #Sets a credential for this environment
     set_credential: (set_name, name, value, overwrite) ->
@@ -1046,6 +1085,13 @@ bbobjects.Environment = class Environment extends BubblebotObject
         ]
         help: 'Sets a credential for this environment'
 
+        groups: (set_name, name, value, overwrite) ->
+            if not value?
+                throw new Error 'assertion error: ' + JSON.stringify({set_name, name, value, overwrite})
+            if overwrite and @environment().type().is_development()
+                return bbobjects.ADMIN
+            else
+                return bbobjects.BASIC
 
 
 
@@ -1066,9 +1112,8 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
         if not overwrite
             prev = @get 'credential_' + name
             if prev
-                if not bbserver.do_cast 'boolean', u.ask 'There is already a credential for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name + '.  Are you sure you want to overwrite it?'
-                    u.reply 'Okay, aborting'
-                    return
+                u.reply 'There is already a credential for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name + '. To overwrite it, call this command again with overwrite set to true'
+                return
         @set 'credential_' + name, value
         msg = 'Credential set for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name
         u.announce msg
@@ -1129,6 +1174,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
                 entry += '\n' + (if rollback then '(ROLLBACK) ' else '') + deployment_message
                 formatted.push entry
             return formatted.join('\n\n')
+        groups: bbobjects.BASIC
 
     #Checks if we are still using this instance
     should_delete: (ec2instance) ->
@@ -1175,6 +1221,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     block_cmd:
         params: [{name: 'explanation', required: true}]
         help: 'Ask other users not to deploy to this service til further notice.  Can be cancelled with "unblock"'
+        groups: bbobjects.BASIC
 
     #Remove a request created with block
     unblock: ->
@@ -1195,6 +1242,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     unblock_cmd:
         help: 'Removes a block on deploying created with the "block" command'
+        groups: bbobjects.BASIC
 
 
     #Deploys this version to this service
@@ -1213,6 +1261,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     deploy_cmd:
         params: [{name: 'version', required: true, help: 'The version to deploy'}, {name: 'rollback', type: 'boolean', help: 'If true, allows deploying versions that are not ahead of the current version'}]
         help: 'Deploys the given version to this service.  Ensures that the new version is tested and ahead of the current version'
+        groups: bbobjects.BASIC
 
     #Returns the current version of this service
     version: -> @get 'version'
@@ -1220,6 +1269,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     version_cmd:
         help: 'Returns the current version of this service'
         reply: (version) -> @template().codebase().pretty_print version
+        groups: bbobjects.BASIC
 
     #On startup, we make sure we are monitoring this
     startup: -> u.context().server.monitor this
@@ -1242,6 +1292,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     maintenance_cmd:
         help: 'Returns whether we are in maintenance mode'
         reply: true
+        groups: bbobjects.BASIC
 
     #Sets whether or not we should enter maintenance mode
     set_maintenance: (on) ->
@@ -1251,12 +1302,14 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     set_maintenance_cmd:
         params: {name: 'on', type: 'boolean', required: true, help: 'If true, turns maintenance mode on, if false, turns it off'}
         help: 'Turns maintenance mode on or off'
+        groups: bbobjects.BASIC
 
     #Replaces the underlying boxes for this service
     replace: -> @template().replace this
 
     replace_cmd:
         help: 'Replaces the underlying boxes for this service'
+        groups: bbobjects.BASIC
 
 
 #Represents the AMI and software needed to build an ec2 instance
@@ -1327,6 +1380,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         params: [{name: 'region', required: true, help: 'The region to retrieve the AMI for'}]
         help: 'Retrieves the current AMI for this build in the given region.  If one does not exist, creates it.'
         reply: true
+        groups: bbobjects.BASIC
 
     #Make sure we are scheduling replacing
     startup: ->
@@ -1379,6 +1433,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     replace_ami_cmd:
         params: [{name: 'region', required: true, help: 'The region to replace the AMI for'}]
         help: 'Replaces the current AMI for this build in the given region'
+        groups: bbobjects.BASIC
 
     #Tells this ec2 instance that it is receiving external traffic.
     #Some builds might want notification given to the box.
@@ -1445,19 +1500,23 @@ bbobjects.Test = class Test extends BubblebotObject
             {name: 'include_skipped', type: 'boolean', default: false, help: 'If set, includes versions where tests were skipped instead of being run'}
         ]
         reply: true
+        groups: bbobjects.BASIC
 
     run_cmd:
         params: [{name: 'version', required: true, help: 'The version of the codebase to run this test against'}]
         help: 'Runs this test against the given version'
+        groups: bbobjects.BASIC
 
     #Marks this version as tested without actually running the tests
     skip_tests: (version) ->
         @add_history 'test_passed', version, {skip_tests: true}
+        u.report 'User ' + u.current_user() + ' called skip tests on ' + @id + ', version ' + version
 
     skip_tests_cmd:
         help: 'Marks this version as tested without actually running the tests'
         params: [{name: 'version', required: true, help: 'The version of the codebase to mark as tested'}]
         reply: 'Version marked as tested'
+        groups: bbobjects.BASIC
 
     mark_tested: (version) ->
         @add_history 'test_passed', version
@@ -1596,6 +1655,12 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         help: 'Terminates this server'
         questions: ->
             {name: 'confirm',  type: 'boolean', help: 'Are you sure you want to terminate this server?'}
+        dangerous: -> @environment().is_production()
+        groups: ->
+            if @environment().is_production() or @owner().id isnt @current_user().id
+                return bbobjects.ADMIN
+            else
+                return bbobjects.BASIC
 
 
     #Writes the given private key to the default location on the box

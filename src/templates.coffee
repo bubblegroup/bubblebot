@@ -324,6 +324,7 @@ templates.SingleBoxService = class SingleBoxService
     get_size_cmd:
         help: 'Gets the size of the box for this service'
         reply: true
+        groups: bbobjects.BASIC
 
     #Sets the size of the box for this service
     set_size: (instance, new_size) ->
@@ -337,6 +338,8 @@ templates.SingleBoxService = class SingleBoxService
         params: [{name: 'new_size', type: 'number', required: true}]
         help: 'Sets the size of the box for this service'
         reply: 'Size successfully set'
+        groups: bbobjects.BASIC
+        dangerous: -> @environment().is_production()
 
 
 #Implements the codebase interface using git.  Should pass in a git repo as in github.coffee

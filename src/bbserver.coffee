@@ -630,6 +630,8 @@ class Help extends Command
         u.reply targ.get_help(commands.join(' '))
         return
 
+    groups: bbobjects.BASIC
+
 class New extends Command
     help: 'Creates a new environment'
     params: [
@@ -658,6 +660,8 @@ class New extends Command
 
         u.reply 'Environment successfully created!'
         return
+
+    groups: bbobjects.BASIC
 
 get_fiber_user = (fiber) ->
     if fiber.current_context.user_id
@@ -693,6 +697,8 @@ class PS extends Command
 
         u.reply res.join('\n')
 
+    groups: bbobjects.BASIC
+
 class Cancel extends Command
     help: 'Cancels running commands.  By default, cancels all commands that you started'
     params: [
@@ -716,6 +722,21 @@ class Cancel extends Command
 
         u.reply 'Cancelled the following:\n\n' + res.join('\n')
 
+    #Anyone can cancel their own commands, admins can cancel other users
+    groups: (command) ->
+        if not command
+            return bbobjects.BASIC
+
+        for fiber in u.active_fibers
+            if command
+                if fiber._fiber_id is command
+                    if fiber.current_context?.user_id isnt u.current_user().id
+                        return bbobjects.ADMIN
+
+        return bbobjects.BASIC
+
+
+
 
 class Monitor extends Command
     constructor: (@server) ->
@@ -730,6 +751,8 @@ class Monitor extends Command
             u.reply @server._monitor.policies()
         else
             u.reply @server._monitor.statuses()
+
+    groups: bbobjects.BASIC
 
             '
 class Sudo extends Command
@@ -747,9 +770,11 @@ class Sudo extends Command
         if not confirm
             u.reply 'Okay, aborting'
             return
-        u.notify 'Warning!  User ' + u.current_user() + ' just ran "sudo"'
+        u.report 'Warning!  User ' + u.current_user() + ' just ran "sudo"'
         u.current_user().set 'sudo', Date.now()
         u.reply 'Okay, you now have temporary administrator privileges'
+
+    groups: bbobjects.TRUSTED
 
 #The initial command structure for the bot
 class RootCommand extends CommandTree
@@ -831,6 +856,8 @@ class SecurityGroupsTree extends CommandTree
             ]
 
             help: 'Creates a new security group'
+
+            groups: bbobjects.TRUSTED
         }
 
         return commands
