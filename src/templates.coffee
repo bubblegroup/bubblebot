@@ -35,75 +35,6 @@ templates.list = (interface) ->
             res.push name
     return res
 
-
-#Represents a series of migrations on a pg database
-templates.PGDatabase = class PGDatabase
-    #max: -> the number of the highest migration
-    #get (num) -> get migration
-    #get_dev: -> the migration we are currently testing, or null if none
-    #get_rollback_dev: -> the rollback for the development migration
-    #get_rollback: (num) -> gets the rollback for the given migration
-
-
-#The schema for bubblebot
-templates.BubblebotDatabase extends PGDatabase
-    migrations: [
-        "
-        --install psql
-        --check database default datatype for default schmea
-
-        CREATE TABLE bbobjects (
-            type varchar(512),
-            id varchar(512),
-            parent_id varchar(512),
-            parent_type varchar(512),
-            properties jsonb
-        )
-
-        CREATE TABLE history (
-            history_type varchar(512),
-            history_id varchar(512),
-            timestamp bigint,
-            reference varchar(512),
-            properties jsonb
-        )
-        --Needs to be searchable by history_type / history_id / timestamp
-        --Needs to be searchable by history_type / history_id / reference
-
-
-        CREATE TABLE scheduler (
-            id bigserial,            --uid of task instance
-            timestamp bigint,        --when we should run it
-            owner bigint,            --who claimed the task
-            task varchar(512),       --name of the task
-            properties jsonb         --data to pass to the task
-        )
-        --need to search by id
-        --need to search by timestamp
-        --need to search by task
-
-        CREATE TABLE scheduler_owners (
-            owner_id bigserial,
-            last_access bigint
-        )
-        "
-    ]
-
-    rollbacks: [
-
-    ]
-
-    max: -> @migrations.length - 1
-
-    get: (num) -> @migrations[num]
-
-    get_dev: -> null
-
-    get_rollback_dev: -> null
-
-    get_rollback: (num) -> @rollbacks[num]
-
-
 #Extend this to build environment templates
 templates.Environment = class Environment
     initialize: (environment) ->
@@ -267,6 +198,18 @@ templates.Service = class Service
         u.reply 'Running the following tests: ' + tests.join(', ')
         for test in tests
             test.run version
+
+#Represents a service that's an RDS-managed database
+templates.RDSService = class RDSService extends Service
+
+#Represents a series of migrations on a pg database
+#templates.PGDatabase = class PGDatabase
+    #max: -> the number of the highest migration
+    #get (num) -> get migration
+    #get_dev: -> the migration we are currently testing, or null if none
+    #get_rollback_dev: -> the rollback for the development migration
+    #get_rollback: (num) -> gets the rollback for the given migration
+
 
 
 #Base class for services that have a single box.  They take a template,

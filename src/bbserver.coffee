@@ -23,8 +23,6 @@ bbserver.Server = class Server
                 res.write "You have reached Bubblebot, but we don't recognize " + req.url
                 res.end()
 
-
-
         server.listen 8080
 
         server2 = http.createServer (req, res) =>

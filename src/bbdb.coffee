@@ -3,9 +3,8 @@ bbdb = exports
 #Represents a connection to the database that powers bubble bot
 bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
     constructor: ->
-        bbdb = throw new Error 'not implemented'
-
-        @endpoint = bbdb.endpoint()
+        #The underlying RDS service instance
+        @instance = bbobjects.bubblebot_environment().get_service('BBDBService', true)
 
     #given a type, returns an array of all the ids of that type
     list_objects: (type) ->
@@ -80,3 +79,70 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
 
 
 bbobjects = require './bbobjects'
+
+
+#We add some templates for creating the service
+templates = require './templates'
+
+templates.BBDBService = class BBDBService extends templates.RDSService
+
+
+
+#The schema for bubblebot
+#templates.BubblebotDatabase extends PGDatabase
+    migrations: [
+        "
+        --install psql
+        --check database default datatype for default schmea
+
+        CREATE TABLE bbobjects (
+            type varchar(512),
+            id varchar(512),
+            parent_id varchar(512),
+            parent_type varchar(512),
+            properties jsonb
+        )
+
+        CREATE TABLE history (
+            history_type varchar(512),
+            history_id varchar(512),
+            timestamp bigint,
+            reference varchar(512),
+            properties jsonb
+        )
+        --Needs to be searchable by history_type / history_id / timestamp
+        --Needs to be searchable by history_type / history_id / reference
+
+
+        CREATE TABLE scheduler (
+            id bigserial,            --uid of task instance
+            timestamp bigint,        --when we should run it
+            owner bigint,            --who claimed the task
+            task varchar(512),       --name of the task
+            properties jsonb         --data to pass to the task
+        )
+        --need to search by id
+        --need to search by timestamp
+        --need to search by task
+
+        CREATE TABLE scheduler_owners (
+            owner_id bigserial,
+            last_access bigint
+        )
+        "
+    ]
+
+    rollbacks: [
+
+    ]
+
+    max: -> @migrations.length - 1
+
+    get: (num) -> @migrations[num]
+
+    get_dev: -> null
+
+    get_rollback_dev: -> null
+
+    get_rollback: (num) -> @rollbacks[num]
+

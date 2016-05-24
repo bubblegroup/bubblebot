@@ -1077,6 +1077,18 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         return eip_instance
 
+    #Returns the service for this environment with the given template name.  If create_on_missing
+    #is true, creates it if it does not already exist
+    get_service: (template_name, create_on_missing) ->
+        templates.verify 'Service', template_name
+        instance = bbobjects.instance 'ServiceInstance', @id + '_' + template_name
+        if not instance.exists()
+            if create_on_missing
+                instance.create this
+            else
+                return null
+        return instance
+
     #Gets a credential set for this environment, creating it if it does not exist
     get_credential_set: (set_name) ->
         set = bbobjects.instance 'CredentialSet', @id + '_' + set_name
@@ -1728,18 +1740,15 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     bubblebot_role: -> @get_tags[config.get('bubblebot_role_tag')]
 
 
-
+#Represents an RDS instance.
 bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     constructor: (@environment, @id) ->
 
     #Returns the endpoint we can access this instance at
     endpoint: -> throw new Error 'not implemented'
 
-
-
 #Represents a database
-bbobjects.Database = class Database extends BubblebotObject
-
+#bbobjects.Database = class Database extends BubblebotObject
     #Runs any outstanding migrations from this template on the database
     fully_apply: (template) ->
         max = template.max()
