@@ -120,7 +120,17 @@ bbserver.Server = class Server
     get_sublogger_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'sublogger')
 
     #Creates a seperate logger for the current context
-    create_sub_logger: (id, description) ->
+    create_sub_logger: (description) ->
+        #create an id of the form timestamp_num
+        ts = Date.now()
+        if @_last_sl_ts is ts
+            @_sl_id_count++
+        else
+            @_sl_id_count = 0
+            @_last_sl_ts = ts
+
+        id = ts + '_' + @_sl_id_count
+
         #Create the new logstream and set it as the default logger for this context
         log_stream = @get_sub_logger(id)
         u.set_logger 'log', log_stream.log.bind(log_stream)
@@ -222,6 +232,8 @@ bbserver.Server = class Server
         external_cancel = false
         try
             u.log 'Beginning task run: ' + JSON.stringify(task_data)
+            @create_sub_logger u.fiber_id() + ' task ' + JSON.stringify(task_data)
+
             #Recurring tasks have the task name and data stored as sub-properties
             if task_data.properties.is_recurring_task
                 task_fn = task_data.properties.task
@@ -294,6 +306,7 @@ bbserver.Server = class Server
                 u.log 'Ignoring command from unauthorized user ' + current_user
                 return
 
+            @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
 
             try
                 args = parse_command msg

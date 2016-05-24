@@ -360,6 +360,9 @@ u.active_fibers = []
 
 fiber_id_counter = 0
 
+#Gets the fiber id for the current fiber
+u.fiber_id = -> Fiber.current._fiber_id
+
 # #### u.SyncRun
 #Runs the callback in a fiber.  Safe to call either from within a fiber or from non-fiber
 #code... runs it in on a setImmediate block, so this function returns immediately.
