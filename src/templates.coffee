@@ -201,6 +201,40 @@ templates.Service = class Service
 
 #Represents a service that's an RDS-managed database
 templates.RDSService = class RDSService extends Service
+    constructor: (@_codebase) ->
+
+    #We don't actually replace database boxes since that's generally a bad idea,
+    #but when we call replace we make sure they have an RDS instance are up to date with the latest version
+    replace: (instance) ->
+        version = instance.version()
+        if not version?
+            return
+
+        if not @rds_instance()
+            @create_rds_instance()
+
+        @_codebase.migrate_to @rds_instance(), version
+
+    #Gets the rds instance
+    rds_instance: ->
+        id = @instance.get 'rds_instance'
+        if id
+            return bbobjects.instance 'RDSInstance', id
+
+    #Creates a new RDS instance for this service
+    create_rds_instance: ->
+        if @instance.get 'rds_instance'
+            throw new Error 'already have an instance'
+
+        rds_instance = throw new Error 'not implemented'
+        @instance.set 'rds_instance', rds_instance.id
+
+    codebase: -> @_codebase
+
+    endpoint: (instance) -> @rds_instance()?.endpoint()
+
+    get_tests: -> @_codebase.get_tests()
+
 
 #Represents a series of migrations on a pg database
 #templates.PGDatabase = class PGDatabase

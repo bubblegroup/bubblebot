@@ -803,6 +803,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         u.log 'EC2 succesfully created with id ' + id
         return id
 
+
     #Given a server id, returns an AMI id
     create_ami_from_server: (server_id, name) ->
         results = @ec2 'createImage', {
@@ -1031,6 +1032,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Calls ec2 and returns the results
     ec2: (method, parameters) -> @aws 'EC2', method, parameters
+
+    #Calls rds and returns the results
+    rds: (method, parameters) -> @aws 'RDS', method, parameters
 
     #Calls s3 and returns the results
     s3: (method, parameters) -> @aws 'S3', method, parameters
@@ -1743,6 +1747,67 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 #Represents an RDS instance.
 bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     constructor: (@environment, @id) ->
+
+
+   #Creates and returns a new RDS instance in this environment, and returns the id
+    #(which is the DBInstanceIdentifier
+    create_rds_raw: (DBInstanceIdentifier) ->
+
+        params = {
+            DBInstanceIdentifier
+            AllocatedStorage #5 to 6144 (in GB)
+            DBInstanceClass #db.m1.small, etc
+            Engine  #postgres
+            MasterUsername  #consider randomly generating this?  (for bubblebot we need to hardcode it presumably, or save in S3)
+            MasterUserPassword #consider randomly generating this?  must be at least 8 characters
+            VpcSecurityGroupIds #[array of strings] (see what I did for my current one)
+            DBSubnetGroupName #Needs a subnet here (see what I did for my current one)
+            DBParameterGroupName #could leave this blank to go w/ default (did I modify this for my current one?)
+            BackupRetentionPeriod #0 - 35
+            MultiAZ #true if we want to make it multi-AZ
+            EngineVersion
+            Iops #must be a multiple of 1000, and from 3x to 10x of storage amount.  Only if storagetype is io1
+            PubliclyAccessible #boolean, if true it means it can be accessed from the outside world
+            StorageType #standard | gp2 | io1
+            StorageEncrypted #I think we should always default to true, since it seems to be a no-brainer
+            KmsKeyId #need this for storageencyrpted.  will use a default otherwise, should understand this though
+            MonitoringInterval #should look into this. defaults to 60, do we want more frequent?
+            MonitoringRoleArn #http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.html#USER_Monitoring.OS.IAMRole
+        }
+
+        u.log 'Creating new RDS instance: ' + JSON.stringify params
+
+        results = @rds 'createDBInstance', params
+
+        u.log 'RDS instance succesfully created with id ' + DBInstanceIdentifier
+        return DBInstanceIdentifier
+
+
+        modifyDBInstance
+            ApplyImmediately
+            AllocatedStorage  #can only be increased!  does not cause an outage
+            DBInstanceClass #changing causes an outage
+            DBParameterGroupName #safe to change, but must reboot database without failover for it to be applied
+            BackupRetentionPeriod
+            MultiAZ #safe to change (ApplyImmediately must be set to true, or gets changed next maintenance window)
+            EngineVersion #causes outage to change.  Changing major versions requires AllowMajorVersionUpgrade, and may require a new DBParameterGroupName
+            Iops #safe to change. can only get larger.  ApplyImmediately.  changing from iops -> non-iops must be set to 0 and require reboot
+            PubliclyAccessible #safe to change.  ignores applyimmediately and happens immediately.
+            MonitoringRoleArn #safe to change
+            MonitoringInterval #safe to change
+            StorageType #docs don't say if it is safe to change, though given comment on iops, probably requries reboot
+
+
+            (can change, but why?
+            MasterUserPassword
+            VpcSecurityGroupIds
+
+        restoreDBInstanceToPointInTime
+            Looks like you change anything you can modify (but not things you can't, like at-rest encryption)
+
+        restoring from snapshot -- can we do cross-region?  Looks like the main reason we would want to do this.  That or rolling back
+        to a long ago point in time beyond the db backup replication window.
+
 
     #Returns the endpoint we can access this instance at
     endpoint: -> throw new Error 'not implemented'
