@@ -16,7 +16,7 @@ bbserver.Server = class Server
                 @show_logs req, res, path[1...]
 
             else if not path[0]
-                res.write 'Welcome to Bubblebot!'
+                res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
                 res.end()
             else
                 res.statusCode = 404
@@ -40,7 +40,7 @@ bbserver.Server = class Server
         @slack_client = new slack.SlackClient(this)
         @slack_client.on 'new_conversation', @new_conversation.bind(this)
 
-        log_stream = bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
+        log_stream = @get_server_log_stream()
 
         #Also make this function write to the logger
         wrap_in_log = (name, fn) ->
@@ -115,6 +115,9 @@ bbserver.Server = class Server
         if eip.get_instance().id isnt bbobjects.get_bbserver().id
             eip.switch bbobjects.get_bbserver()
         return eip.endpoint()
+
+    #Gets the master server log stream
+    get_server_log_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
 
     #Gets the stream we use to record the creation of new subloggers
     get_sublogger_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'sublogger')
@@ -771,6 +774,23 @@ class PS extends Command
 
     groups: bbobjects.BASIC
 
+#Command for listing recent loggers
+class Loggers extends Command
+    help: 'Show recent logging streams'
+    params: [
+        {name: 'number', type: 'number', default: 10, help: 'The number of recent streams to show'}
+
+    run: (number) ->
+        server = u.context().server
+        u.reply 'Master server logs: ' + server.get_server_log_stream().get_tail_url()
+        res = ['Recent logs:']
+        for {id, description, timestamp} in server.list_sub_loggers()[...number]
+            logger = server.get_sub_logger(id)
+            res.push String(new Date(timestamp)) + ' ' + description + ' ' + logger.get_tail_url()
+        u.reply res.join('\n')
+
+    groups: bbobjects.BASIC
+
 class Cancel extends Command
     help: 'Cancels running commands.  By default, cancels all commands that you started'
     params: [
@@ -861,6 +881,7 @@ class RootCommand extends CommandTree
         @commands.monitor = new Monitor(@server)
         @commands.users = new UsersTree()
         @commands.security_groups = new SecurityGroupsTree()
+        @commands.loggers = new Loggers()
 
 
     get_commands: ->
