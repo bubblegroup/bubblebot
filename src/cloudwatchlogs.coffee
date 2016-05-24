@@ -60,6 +60,17 @@ cloudwatchlogs.LogStream = class LogStream
     #Returns a url that a user can view to tail the logs
     get_tail_url: -> bbobjects.get_bbserver().get_logs_url @environment.id, @groupname, @name
 
+    #Returns the most recent events
+    get_events: (cb) ->
+        @environment.get_svc('CloudWatchLogs').getLogEvents {
+            logGroupName: @groupname
+            logStreamName: @name
+        }, (err, response) =>
+            if err
+                cb err
+            else
+                cb null, response.events ? []
+
     #Does the actual tail, given a web request
     tail: (req, res) ->
         options = url.parse(req.url, true).query

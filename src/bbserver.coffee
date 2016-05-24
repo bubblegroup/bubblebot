@@ -42,13 +42,13 @@ bbserver.Server = class Server
 
         log_stream = bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
 
-        #Also make this function write to log_stream
+        #Also make this function write to the logger
         wrap_in_log = (name, fn) ->
             return (args...) ->
-                log_stream.log name + ': ' + String(args)
+                u.log name + ': ' + String(args)
                 res = fn args...
                 if res
-                    log_stream.log name + ' response: ' + String(res)
+                    u.log name + ' response: ' + String(res)
 
         #Create the default log environment for the server
         u.set_default_loggers {
@@ -93,6 +93,8 @@ bbserver.Server = class Server
         u.SyncRun =>
             @build_context('startup')
 
+            u.log 'Running startup'
+
             #Make sure we have at least one user who is an admin
             @get_admins()
 
@@ -113,6 +115,28 @@ bbserver.Server = class Server
         if eip.get_instance().id isnt bbobjects.get_bbserver().id
             eip.switch bbobjects.get_bbserver()
         return eip.endpoint()
+
+    #Gets the stream we use to record the creation of new subloggers
+    get_sublogger_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'sublogger')
+
+    #Creates a seperate logger for the current context
+    create_sub_logger: (id, description) ->
+        #Create the new logstream and set it as the default logger for this context
+        log_stream = @get_sub_logger(id)
+        u.set_logger 'log', log_stream.log.bind(log_stream)
+        log_stream.log id + ' ' + description
+
+        #Record that we created a new log stream in our list
+        @get_sublogger_stream().log JSON.stringify {id, description}
+
+    #Returns an array of {id, description, timestamp} of recently created subloggers
+    list_sub_loggers: ->
+        block = u.Block 'loading subloggers'
+        @get_sublogger_stream().get_events block.make_cb()
+        return (u.extend(JSON.parse(message), {timestamp} for {message, timestamp} of block.wait())
+
+    #Retrieves the sublogger with the given id
+    get_sub_logger: (id) -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', id)
 
     #Returns the URL for accessing logs
     get_logs_url: (env_id, groupname, name) -> @get_server_url() + "/logs/#{env_id}/#{groupname}/#{name}"
