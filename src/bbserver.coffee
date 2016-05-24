@@ -11,8 +11,19 @@ bbserver.Server = class Server
     #should listen on port 8081 for commands such as shutdown
     start: ->
         server = http.createServer (req, res) =>
-            res.write 'hi!!'
-            res.end()
+            path = (req.url ? '').split('/')
+            if path[0] is 'logs'
+                @show_logs req, res, path[1...]
+
+            else if not path[0]
+                res.write 'Welcome to Bubblebot!'
+                res.end()
+            else
+                res.statusCode = 404
+                res.write "You have reached Bubblebot, but we don't recognize " + req.url
+                res.end()
+
+
 
         server.listen 8080
 
@@ -29,7 +40,7 @@ bbserver.Server = class Server
         @slack_client = new slack.SlackClient(this)
         @slack_client.on 'new_conversation', @new_conversation.bind(this)
 
-        log_stream = bbojbects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
+        log_stream = bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
 
         #Create the default log environment for the server
         logger = u.create_logger {
@@ -44,7 +55,7 @@ bbserver.Server = class Server
 
         u.set_default_logger logger
 
-        u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() +
+        u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
 
         #Handle uncaught exceptions.
         #We want to report them, with a rate limit of 10 per 30 minutes
@@ -88,6 +99,23 @@ bbserver.Server = class Server
                             bbobjects.instance(typename, id).startup()
                         catch err
                             u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
+
+    #Returns the url bubblebot server is accessible at
+    get_server_url: ->
+        eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
+        if eip.get_instance().id isnt bbobjects.get_bbserver().id
+            eip.switch bbobjects.get_bbserver()
+        return eip.endpoint()
+
+    #Returns the URL for accessing logs
+    get_logs_url: (env_id, groupname, name) -> @get_server_url() + "/logs/#{env_id}/#{groupname}/#{name}"
+
+    #Displays logs
+    show_logs: (req, res, path) ->
+        [env_id, groupname, name] = path
+        logstream = bbobjects.instance('Environment', env_id).get_log_stream(groupname, name)
+        logstream.tail req, res
+
 
     #Returns an array of all the admin users.  If we don't have any admin users,
     #we set the owner of the slack channel as an admin user

@@ -58,7 +58,48 @@ cloudwatchlogs.LogStream = class LogStream
                 @put_scheduled = false
 
     #Returns a url that a user can view to tail the logs
-    get_tail_url: -> throw new Error 'not implemented'
+    get_tail_url: -> bbobjects.get_bbserver().get_logs_url @environment.id, @groupname, @name
+
+    #Does the actual tail, given a web request
+    tail: (req, res) ->
+        options = url.parse(req.url, true).query
+
+        nextToken = options.nextToken
+        startFromHead = options.startFromHead is 'true'
+
+        @environment.get_svc('CloudWatchLogs')..getLogEvents {
+            logGroupName: @groupname
+            logStreamName: @name
+            nextToken
+            startFromHead
+        }, (err, response) =>
+            if err
+                res.statusCode = 500
+                res.write 'Error loading data from Cloudwatch'
+                res.end()
+                u.report 'Error loading data from Cloudwatch: ' + (err.stack ? err)
+                return
+
+            #Generate the navigation links
+            older = @get_tail_url() + '?nextToken=' + response.nextBackwardToken + '&startFromHead=' + String(startFromHead)
+            newer = @get_tail_url() + '?nextToken=' + response.nextForwardToken + '&startFromHead=' + String(startFromHead)
+            reverse = @get_tail_url() + '?startFromHead=' + String(not startFromHead)
+            navigation = '<p><a href="' + older + '">Older events</a></p><p><a href="' + newer + '">Newer events</a></p><p><a href="' + reverse + '">Reverse order</a></p>'
+
+            #Write the body
+            res.write '<html><head><title>BubbleBot Log ' + @environment.id + ', ' + @groupname + ', ' + @name + '</title></head>'
+            res.write '<body>'
+            res.write navigation
+
+            for {timestamp, message} in response.events ? []
+                res.write '<p><span>' + String(new Date(timestamp)) + ': </span><span>' + message + '</span></p>'
+
+            res.write navigation
+            res.write '</body></html>'
+            res.end()
+
 
 
 u = require './utilities'
+bbobjects = require './bbobjects'
+url = require 'url'

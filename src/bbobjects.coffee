@@ -44,7 +44,7 @@ bbobjects.BUILTIN_GROUP_DESCRIPTION = BUILTIN_GROUP_DESCRIPTION
 #We do not manage the bubblebot server in the database, since we need to be able to find it
 #even when we are running the command line script.
 bbobjects.get_bbserver = ->
-    environment = bbobjects.bubblebot_environment
+    environment = bbobjects.bubblebot_environment()
     instances = environment.get_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver'))
 
     #Clean up any bubblebot server instances not tagged as initialized -- they represent
@@ -1796,6 +1796,7 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
 
     #Switches this elastic ip to point at a new instance
     switch: (new_instance) ->
+        u.log 'Switching eip ' + @id + ' to point to instance ' + new_instance.id
         @environment().ec2 'associateAddress', {
             AllocationId: @id
             AllowReassociation: true
