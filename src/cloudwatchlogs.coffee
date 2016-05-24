@@ -67,7 +67,7 @@ cloudwatchlogs.LogStream = class LogStream
         nextToken = options.nextToken
         startFromHead = options.startFromHead is 'true'
 
-        @environment.get_svc('CloudWatchLogs')..getLogEvents {
+        @environment.get_svc('CloudWatchLogs').getLogEvents {
             logGroupName: @groupname
             logStreamName: @name
             nextToken

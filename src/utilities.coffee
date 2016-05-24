@@ -81,6 +81,7 @@ u.generate_key_pair = ->
     return {private_key, public_key}
 
 
+
 #Chatting (at various levels of verbosity ranging from most critical to hear to least):
 # report -- for problems (default is to pm administrators and current user)
 # announce -- for updates like a new deployment (default is to post in a public channel)
@@ -90,60 +91,41 @@ u.generate_key_pair = ->
 # Log, announce, and report must work off fiber.
 
 #Reports a problem / failure / error (and logs to current context)
-u.report = (msg) -> u.get_logger().report msg
+u.report = (msg) -> u.get_logger('report') msg
+
+#Reports a message over slack without writing it to log as well
+u.report_no_log = (msg) -> u.get_logger('report_no_log') msg
 
 #Announces a message in to all users (And logs to current context)
-u.announce = (msg) -> u.get_logger().announce msg
+u.announce = (msg) -> u.get_logger('announce') msg
 
 #Sends a message to the given user
-u.message = (user_id, msg) -> u.get_logger().message user_id, msg
+u.message = (user_id, msg) -> u.get_logger('message') user_id, msg
 
 #Replies to the current user
-u.reply = (msg) -> u.get_logger().reply msg
+u.reply = (msg) -> u.get_logger('reply') msg
 
 #Asks the current user a question and returns their response
-u.ask = (msg) -> return u.get_logger().ask msg
+u.ask = (msg) -> return u.get_logger('ask') msg
 
-u.confirm = (msg) -> return u.get_logger().confirm msg
+#Confirms the user wants to do something, returning a boolean
+u.confirm = (msg) -> return u.get_logger('confirm') msg
 
 #Logs a message to the current context
-u.log = (msg) -> u.get_logger().log msg
+u.log = (msg) -> u.get_logger('log') msg
 
-#Gets the current context's logger
-u.get_logger = -> u.context()?.logger ? u.get_default_logger()
+#Gets a log function.  Sees if it is set in the current context... if not, uses the default logger
+u.get_logger = (log_fn) ->
+    u.context().loggers[logger_fn] ? u.default_loggers[logger_fn] ? console.log.bind(console)
 
-#Sets the current context's logger
-u.set_logger = (logger) ->
+#Sets a function in the current context
+u.set_logger = (name, fn) ->
     context = u.context()
-    if not context
-        throw new Error 'no context!'
-    context.logger = logger
+    context.loggers ?= {}
+    context.loggers[name] = fn
 
-#Creates a logger object where all non-log methods also log
-u.create_logger = (methods) ->
-    logger = {}
-    logger.log = methods.log
-    for name in ['report', 'announce', 'reply']
-        logger[name] = (msg) ->
-            try
-                logger.log '\n\n' + name.toUpperCase() + ': ' + msg
-            catch err
-                console.log err.stack ? err
-            methods[name]? msg
-        logger[name + '_no_log'] = methods[name]
-    return logger
-
-#Gets a logger that just console.logs everything
-_default_logger = u.create_logger {log: console.log.bind(log)}
-
-#Gets the logger to use when we are outside of a context
-u.get_default_logger = ->
-    return _default_logger
-
-#Sets the logger to use when we are outside of a context
-u.set_default_logger = (logger) ->
-    _default_logger = logger
-    #
+#Sets the loggers to use when we are outside of a context
+u.set_default_loggers = (loggers) -> u.default_loggers = loggers
 
 
 #Gets the global environment for the current fiber, or null

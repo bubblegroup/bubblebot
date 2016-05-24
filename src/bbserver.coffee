@@ -42,18 +42,25 @@ bbserver.Server = class Server
 
         log_stream = bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
 
-        #Create the default log environment for the server
-        logger = u.create_logger {
-            log: log_stream.log.bind(log_stream)
-            reply: @slack_client.reply.bind(@slack_client)
-            message: @slack_client.message.bind(@slack_client)
-            ask: (msg, override_user_id) => @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
-            confirm: (msg, override_user_id) => @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
-            announce: @slack_client.announce.bind(@slack_client)
-            report: @slack_client.report.bind(@slack_client)
-        }
+        #Also make this function write to log_stream
+        wrap_in_log = (name, fn) ->
+            return (args...) ->
+                log_stream.log name + ': ' + String(args)
+                res = fn args...
+                if res
+                    log_stream.log name + ' response: ' + String(res)
 
-        u.set_default_logger logger
+        #Create the default log environment for the server
+        u.set_default_loggers {
+            log: log_stream.log.bind(log_stream)
+            reply: wrap_in_log 'Reply', @slack_client.reply.bind(@slack_client)
+            message: wrap_in_log 'Message', @slack_client.message.bind(@slack_client)
+            ask: (msg, override_user_id) => wrap_in_log 'Ask' @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+            confirm: (msg, override_user_id) => wrap_in_log 'Confirm' @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+            announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
+            report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
+            report_no_log: @slack_client.report.bind(@slack_client)
+        }
 
         u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
 

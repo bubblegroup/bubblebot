@@ -77,6 +77,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         block = u.Block 'sending message'
         @send_im user_id, msg, block.make_cb()
         block.wait()
+        return null
 
     #Sends a message to the current user
     reply: (msg) ->
@@ -86,6 +87,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         block = u.Block 'replying'
         @send_im user_id, msg, block.make_cb()
         block.wait()
+        return null
 
     #Gets the slack data for a given user
     get_user_info: (user_id) -> @api.dataStore.getUserById(user_id)
@@ -154,6 +156,8 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             @api.sendMessage msg, channel.id, block.make_cb()
             block.wait()
 
+        return null
+
 
     #Sends a PM to admin users.  We rate-limit this to avoid spamming admins if
     #something goes wrong
@@ -185,6 +189,8 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             catch err
                 #If we can't successfully contact the admins, shut down
                 @shutdown 'Failed to contact admins: ' + err.stack ? err
+
+        return null
 
 
     #Gets the user id that owns the slack channel
