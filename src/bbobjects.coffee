@@ -1748,29 +1748,41 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     constructor: (@environment, @id) ->
 
+    #Creates a new rds instance
+    create: (parent) ->
 
-   #Creates and returns a new RDS instance in this environment, and returns the id
-    #(which is the DBInstanceIdentifier
-    create_rds_raw: (DBInstanceIdentifier) ->
+
+
 
         params = {
-            DBInstanceIdentifier
+            DBInstanceIdentifier: @id
+
+            Engine  #postgres
+            EngineVersion
+
+            #Cost / Size related
+
             AllocatedStorage #5 to 6144 (in GB)
             DBInstanceClass #db.m1.small, etc
-            Engine  #postgres
+            BackupRetentionPeriod #0 - 35
+            MultiAZ #true if we want to make it multi-AZ
+            StorageType #standard | gp2 | io1
+            Iops #must be a multiple of 1000, and from 3x to 10x of storage amount.  Only if storagetype is io1
+
+            PubliclyAccessible #boolean, if true it means it can be accessed from the outside world
+
             MasterUsername  #consider randomly generating this?  (for bubblebot we need to hardcode it presumably, or save in S3)
             MasterUserPassword #consider randomly generating this?  must be at least 8 characters
             VpcSecurityGroupIds #[array of strings] (see what I did for my current one)
             DBSubnetGroupName #Needs a subnet here (see what I did for my current one)
-            DBParameterGroupName #could leave this blank to go w/ default (did I modify this for my current one?)
-            BackupRetentionPeriod #0 - 35
-            MultiAZ #true if we want to make it multi-AZ
-            EngineVersion
-            Iops #must be a multiple of 1000, and from 3x to 10x of storage amount.  Only if storagetype is io1
-            PubliclyAccessible #boolean, if true it means it can be accessed from the outside world
-            StorageType #standard | gp2 | io1
-            StorageEncrypted #I think we should always default to true, since it seems to be a no-brainer
-            KmsKeyId #need this for storageencyrpted.  will use a default otherwise, should understand this though
+
+            StorageEncrypted: true
+
+            #DBParameterGroupName  -- not supporting editing this at the moment, go with default
+
+
+
+
             MonitoringInterval #should look into this. defaults to 60, do we want more frequent?
             MonitoringRoleArn #http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.html#USER_Monitoring.OS.IAMRole
         }
