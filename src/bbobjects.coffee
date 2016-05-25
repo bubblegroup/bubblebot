@@ -1748,19 +1748,39 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     constructor: (@environment, @id) ->
 
-    #Creates a new rds instance
-    create: (parent) ->
+    #Creates a new rds instance.  We take:
+    #
+    #The parent
+    #permanent_options -- things we don't allow changing after creation {Engine, EngineVersion}
+    #
+    #sizing_options -- things that control the DB size / cost, can be changed after creation
+    #                  {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible}
+    #
+    #credentials -- optional.  If not included, we generate credentials automatically and store them
+    #in the bubblebot database.  If included, caller is responsible for storing the credentials.
+    create: (parent, permanent_options, sizing_options, credentials) ->
+        {Engine, EngineVersion} = permanent_options
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
 
+        if credentials
+            {MasterUsername, MasterUserPassword} = credentials
+        else
+            #TODO: generate and save in database
 
-
+        #TODO:
+            #Deal with VpcSecurityGroupIds
+            #Deal with DBSubnetGroupName
 
         params = {
             DBInstanceIdentifier: @id
 
-            Engine  #postgres
-            EngineVersion
+            #Permanent Options
 
-            #Cost / Size related
+            Engine
+            EngineVersion
+            #DBParameterGroupName  -- not supporting editing this at the moment, go with default
+
+            #Sizing Options
 
             AllocatedStorage #5 to 6144 (in GB)
             DBInstanceClass #db.m1.small, etc
@@ -1768,61 +1788,83 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             MultiAZ #true if we want to make it multi-AZ
             StorageType #standard | gp2 | io1
             Iops #must be a multiple of 1000, and from 3x to 10x of storage amount.  Only if storagetype is io1
-
             PubliclyAccessible #boolean, if true it means it can be accessed from the outside world
 
-            MasterUsername  #consider randomly generating this?  (for bubblebot we need to hardcode it presumably, or save in S3)
-            MasterUserPassword #consider randomly generating this?  must be at least 8 characters
+            #Credentials
+
+            MasterUsername
+            MasterUserPassword
+
+            #Auto-generated
+
             VpcSecurityGroupIds #[array of strings] (see what I did for my current one)
             DBSubnetGroupName #Needs a subnet here (see what I did for my current one)
 
             StorageEncrypted: true
-
-            #DBParameterGroupName  -- not supporting editing this at the moment, go with default
-
-
-
-
-            MonitoringInterval #should look into this. defaults to 60, do we want more frequent?
-            MonitoringRoleArn #http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.html#USER_Monitoring.OS.IAMRole
         }
 
-        u.log 'Creating new RDS instance: ' + JSON.stringify params
+        safe_params = u.extend {}, params
+        delete safe_params.MasterUsername
+        delete safe_params.MasterUserPassword
+        u.log 'Creating new RDS instance: ' + JSON.stringify safe_params
 
         results = @rds 'createDBInstance', params
 
-        u.log 'RDS instance succesfully created with id ' + DBInstanceIdentifier
-        return DBInstanceIdentifier
+        u.log 'RDS instance succesfully created with id ' + @id
+        return null
 
+    #returns true if any of the sizing options changes could cause downtime
+    are_changes_unsafe: (sizing_options) ->
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
+        unsafe = false
+        if DBInstanceClass?
+            unsafe = true
+        if BackupRetentionPeriod is 0
+            unsafe = true
+        if StorageType?
+            unsafe = true
 
-        modifyDBInstance
-            ApplyImmediately
-            AllocatedStorage  #can only be increased!  does not cause an outage
-            DBInstanceClass #changing causes an outage
-            DBParameterGroupName #safe to change, but must reboot database without failover for it to be applied
+        return unsafe
+
+    #Resizes an RDS instance
+    #
+    #unsafe_okay: if true, allows making changes that would cause downtime
+    resize: (sizing_options, unsafe_okay) ->
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
+
+        if @are_changes_unsafe(sizing_options) and not unsafe_okay
+            throw new Error 'making unsafe changes without unsafe_okay'
+
+        #If we are change the storage type we have to reboot afterwards
+        reboot_required = StorageType?
+
+        params = {
+            ApplyImmediately: true
+            AllocatedStorage
+            DBInstanceClass
             BackupRetentionPeriod
-            MultiAZ #safe to change (ApplyImmediately must be set to true, or gets changed next maintenance window)
-            EngineVersion #causes outage to change.  Changing major versions requires AllowMajorVersionUpgrade, and may require a new DBParameterGroupName
-            Iops #safe to change. can only get larger.  ApplyImmediately.  changing from iops -> non-iops must be set to 0 and require reboot
-            PubliclyAccessible #safe to change.  ignores applyimmediately and happens immediately.
-            MonitoringRoleArn #safe to change
-            MonitoringInterval #safe to change
-            StorageType #docs don't say if it is safe to change, though given comment on iops, probably requries reboot
+            MultiAZ
+            StorageType
+            Iops
+            PubliclyAccessible
+        }
+
+        u.log 'Resizing RDB ' + @id + ' with params: ' + JSON.stringify params
+
+        @rds 'modifyDBInstance', params
+
+        u.log 'Resizing RDB succesful'
+
+        if reboot_required
+            #OTOD: IMPLEMENT REBOOT.  SHOULD WE WAIT FOR CHANGES TO BE APPLIED?
+            throw new Error 'reboot required'
+
+        return null
 
 
-            (can change, but why?
-            MasterUserPassword
-            VpcSecurityGroupIds
-
-        restoreDBInstanceToPointInTime
-            Looks like you change anything you can modify (but not things you can't, like at-rest encryption)
-
-        restoring from snapshot -- can we do cross-region?  Looks like the main reason we would want to do this.  That or rolling back
-        to a long ago point in time beyond the db backup replication window.
-
-
-    #Returns the endpoint we can access this instance at
-    endpoint: -> throw new Error 'not implemented'
+    #Returns the endpoint we can access this instance at.  Optionally provide
+    #a username and password... if missing, we use whatever we stored in the database
+    endpoint: (username, password)  -> throw new Error 'not implemented'
 
 #Represents a database
 #bbobjects.Database = class Database extends BubblebotObject
