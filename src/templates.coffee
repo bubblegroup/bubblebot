@@ -10,37 +10,42 @@ interfaces =
     EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size', 'get_replacement_interval']
 
 
+#For each interface, create an object for registering things that implement that interface
+templates.templates = {}
+for i_name, _ of interfaces
+    templates.templates[i_name] = {}
 
 #Given the name of a template interface, and the id of a template, confirms that this
 #is a valid template id or throws an error
 templates.verify = (interface, id) ->
-    if not templates[id]
+    if not templates[interface]
+        throw new Error 'could not find interface ' + interface
+    if not templates[interface][id]
         throw new Error 'could not find ' + interface + ' with id ' + id
     for fn in interfaces[interface]
         if typeof(templates[id][fn]) isnt 'function'
             throw new Error 'id ' + id + ' is not a valid ' + interface + ' (missing ' + fn + ')'
 
+#Adds the given template
+templates.add = (interface, id, template) ->
+    templates.templates[interface][id] = template
+    templates.verify interface, id
 
-
-#List all the registered templates that match this interface
+#List the ids of all the registered templates that match this interface
 templates.list = (interface) ->
-    res = []
-    for name, template of templates
-        okay = true
-        for fn in interfaces[interface]
-            if typeof(template[fn]) isnt 'function'
-                okay = false
-                break
-        if okay
-            res.push name
-    return res
+    return (id for id, template of templates.templates[interface] ? throw new Error 'could not find interface ' + interface)
+
+#Retrieves a template
+templates.get = (interface, id) ->
+    templates.verify interface, id
+    return templates.templates[interface][id]
 
 #Extend this to build environment templates
 templates.Environment = class Environment
     initialize: (environment) ->
 
 #A blank environment...
-templates.blank = new Environment()
+templates.add 'Enivronment', 'blank', new Environment()
 
 
 #Extend this to build service templates
@@ -85,12 +90,21 @@ templates.Service = class Service
         if not @ensure_tested instance, version
             return
 
+        #Hook to add any custom logic for making sure the deployment is safe
+        if @deploy_safe?
+            if not @deploy_safe instance, version
+                u.reply 'Aborting deployment'
+                return
+
         #make sure that the version hasn't been updated in the interim
         while not codebase.ahead_of version, instance.version()
             #see if we can merge
             merged = codebase.merge version, instance.version()
             if not merged
                 u.reply "Your version is no longer ahead of the production version (#{instance.version()}) -- someone else probably deployed in the interim.  We tried to automatically merge it but were unable to, so we are aborting."
+                return
+            else if merged is version
+                u.reply 'Someone already deployed this same version in the interim, so we are aborting'
                 return
             else
                 version = merged
@@ -238,7 +252,7 @@ templates.RDSService = class RDSService extends Service
             credentials = {MasterUsername, MasterUserPassword}
 
             #Save the credentials to s3 for future access
-            instance.environment().s3 'putObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: @_get_credentials_key(instance), Body: JSON.stringify(credentials)}
+            bbobjects.put_s3_config @_get_credentials_key(instance), JSON.stringify(credentials)
         else
             credentials = null
 
@@ -257,22 +271,20 @@ templates.RDSService = class RDSService extends Service
             return null
 
         if @_codebase.use_s3_credentials()
-            credentials = JSON.parse String @s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: @_get_credentials_key(instance)}).Body
+            credentials = JSON.parse bbobjects.get_s3_config @_get_credentials_key(instance)
         else
             credentials = null
         return rds_instance.endpoint(credentials)
 
+    #Before deploying, we want to confirm that the migration is reversibe.
+    deploy_safe: (instance, version) ->
+        if not @_codebase.confirm_reversible @rds_instance(instance), version
+            return false
+
+        return true
+
+
     get_tests: -> @_codebase.get_tests()
-
-
-#Represents a series of migrations on a pg database
-#templates.PGDatabase = class PGDatabase
-    #max: -> the number of the highest migration
-    #get (num) -> get migration
-    #get_dev: -> the migration we are currently testing, or null if none
-    #get_rollback_dev: -> the rollback for the development migration
-    #get_rollback: (num) -> gets the rollback for the given migration
-
 
 
 #Base class for services that have a single box.  They take a template,
@@ -424,12 +436,187 @@ templates.MultiGitCodebase = class MultiGitCodebase
         return (repo.display_commit version[idx] for repo, idx in @repos).join('\n')
 
 
+#Represents a set of schema migrations for an RDS managed database
+templates.RDSCodebase = class RDSCodebase
+    constructor: (@migrations, @rollbacks, @additional_tests) ->
+
+    #Version should be [codebase id]/[migration #]
+    canonicalize: (version) ->
+        [codebase_id, migration] = String(version).split('/')
+        if codebase_id isnt @get_id() or not String(parseInt(migration)) is migration
+            return null
+        return codebase_id + '/' + migration
+
+    #returns [codebase_id (string), migration (number)], and throws an error
+    #if codebase_id is wrong
+    _extract_pieces: (version) ->
+        [codebase_id, migration] = String(version).split('/')
+        if codebase_id isnt @get_id()
+            throw new Error 'codebase mismatch: is ' + codebase_id + ', should be ' + @get_id()
+        migration = parseInt migration
+        return [codebase_id, migration]
+
+    #Retrieves the id of this codebase.  We need to search the templates to find it..
+    get_id: ->
+        for id in templates.list('Codebase')
+            if templates.templates['Codebase'][id] is this
+                return id
+        throw new Error 'could not find this codebase... make sure you call templates.add on it'
+
+    ahead_of: (first, second) ->
+        [codebase_id1, migration1] = @_extract_pieces(first)
+        [codebase_id2, migration2] = @_extract_pieces(second)
+
+        #make sure they are the same codebase...
+        if codebase_id1 isnt codebase_id2
+            return false
+
+        #make first is >= second
+        if migration1 < migration2
+            return false
+
+        return true
+
+    ahead_of_msg: (first, second) ->
+        [codebase_id1, migration1] = @_extract_pieces(first)
+        [codebase_id2, migration2] = @_extract_pieces(second)
+
+        #make sure they are the same codebase...
+        if codebase_id1 isnt codebase_id2
+            return "These two versions represent different codebases! #{codebase_id1} vs #{codebase_id2}."
+
+        #make first is >= second
+        if migration1 < migration2
+            return "Migration #{migration1} is not >= #{migration2}"
+
+        throw new Error "it is ahead of"
+
+    #The only merge we allow is fast-forward merges
+    merge: (base, head) ->
+        if @ahead_of head, base
+            return head
+        return null
+
+    pretty_print: (version) ->
+        [codebase_id, migration] = @_extract_pieces(version)
+        description = @get_migration(version).description
+        return "#{codebase_id} migration #{migration}: #{description}"
+
+    #Gets the data for this migration
+    get_migration: (version, rollback) ->
+        #See if we have it saved in s3.
+        saved = bbobjects.get_s3_config 'RDSCodebase_' + version + (if rollback then '_rollback' else '')
+        if saved?
+            return JSON.parse saved
+
+        #Otherwise, get it from the migration array
+        [codebase_id, migration] = @_extract_pieces(version)
+        if rollback
+            return @rollbacks[migration]
+        else
+            return @migrations[migration]
+
+    #Returns the most up-to-date version of this codebase
+    get_latest_version: -> @get_id() + '/' + String(@migrations.length - 1)
+
+    #Returns true if upgrading the given rds_instance to the given version is reversible.
+    #If not reversible, will ask the user to confirm that it is okay to migrate anyway.
+    confirm_reversible: (rds_instance, version) ->
+        [codebase_id, new_migration] = @_extract_pieces(version)
+
+        current_migration = @get_installed_migration rds_instance, codebase_id
+        if new_migration is current_migration
+            return true
+
+        #See if this is a forward migration
+        if new_migration > current_migration
+            start = current_migration + 1
+            end = new_migration
+            #See if it is reversible
+            reversible = true
+            for migration in [start..end]
+                if not @rollbacks[migration]
+                    reversible = false
+
+            if reversible
+                return true
+
+            msg = "This migration is NOT reversible... we do not have rollbacks defined for every migration we are applying (#{start} to #{end}).  Are you sure you want to continue?"
+            return u.confirm msg
+
+        #If it's a rollback, confirm true (we should have already confirmed that doing
+        #a rollback is okay)
+        else
+            return true
+
+
+    #Performs the migration on the given instance.
+    migrate_to: (rds_instance, version) ->
+        [codebase_id, new_migration] = @_extract_pieces(version)
+
+        current_migration = @get_installed_migration rds_instance, codebase_id
+
+        #If it's already correct, no need to do anything
+        if new_migration is current_migration
+            return
+
+        #See if this is a forward migration
+        if new_migration > current_migration
+            start = current_migration + 1
+            end = new_migration
+            for migration in [start..end]
+                @apply_migration rds_instance, codebase_id, migration
+
+        #Otherwise, it is a rollback
+        else
+            start = current_migration
+            end = new_migration + 1
+            for migration in [start..end]
+                @apply_rollback rds_instance, codebase_id, migration
+
+    #Returns the number of the currently installed migration for this codebase
+    get_installed_migration: (rds_instance, codebase_id) ->
+
+    #Applies the given migration # to the rds instance
+    apply_migration: (rds_instance, codebase_id, migration) ->
+
+    #Applies the given rollback # to the rds instance
+    apply_rollback: (rds_instance, codebase_id, migration) ->
+
+    get_tests: ->
+        tests = [].concat (@additional_tests ? [])
+        #Test to make sure the rollback works, if it exists
+        tests.push bbobjects.instance 'Test', 'RDS_migration_test_rollback'
+        #The final test is always trying it to see if it runs without errors, and if so
+        #saving it to S3 so that it's locked down
+        tests.push bbobjects.instance 'Test', 'RDS_migration_try_and_save'
+
+    rds_options: ->
+
+    get_sizing: (service) ->
+
+    use_s3_credentials: ->
+
+
+#Tries this migration against a test database to make sure the schema compiles, then
+#saves it to s3.
+templates.add 'Test', 'RDS_migration_try_and_save', {
+    run: (version) -> throw new Error 'not yet implemented'
+        #MAKE SURE I SAVE BOTH THE MIGRATION AND THE ROLLBACK
+}
+
+#Test to make sure the rollback works, if it exists
+templates.add 'Test', 'RDS_migration_test_rollback', {
+    run: (version) -> throw new Error 'not yet implemented'
+}
+
+
 #Base class for building tests.  Tests should have a globally-unique id that we use
 #to store results in the database
 #
 #children should define run(version) -> which executes the test and returns true / false
 #based on success or failure status
-class templates.Test = class Test
+templates.Test = class Test
     constructor: (@id) ->
 
 
@@ -512,3 +699,5 @@ class templates.EC2Build = class EC2Build
     get_replacement_interval: -> 24 * 60 * 60 * 1000
 
 
+
+bbobjects = require './bbobjects'

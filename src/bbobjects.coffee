@@ -610,6 +610,24 @@ bbobjects.validate_destroy_hours = (hours) ->
 
     return hours
 
+#Retrieves an S3 configuration file as a string, or null if it does not exists
+bbobjects.get_s3_config = (Key) ->
+    try
+        data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key}
+    catch err
+        if err.code in ['NoSuchKey', 'AccessDenied']
+            return null
+        else
+            throw err
+    if data.DeleteMarker
+        return null
+    return String(data.body)
+
+#Puts an S3 configuration file
+bbobjects.put_s3_config = (Key, Body) ->
+    bbobjects.bubblebot_environment().s3 'putObject', {Bucket: config.get('bubblebot_s3_bucket'), Key, Body}
+
+
 
 bbobjects.Environment = class Environment extends BubblebotObject
     create: (type, template, region, vpc) ->
@@ -649,7 +667,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         template = @get 'template'
         if not template
             return null
-        return templates[template] ? null
+        return templates.get('Environment', template)
 
 
     #Creates a server for development purposes
@@ -744,7 +762,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {private_key, public_key} = u.generate_key_pair()
 
             #Save the private key to s3
-            @s3 'putObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: name, Body: private_key}
+            bbobjects.put_s3_config name, private_key
 
             #Strip the header and footer lines
             public_key = public_key.split('-----BEGIN PUBLIC KEY-----\n')[1].split('\n-----END PUBLIC KEY-----')[0]
@@ -762,7 +780,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             return from_cache
 
         try
-            data = String(@s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: keyname}).Body)
+            data = bbobjects.get_s3_config keyname
             key_cache.set keyname, data
             return data
 
@@ -1309,7 +1327,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         template = @id[prefix.length..]
         if not template
             return null
-        return templates[template] ? null
+        return templates.get('Service', template)
 
     codebase: -> @template().codebase()
 
@@ -1427,7 +1445,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         super null, null, {}
 
     #Retrieves the ec2 build template
-    template: -> templates[@id] ? throw new Error 'could not find ec2 build template with id ' + @id
+    template: -> templates.get('EC2Build', @id)
 
     describe_keys: -> u.extend super(), {
         template: @id
@@ -1579,7 +1597,7 @@ bbobjects.Test = class Test extends BubblebotObject
         templates.verify 'Test', @id
         super null, null, {}
 
-    template: -> templates[@id] ? throw new Error 'could not find Test template with id ' + @id
+    template: -> templates.get('Test', @id)
 
     is_tested: (version) -> @find_entries('test_passed', version).length > 0
 
@@ -1670,7 +1688,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         template = @get 'build_template_id'
         if not template
             return null
-        return templates[template] ? null
+        return templates.get('EC2Build', template)
 
     run: (command, options) ->
         return ssh.run @get_address(), @environment().get_private_key(), command, options
