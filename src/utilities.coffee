@@ -441,9 +441,11 @@ check_fiber_timeout = (name) ->
         err.reason = u.TIMEOUT
         throw err
 
-
+#Generates a random password
+u.gen_password = (size = 13) -> crypto.randomBytes(size).toString('hex')
 
 
 child_process = require 'child_process'
 tmp = require 'tmp'
 Fiber = require 'fibers'
+crypto = require 'crypto'

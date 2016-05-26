@@ -829,7 +829,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             log_stream_cache.set key, new cloudwatchlogs.LogStream this, group_name, stream_name
         return log_stream_cache.get key
 
-    #Retrieves the security group for webservers in this group, creating it if necessary
+    #Retrieves the security group for webservers in this environment, creating it if necessary
     get_webserver_security_group: ->
         group_name = @id + '_webserver_sg'
         id = @get_security_group_id(group_name)
@@ -850,6 +850,32 @@ bbobjects.Environment = class Environment extends BubblebotObject
             bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
             #Allow bubblebot to connect on any port
             rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}]}
+
+        @ensure_security_group_rules group_name, rules
+        return id
+
+
+    #Retrieves the security group for databases in this environment, creating it if necessary
+    #If external is true, allow outside world access
+    get_database_security_group: (external) ->
+        group_name = @id + '_database_sg' + (if external then '_external' else '')
+        id = @get_security_group_id(group_name)
+
+        rules = []
+        #list of ports we allow databases to connect on
+        ports = [3306, 5432, 1521, 1433]
+
+        for port in ports
+            #Let any webserver in this environment connect to the database on this port
+            rules.push {UserIdGroupPairs: [{GroupId: @get_webserver_security_group()}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+            #if external is true, let external servers connect to the database on this port
+            if external
+                rules.push {UserIdGroupPairs: [{IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+            #if this is not bubblebot, let the bubblebot server connect
+            if @id isnt 'bubblebot'
+                bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
+                #Allow bubblebot to connect on this port
+                rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
 
         @ensure_security_group_rules group_name, rules
         return id
@@ -1136,6 +1162,39 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 return bbobjects.ADMIN
             else
                 return bbobjects.BASIC
+
+
+    #Gets the RDS subnet group for this environment, creating it if necessary
+    get_rds_subnet_group: ->
+        subnet_groupname = 'for_' + @id
+
+        #see if we know its created in our cache
+        if rds_subnet_groups.get(subnet_groupname)
+            return subnet_groupname
+
+        #check if it is created
+        results = @rds 'describeDBSubnetGroups', {DBSubnetGroupName: subnet_groupname}
+        if results.DBSubnetGroups?.length > 0
+            rds_subnet_groups.set(subnet_groupname, true)
+            return subnet_groupname
+
+        #not created, so create it
+
+        #find all our subnets in this VPC
+        results = @ec2 'describeSubnets', {
+            Filters: [{Name: 'vpc-id', Values: [@get_vpc()]}]
+        }
+        SubnetIds = (subnet.SubnetId for subnet in results.Subnets ? [])
+
+        @rds 'createDBSubnetGroup', {
+            DBSubnetGroupDescription: 'Default Bubblebot-created subnet group for environment ' + @id
+            DBSubnetGroupName: subnet_groupname
+            SubnetIds:
+        }
+
+        return subnet_groupname
+
+
 
 
 
@@ -1746,8 +1805,6 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
 #Represents an RDS instance.
 bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
-    constructor: (@environment, @id) ->
-
     #Creates a new rds instance.  We take:
     #
     #The parent
@@ -1762,14 +1819,19 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         {Engine, EngineVersion} = permanent_options
         {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
 
+        #Add to the database
+        super parent.type, parent.id
+
         if credentials
             {MasterUsername, MasterUserPassword} = credentials
         else
-            #TODO: generate and save in database
+            MasterUsername = u.gen_password()
+            MasterUserPassword = u.gen_password()
+            @set 'MasterUsername', MasterUsername
+            @set 'MasterUserPassword', MasterUserPassword
 
-        #TODO:
-            #Deal with VpcSecurityGroupIds
-            #Deal with DBSubnetGroupName
+        VpcSecurityGroupIds = [@environment().get_database_security_group(PubliclyAccessible)]
+        DBSubnetGroupName = @environment.get_rds_subnet_group()
 
         params = {
             DBInstanceIdentifier: @id
@@ -1797,12 +1859,13 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
             #Auto-generated
 
-            VpcSecurityGroupIds #[array of strings] (see what I did for my current one)
-            DBSubnetGroupName #Needs a subnet here (see what I did for my current one)
+            VpcSecurityGroupIds
+            DBSubnetGroupName
 
             StorageEncrypted: true
         }
 
+        #Remove credentials from the parameters...
         safe_params = u.extend {}, params
         delete safe_params.MasterUsername
         delete safe_params.MasterUserPassword
@@ -1838,6 +1901,10 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         #If we are change the storage type we have to reboot afterwards
         reboot_required = StorageType?
 
+        #If we are changing publically accessible, we need to update the list of security groups
+        if PubliclyAccessible?
+            VpcSecurityGroupIds = [@environment().get_database_security_group(PubliclyAccessible)]
+
         params = {
             ApplyImmediately: true
             AllocatedStorage
@@ -1856,8 +1923,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         u.log 'Resizing RDB succesful'
 
         if reboot_required
-            #OTOD: IMPLEMENT REBOOT.  SHOULD WE WAIT FOR CHANGES TO BE APPLIED?
-            throw new Error 'reboot required'
+            @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
 
         return null
 
@@ -1976,6 +2042,7 @@ key_cache = new Cache(60 * 60 * 1000)
 sg_cache = new Cache(60 * 60 * 1000)
 vpc_to_subnets = new Cache(60 * 60 * 1000)
 log_stream_cache = new Cache(24 * 60 * 60 * 1000)
+rds_subnet_groups = = new Cache(60 * 60 * 1000)
 
 
 
