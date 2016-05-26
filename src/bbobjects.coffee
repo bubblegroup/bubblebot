@@ -1940,24 +1940,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #a username and password... if missing, we use whatever we stored in the database
     endpoint: (username, password)  -> throw new Error 'not implemented'
 
-#Represents a database
-#bbobjects.Database = class Database extends BubblebotObject
-    #Runs any outstanding migrations from this template on the database
-    fully_apply: (template) ->
-        max = template.max()
-        current = @get_migration template
-        if current < max
-            for i in [current + 1..max]
-                @apply_template current, i
-
-    #Applies the development migration.  This does not get cached to S3.
-    apply_dev: (template) ->
-
-    #Given a template, check what the current migration number is
-    get_migration: (template) ->
-
-    #Runs the given migration on the database (first saving that migration to S3 + confirming it hasn't changed)
-    apply_template: (template, migration) ->
 
 
 #Represents an elastic ip address.  The id should be the amazon allocation id.
