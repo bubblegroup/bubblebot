@@ -210,28 +210,53 @@ templates.RDSService = class RDSService extends Service
         if not version?
             return
 
-        if not @rds_instance()
-            @create_rds_instance()
+        if not @rds_instance(instance)
+            @create_rds_instance(instance)
 
         @_codebase.migrate_to @rds_instance(), version
 
     #Gets the rds instance
-    rds_instance: ->
-        id = @instance.get 'rds_instance'
+    rds_instance: (instance) ->
+        id = instance.get 'rds_instance'
         if id
             return bbobjects.instance 'RDSInstance', id
 
     #Creates a new RDS instance for this service
-    create_rds_instance: ->
-        if @instance.get 'rds_instance'
+    create_rds_instance: (instance) ->
+        if instance.get 'rds_instance'
             throw new Error 'already have an instance'
 
-        rds_instance = throw new Error 'not implemented'
-        @instance.set 'rds_instance', rds_instance.id
+        rds_instance = bbobjects.instance 'RDSInstance', @id + '_instance1'
+        permanent_options = @_codebase.rds_options()
+        sizing_options = @_codebase.get_sizing this
+
+        #Most of the time we want to let the instance generate and store its own credentials,
+        #but for special cases like BBDB we want to store the credentials in S3
+        if @_codebase.use_s3_credentials()
+            MasterUsername = u.gen_password()
+            MasterUserPassword = u.gen_password()
+            credentials = {MasterUsername, MasterUserPassword}
+
+            #Save the credentials to s3 for future access
+            instance.environment().s3 'putObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: @_get_credentials_key(instance), Body: JSON.stringify(credentials)}
+        else
+            credentials = null
+
+        rds_instance.create this, permanent_options, sizing_options, credentials
+
+        instance.set 'rds_instance', rds_instance.id
+
+    #S3 key we use to store credentials
+    _get_credentials_key: (instance) -> 'RDSService_' + instance.id + '_credentials'
 
     codebase: -> @_codebase
 
-    endpoint: (instance) -> @rds_instance()?.endpoint()
+    endpoint: (instance) ->
+        if @_codebase.use_s3_credentials()
+            credentials = JSON.parse String @s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: @_get_credentials_key(instance)}).Body
+        else
+            credentials = null
+        @rds_instance()?.endpoint(credentials)
 
     get_tests: -> @_codebase.get_tests()
 
