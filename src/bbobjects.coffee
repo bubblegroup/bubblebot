@@ -1945,12 +1945,20 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if reboot_required
             @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
 
+        #Force a refresh of our cache
+        @get_configuration true
+
         return null
 
     #Fetches the current state of this instance from RDS
-    get_configuration: ->
+    get_configuration: (force_refresh) ->
+        if not force_refresh and rds_cache.get @id
+            return rds_cache.get @id
+
         data = @rds 'DescribeDBInstances', {DBInstanceIdentifier: @id}
-        return data.DBInstances?[0]
+        res = data.DBInstances?[0]
+        rds_cache.set @id, res
+        return res
 
     get_configuration_cmd:
         help: 'Fetches the configuration information about this database from RDS'
@@ -2053,7 +2061,7 @@ sg_cache = new Cache(60 * 60 * 1000)
 vpc_to_subnets = new Cache(60 * 60 * 1000)
 log_stream_cache = new Cache(24 * 60 * 60 * 1000)
 rds_subnet_groups = = new Cache(60 * 60 * 1000)
-
+rds_cache = new Cache(60 * 1000)
 
 
 

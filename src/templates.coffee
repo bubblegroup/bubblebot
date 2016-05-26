@@ -576,6 +576,15 @@ templates.RDSCodebase = class RDSCodebase
 
     #Returns the number of the currently installed migration for this codebase
     get_installed_migration: (rds_instance, codebase_id) ->
+        migration_manager = @get_migration_manager(rds_instance)
+        return migration_manager.get_migration(codebase_id)
+
+    #Given an RDS instance, gets the migration table object
+    get_migration_manager: (rds_instance) ->
+        engine = rds_instance.get_configuration().Engine
+        if not migration_managers[engine]
+            throw new error 'We do not currently support database of type ' + engine
+        return migration_managers[engine]
 
     #Applies the given migration # to the rds instance
     apply_migration: (rds_instance, codebase_id, migration) ->
@@ -596,6 +605,18 @@ templates.RDSCodebase = class RDSCodebase
     get_sizing: (service) ->
 
     use_s3_credentials: ->
+
+
+migration_managers = {}
+migration_managers.postgres = class PostgresMigrator
+    #Given a codebase id, returns the number of the current migration (or -1 if we have
+    #never applied one)
+    get_migration: (codebase_id) ->
+
+    #Makes sure we have the right migr
+    ensure_migration_table_exists: ->
+        SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'name';
+
 
 
 #Tries this migration against a test database to make sure the schema compiles, then
