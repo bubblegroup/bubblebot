@@ -1927,6 +1927,14 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
         return null
 
+    #Fetches the current state of this instance from RDS
+    get_configuration: ->
+        data = @rds 'DescribeDBInstances', {DBInstanceIdentifier: @id}
+        return data.DBInstances?[0]
+
+    get_configuration_cmd:
+        help: 'Fetches the configuration information about this database from RDS'
+        reply: true
 
     #Returns the endpoint we can access this instance at.  Optionally provide
     #a username and password... if missing, we use whatever we stored in the database
