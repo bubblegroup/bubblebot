@@ -252,11 +252,15 @@ templates.RDSService = class RDSService extends Service
     codebase: -> @_codebase
 
     endpoint: (instance) ->
+        rds_instance = @rds_instance(instance)
+        if not rds_instance
+            return null
+
         if @_codebase.use_s3_credentials()
             credentials = JSON.parse String @s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key: @_get_credentials_key(instance)}).Body
         else
             credentials = null
-        @rds_instance()?.endpoint(credentials)
+        return rds_instance.endpoint(credentials)
 
     get_tests: -> @_codebase.get_tests()
 

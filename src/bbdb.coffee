@@ -5,6 +5,8 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
     constructor: ->
         #The underlying RDS service instance
         @instance = bbobjects.bubblebot_environment().get_service('BBDBService', true)
+        if @instance.version() isnt @instance.codebase().get_latest_version()
+            @instance.deploy @instance.codebase().get_latest_version()
 
     #given a type, returns an array of all the ids of that type
     list_objects: (type) ->

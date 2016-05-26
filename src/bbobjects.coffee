@@ -1311,6 +1311,8 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             return null
         return templates[template] ? null
 
+    codebase: -> @template().codebase()
+
     #Returns the endpoint that this service is accessible at
     endpoint: -> @template().endpoint this
 
