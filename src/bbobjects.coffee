@@ -280,6 +280,25 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     #Retrieves the environment that this is in
     environment: -> @parent 'Environment'
 
+    #Returns true if this is a development object.  See also is_production.  Generally,
+    #we want to use @is_development() rather than (not @is_production()) for things
+    #involving credentials, since we want to treat QA credentials like production
+    #credentials.
+    is_development: -> @environment().is_development()
+
+    is_development_cmd:
+        help: 'Displays whether this is a development environment'
+        reply: true
+        groups: bbobjects.BASIC
+
+    #Returns true if this object is production.  See comment on is_development
+    is_production: -> @environment().is_production()
+
+    is_production_cmd:
+        help: 'Displays whether this is a production environment'
+        reply: true
+        groups: bbobjects.BASIC
+
     environment_cmd:
         help: 'returns the environment that this is in'
         groups: bbobjects.BASIC
@@ -659,24 +678,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
         vpc: @get_vpc()
     }
 
-    #Returns true if this is a development environment.  Preferable to check if things
-    #are development rather than production because for a lot of things (like displaying
-    #credentials, for instance) we want to treat QA like production
+    #Need to overwrite the default implementation since it by default checks the environment
     is_development: -> @get('type') is DEV
 
-    is_development_cmd:
-        help: 'Displays whether this is a development environment'
-        reply: true
-        groups: bbobjects.BASIC
-
-    #True if this is a production environment.  See comment on is_development; better to use
-    #that for a lot of purposes
+    #Need to overwrite the default implementation since it by default checks the environment
     is_production: -> @get('type') is PROD
-
-    is_production_cmd:
-        help: 'Displays whether this is a production environment'
-        reply: true
-        groups: bbobjects.BASIC
 
     template: ->
         template = @get 'template'
@@ -1982,6 +1988,23 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #Returns the endpoint we can access this instance at.  Optionally provide
     #a username and password... if missing, we use whatever we stored in the database
     endpoint: (username, password)  -> throw new Error 'not implemented'
+
+    #Destroys this RDS instance.  As an extra safety layer, we only terminate production
+    #instances if terminate prod is true
+    terminate: (terminate_prod) ->
+        if @is_production() and not terminate_prod
+            throw new Error 'cannot terminate a production RDS instance without passing terminate_prod'
+
+        u.log 'Deleting rds instance ' + @id
+        #If it is a production instance, we want to save a final snapshot.  Otherwise,
+        #jus delete it.
+        params = {
+            DBInstanceIdentifier: @id
+            FinalDBSnapshotIdentifier: if @is_production() then @id + '_final_snapshot_' + String(Date.now()) else null
+            SkipFinalSnapshot: not @is_production()
+        }
+        @environment().rds 'deleteDBInstance', params
+        u.log 'Deleted rds instance ' + @id
 
 
 
