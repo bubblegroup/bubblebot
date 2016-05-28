@@ -116,6 +116,21 @@ bbobjects.get_all_instances = ->
         res.push environment.describe_instances()...
     return res
 
+#Gets the default QA environment, which is the environment we use to run tests on individual
+#components
+bbobjects.get_default_qa_environment = ->
+    id = 'default_qa'
+    environment = bbobjects.instance 'Environment', id
+    #create it if it does not exist
+    if not environment.exists()
+        #use the same region and vpc as bubbleblot
+        bubblebot_env = bbobjects.bubblebot_environment()
+        regions = bubblebot_env.region()
+        vpc = bubblebot_env.get_vpc()
+        environment.create QA, 'blank', region, vpc
+    return environment
+
+
 #Gets the default development environment for the given region, creating it if it does not exist.
 #
 #If region is blank, returns the overall default dev environment (which is put in the same

@@ -435,6 +435,11 @@ templates.MultiGitCodebase = class MultiGitCodebase
         version = version.split(' ')
         return (repo.display_commit version[idx] for repo, idx in @repos).join('\n')
 
+#Returns [codebase_id (string), migration (number)]
+extract_rds_version_pieces = (version) ->
+    [codebase_id, migration] = String(version).split('/')
+    migration = parseInt migration
+    return [codebase_id, migration]
 
 #Represents a set of schema migrations for an RDS managed database
 #
@@ -456,10 +461,9 @@ templates.RDSCodebase = class RDSCodebase
     #returns [codebase_id (string), migration (number)], and throws an error
     #if codebase_id is wrong
     _extract_pieces: (version) ->
-        [codebase_id, migration] = String(version).split('/')
+        [codebase_id, migration] = extract_rds_version_pieces version
         if codebase_id isnt @get_id()
             throw new Error 'codebase mismatch: is ' + codebase_id + ', should be ' + @get_id()
-        migration = parseInt migration
         return [codebase_id, migration]
 
     #Given a codebase_id and migration combines it into the migration object
@@ -510,6 +514,19 @@ templates.RDSCodebase = class RDSCodebase
         [codebase_id, migration] = @_extract_pieces(version)
         description = @get_migration(version).description
         return "#{codebase_id} migration #{migration}: #{description}"
+
+
+    #Prevents accidentally changing the data for this migration by persisting it to S3.
+    #We do this after testing migrations to make sure that the tested version remains
+    #the actual version.  If overwrite is true, we can replace a locked version.
+    lock_migration_data: (version, overwrite) ->
+        if not overwrite
+            saved = bbobjects.get_s3_config 'RDSCodebase_' + version
+            if saved?
+                throw new Error 'we have already locked version ' + version
+
+        bbobjects.put_s3_config 'RDSCodebase_' + version, @get_migrations()[migration]
+        bbobjects.put_s3_config 'RDSCodebase_' + version + '_rollback', @get_rollbacks()[migration]
 
     #Gets the data for this migration.  If rollback is true, returns the rollback instead
     #of the migration
@@ -601,7 +618,7 @@ templates.RDSCodebase = class RDSCodebase
         engine = rds_instance.get_configuration().Engine
         if not migration_managers[engine]
             throw new error 'We do not currently support database of type ' + engine
-        return migration_managers[engine]
+        return new migration_managers[engine] rds_instance
 
     #Applies the given migration # to the rds instance
     apply_migration: (rds_instance, codebase_id, migration) ->
@@ -618,8 +635,6 @@ templates.RDSCodebase = class RDSCodebase
 
     get_tests: ->
         tests = [].concat @get_additional_tests()
-        #Test to make sure the rollback works, if it exists
-        tests.push bbobjects.instance 'Test', 'RDS_migration_test_rollback'
         #The final test is always trying it to see if it runs without errors, and if so
         #saving it to S3 so that it's locked down
         tests.push bbobjects.instance 'Test', 'RDS_migration_try_and_save'
@@ -628,9 +643,44 @@ templates.RDSCodebase = class RDSCodebase
     #of in the bubblebot database.
     use_s3_credentials: -> false
 
+    #Creates a fresh RDS instance for running tests against.  If migration is null,
+    #installs the latest migration... if a specific number, installs through that
+    #migration (-1 means don't run any).
+    #
+    #If sizing_options is null, creates the smallest possible instance... can pass in sizing
+    #to create larger instances for tests that depend on instance size
+    create_test_instance: (migration, sizing_options) ->
+        migration ?= @get_migrations().length - 1
+        sizing_options ?= @get_test_sizing_options()
+
+        #Create a new instance with a random id
+        environment = bbobjects.get_default_qa_environment()
+        rds_instance = bbobjects.instance 'RDSInstance', u.gen_password()
+        rds_instance.create environment, @rds_options(), sizing_options
+
+        return rds_instance
+
+    #Returns the default sizing options for test instances: ie, as cheap as possible
+    #(and publicly accessible to make debugging easier)
+    get_test_sizing_options: -> {
+        AllocatedStorage: 5
+        DBInstanceClass: 'db.t2.micro'
+        BackupRetentionPeriod: 0
+        MultiAZ: false
+        StorageType: 'standard'
+        PubliclyAccessible: true
+    }
+
+    #Returns a string that represents the state of the database's schema.  Used for
+    #things like confirming that a rollback returned the database to the same
+    #state as before
+    capture_schema: (rds_instance) -> @get_migration_manager(rds_instance).capture_schema()
+
 
 migration_managers = {}
 migration_managers.postgres = class PostgresMigrator
+    constructor: (@rds_instance) ->
+
     #Given a codebase id, returns the number of the current migration (or -1 if we have
     #never applied one)
     get_migration: (codebase_id) ->
@@ -650,18 +700,52 @@ migration_managers.postgres = class PostgresMigrator
     ensure_migration_table_exists: ->
         #SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'name';
 
+    #Returns a string that represents the state of the database's schema.  Used for
+    #things like confirming that a rollback returned the database to the same
+    #state as before
+    capture_schema: ->
 
 
-#Tries this migration against a test database to make sure the schema compiles, then
-#saves it to s3.
+
+#Tries this migration against a test database to make sure it works.  Tries the rollback
+#and confirms it leaves the database in a consistent state.
+#
+#Then, saves both the rollback and migration to S3
 templates.add 'Test', 'RDS_migration_try_and_save', {
-    run: (version) -> throw new Error 'not yet implemented'
-        #MAKE SURE I SAVE BOTH THE MIGRATION AND THE ROLLBACK
-}
+    run: (version) ->
+        [codebase_id, migration] = extract_rds_version_pieces version
+        codebase = templates.get 'Codebase', codebase_id
+        try
+            #Create a test instance initialized to one below the migration we are testing
+            rds_instance = codebase.create_test_instance(migration - 1)
 
-#Test to make sure the rollback works, if it exists
-templates.add 'Test', 'RDS_migration_test_rollback', {
-    run: (version) -> throw new Error 'not yet implemented'
+            #Capture the current state of the schema to compare the rollback
+            pre_schema = codebase.capture_schema rds_instance
+            pre_version = codebase.get_installed_migration rds_instance, codebase_id
+
+            #Apply the migration
+            codebase.migrate_to rds_instance, version
+
+            #Make sure the schema changed as a result of the migration (otherwise the
+            #schema capturing is probably incomplete and therefore not actually testing
+            #the rollback properly).
+            new_schema = codebase.capture_schema rds_instance
+            if new_schema is pre_schema
+                throw new Error 'The post-migration schema is the same as the pre-migration schema: ' + new_schema
+
+            #Apply the rollback
+            codebase.migrate_to rds_instance, pre_version
+
+            #Make sure the schema is now the same as it was originally
+            post_schema = codebase.capture_schema rds_instance
+            if post_schema isnt pre_schema
+                throw new Error 'The rollback did not restore the schema.\nPre:\n' + pre_schema + '\n\nPost:\n' + post_schema
+
+            #save both migration and rollback to S3
+            codebase.lock_migration_data version
+
+        finally
+            rds_instance.terminate()
 }
 
 
