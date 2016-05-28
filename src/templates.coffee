@@ -526,7 +526,8 @@ templates.RDSCodebase = class RDSCodebase
                 throw new Error 'we have already locked version ' + version
 
         bbobjects.put_s3_config 'RDSCodebase_' + version, @get_migrations()[migration]
-        bbobjects.put_s3_config 'RDSCodebase_' + version + '_rollback', @get_rollbacks()[migration]
+        if @get_rollbacks()[migration]
+            bbobjects.put_s3_config 'RDSCodebase_' + version + '_rollback', @get_rollbacks()[migration]
 
     #Gets the data for this migration.  If rollback is true, returns the rollback instead
     #of the migration
@@ -548,6 +549,8 @@ templates.RDSCodebase = class RDSCodebase
 
     #Returns true if upgrading the given rds_instance to the given version is reversible.
     #If not reversible, will ask the user to confirm that it is okay to migrate anyway.
+    #
+    #If we are doing a rollback, but we can't, will warn the user and abort
     confirm_reversible: (rds_instance, version) ->
         [codebase_id, new_migration] = @_extract_pieces(version)
 
@@ -555,9 +558,14 @@ templates.RDSCodebase = class RDSCodebase
         if new_migration is current_migration
             return true
 
-        #If this is a rollback, no need to confirm (we should have already confirmed
-        #elsewhere that doing a rollback is okay)
+        #If this is a rollback, check to see if we can actually roll it back
         if new_migration < current_migration
+            start = current_migration
+            end = new_migration + 1
+            for migration in [start..end]
+                if not @get_rollbacks()[migration]
+                    u.reply 'Cannot roll back to version ' + version + ' because migration # ' + migration + ' is not reversible'
+                    return false
             return true
 
         #If we have never applied this to this DB instance before, no need to confirm,
@@ -572,8 +580,6 @@ templates.RDSCodebase = class RDSCodebase
         reversible = true
         for migration in [start..end]
             #If we have a migration without a rollback, this is not reversible.
-            #We make an exception for migration 0, since there's no reason to rollback
-            #the initial table creation (can just make a new instance).
             if not @get_rollbacks()[migration] and migration > 0
                 reversible = false
 
@@ -629,6 +635,8 @@ templates.RDSCodebase = class RDSCodebase
     #Applies the given rollback # to the rds instance
     apply_rollback: (rds_instance, codebase_id, migration) ->
         rollback_data = @get_migration_data @_join_pieces(codebase_id, migration), true
+        if not rollback_data
+            throw new Error 'Cannot apply rollback ' + migration + ': not reversible'
 
         @get_migration_manager(rds_instance).rollback migration, rollback_data
 
@@ -733,13 +741,20 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             if new_schema is pre_schema
                 throw new Error 'The post-migration schema is the same as the pre-migration schema: ' + new_schema
 
-            #Apply the rollback
-            codebase.migrate_to rds_instance, pre_version
+            #See if this migration has a rollback
+            no_rollback = not codebase.get_migration_data(version, true)
+            if no_rollback
+                if not u.confirm 'We are testing a migration with no rollback: ' + version + '.  Are you sure you want to test and save it?'
+                    throw new Error 'aborting because no rollback'
 
-            #Make sure the schema is now the same as it was originally
-            post_schema = codebase.capture_schema rds_instance
-            if post_schema isnt pre_schema
-                throw new Error 'The rollback did not restore the schema.\nPre:\n' + pre_schema + '\n\nPost:\n' + post_schema
+            else
+                #Apply the rollback
+                codebase.migrate_to rds_instance, pre_version
+
+                #Make sure the schema is now the same as it was originally
+                post_schema = codebase.capture_schema rds_instance
+                if post_schema isnt pre_schema
+                    throw new Error 'The rollback did not restore the schema.\nPre:\n' + pre_schema + '\n\nPost:\n' + post_schema
 
             #save both migration and rollback to S3
             codebase.lock_migration_data version
