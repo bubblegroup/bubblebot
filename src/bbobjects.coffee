@@ -108,12 +108,15 @@ bbobjects.list_regions = ->
         regions[environment.get_region()] = true
     return (region for region, _ of regions)
 
-#Returns a list of every ec2 instance (and possibly other types) that we see in the environment
+#Returns a list of every instance that we see in the environment.
+#
+#Currently returns RDSInstances and EC2Instances
 bbobjects.get_all_instances = ->
     res = []
     environments = (bbobjects.get_default_dev_environment region for region in bbobjects.list_regions())
     for environment in environments
         res.push environment.describe_instances()...
+        res.push environment.list_rds_instances_in_region()...
     return res
 
 #Gets the default QA environment, which is the environment we use to run tests on individual
@@ -768,6 +771,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         return res
 
+    #Lists all the RDS instances in this environment's region
+    list_rds_instances_in_region: ->
+        data = @rds 'describeDBInstances', {}
+        return (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+
     #Returns the keypair name for this environment, or creates it if it does not exist
     get_keypair_name: ->
         name = config.get('keypair_prefix') + @id
@@ -1319,7 +1327,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         groups: bbobjects.BASIC
 
     #Checks if we are still using this instance
-    should_delete: (ec2instance) ->
+    should_delete: (instance) -> instance.should_delete this
+
+    should_delete_ec2instance: (ec2_instance) ->
         #If we are active, delete any expiration time, and don't delete
         if ec2instance.get('status') is ACTIVE
             ec2instance.set 'expiration_time', null
@@ -1335,6 +1345,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             #otherwise, see if we are expired
             else
                 return Date.now() > expiration
+
+    #We never want to delete the RDS instance for a given service without shutting
+    #down the service itself
+    should_delete_rdsinstance: (rds_instance) -> false
 
     describe_keys: -> u.extend super(), {
         template: @template()
@@ -1678,6 +1692,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
         @environment().tag_resource @id, 'Name', name + ' (' + status + ')'
 
+    #Double-dispatch for should_delete
+    should_delete: (owner) -> owner.should_delete_ec2instance(this)
+
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
         u.log 'setting status of ' + this + ' to ' + status
@@ -1916,6 +1933,9 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
         u.log 'RDS instance succesfully created with id ' + @id
         return null
+
+    #Double-dispatch for should_delete
+    should_delete: (owner) -> owner.should_delete_rdsinstance(this)
 
     #returns true if any of the sizing options changes could cause downtime
     are_changes_unsafe: (sizing_options) ->
