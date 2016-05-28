@@ -437,15 +437,21 @@ templates.MultiGitCodebase = class MultiGitCodebase
 
 
 #Represents a set of schema migrations for an RDS managed database
+#
+#Children should implement:
+#  rds_options
+#  get_sizing
+#  get_migrations
+#  get_rollbacks
+#  get_additional_tests
+#
 templates.RDSCodebase = class RDSCodebase
-    constructor: (@migrations, @rollbacks, @additional_tests) ->
-
     #Version should be [codebase id]/[migration #]
     canonicalize: (version) ->
         [codebase_id, migration] = String(version).split('/')
         if codebase_id isnt @get_id() or not String(parseInt(migration)) is migration
             return null
-        return codebase_id + '/' + migration
+        return @_join_pieces codebase_id, migration
 
     #returns [codebase_id (string), migration (number)], and throws an error
     #if codebase_id is wrong
@@ -455,6 +461,9 @@ templates.RDSCodebase = class RDSCodebase
             throw new Error 'codebase mismatch: is ' + codebase_id + ', should be ' + @get_id()
         migration = parseInt migration
         return [codebase_id, migration]
+
+    #Given a codebase_id and migration combines it into the migration object
+    _join_pieces: (codebase_id, migration) -> codebase_id + '/' + String(migration)
 
     #Retrieves the id of this codebase.  We need to search the templates to find it..
     get_id: ->
@@ -502,8 +511,9 @@ templates.RDSCodebase = class RDSCodebase
         description = @get_migration(version).description
         return "#{codebase_id} migration #{migration}: #{description}"
 
-    #Gets the data for this migration
-    get_migration: (version, rollback) ->
+    #Gets the data for this migration.  If rollback is true, returns the rollback instead
+    #of the migration
+    get_migration_data: (version, rollback) ->
         #See if we have it saved in s3.
         saved = bbobjects.get_s3_config 'RDSCodebase_' + version + (if rollback then '_rollback' else '')
         if saved?
@@ -512,12 +522,12 @@ templates.RDSCodebase = class RDSCodebase
         #Otherwise, get it from the migration array
         [codebase_id, migration] = @_extract_pieces(version)
         if rollback
-            return @rollbacks[migration]
+            return @get_rollbacks()[migration]
         else
-            return @migrations[migration]
+            return @get_migrations()[migration]
 
     #Returns the most up-to-date version of this codebase
-    get_latest_version: -> @get_id() + '/' + String(@migrations.length - 1)
+    get_latest_version: -> @_join_pieces @get_id(), @get_migrations().length - 1
 
     #Returns true if upgrading the given rds_instance to the given version is reversible.
     #If not reversible, will ask the user to confirm that it is okay to migrate anyway.
@@ -528,26 +538,33 @@ templates.RDSCodebase = class RDSCodebase
         if new_migration is current_migration
             return true
 
-        #See if this is a forward migration
-        if new_migration > current_migration
-            start = current_migration + 1
-            end = new_migration
-            #See if it is reversible
-            reversible = true
-            for migration in [start..end]
-                if not @rollbacks[migration]
-                    reversible = false
-
-            if reversible
-                return true
-
-            msg = "This migration is NOT reversible... we do not have rollbacks defined for every migration we are applying (#{start} to #{end}).  Are you sure you want to continue?"
-            return u.confirm msg
-
-        #If it's a rollback, confirm true (we should have already confirmed that doing
-        #a rollback is okay)
-        else
+        #If this is a rollback, no need to confirm (we should have already confirmed
+        #elsewhere that doing a rollback is okay)
+        if new_migration < current_migration
             return true
+
+        #If we have never applied this to this DB instance before, no need to confirm,
+        #because this is the initial creation of the DB instance, so it doesn't
+        #matter if it is not reversible
+        if current_migration is -1
+            return true
+
+        start = current_migration + 1
+        end = new_migration
+        #See if it is reversible
+        reversible = true
+        for migration in [start..end]
+            #If we have a migration without a rollback, this is not reversible.
+            #We make an exception for migration 0, since there's no reason to rollback
+            #the initial table creation (can just make a new instance).
+            if not @get_rollbacks()[migration] and migration > 0
+                reversible = false
+
+        if reversible
+            return true
+
+        msg = "This migration is NOT reversible... we do not have rollbacks defined for every migration we are applying (#{start} to #{end}).  Are you sure you want to continue?"
+        return u.confirm msg
 
 
     #Performs the migration on the given instance.
@@ -588,23 +605,28 @@ templates.RDSCodebase = class RDSCodebase
 
     #Applies the given migration # to the rds instance
     apply_migration: (rds_instance, codebase_id, migration) ->
+        migration_data = @get_migration_data @_join_pieces(codebase_id, migration)
+
+        @get_migration_manager(rds_instance).apply migration, migration_data
 
     #Applies the given rollback # to the rds instance
     apply_rollback: (rds_instance, codebase_id, migration) ->
+        rollback_data = @get_migration_data @_join_pieces(codebase_id, migration), true
+
+        @get_migration_manager(rds_instance).rollback migration, rollback_data
+
 
     get_tests: ->
-        tests = [].concat (@additional_tests ? [])
+        tests = [].concat @get_additional_tests()
         #Test to make sure the rollback works, if it exists
         tests.push bbobjects.instance 'Test', 'RDS_migration_test_rollback'
         #The final test is always trying it to see if it runs without errors, and if so
         #saving it to S3 so that it's locked down
         tests.push bbobjects.instance 'Test', 'RDS_migration_try_and_save'
 
-    rds_options: ->
-
-    get_sizing: (service) ->
-
-    use_s3_credentials: ->
+    #This should generally be false.  If true, we will store the credentials in S3 instead
+    #of in the bubblebot database.
+    use_s3_credentials: -> false
 
 
 migration_managers = {}
@@ -612,10 +634,21 @@ migration_managers.postgres = class PostgresMigrator
     #Given a codebase id, returns the number of the current migration (or -1 if we have
     #never applied one)
     get_migration: (codebase_id) ->
+        @ensure_migration_table_exists()
 
-    #Makes sure we have the right migr
+    #Runs the given migration data, updating the migration table to be the given migration.
+    #
+    #Will throw an error if the current migration number is not migration - 1
+    apply: (migration, migration_data) ->
+
+    #Runs the given rollback, updating the migration table to be migration - 1.  Throws
+    #an error if the current migration number is not migration.
+    rollback: (migration, rollback_data) ->
+
+    #Checks to see if the migration schema / table exists in the database, and creates them
+    #if they don't.
     ensure_migration_table_exists: ->
-        SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'name';
+        #SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'name';
 
 
 

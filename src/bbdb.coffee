@@ -87,12 +87,17 @@ bbobjects = require './bbobjects'
 templates = require './templates'
 
 templates.BBDBService = class BBDBService extends templates.RDSService
+    #We need to store our credentials in s3 instead of in the bubblebot database,
+    #since we are the bubblebot database!
+    use_s3_credentials: -> true
 
+    rds_options: ->
 
+    get_sizing: ->
 
-#The schema for bubblebot
-#templates.BubblebotDatabase extends PGDatabase
-    migrations: [
+    get_additional_tests: -> []
+
+    get_migrations: -> [
         "
         --install psql
         --check database default datatype for default schmea
@@ -134,17 +139,7 @@ templates.BBDBService = class BBDBService extends templates.RDSService
         "
     ]
 
-    rollbacks: [
+
+    get_rollbacks: -> [
 
     ]
-
-    max: -> @migrations.length - 1
-
-    get: (num) -> @migrations[num]
-
-    get_dev: -> null
-
-    get_rollback_dev: -> null
-
-    get_rollback: (num) -> @rollbacks[num]
-
