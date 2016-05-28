@@ -2007,7 +2007,17 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
     #Returns the endpoint we can access this instance at.  Optionally provide
     #a username and password... if missing, we use whatever we stored in the database
-    endpoint: (username, password)  -> throw new Error 'not implemented'
+    endpoint: (username, password) ->
+        endpoint = {}
+        data = @get_configuration()?.Endpoint
+        if not data
+            return null
+        endpoint.address = data.Address
+        endpoint.port = data.port
+        endpoint.username = username ? @get 'MasterUsername'
+        endpoint.password = password ? @get 'MasterUserPassword'
+
+        return endpoint
 
     #Destroys this RDS instance.  As an extra safety layer, we only terminate production
     #instances if terminate prod is true
