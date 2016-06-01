@@ -21,6 +21,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
     #Given an object, sets the property with the given name
     set_property: (type, id, name, value) ->
+        #see jsonb_set here: https://www.postgresql.org/docs/9.5/static/functions-json.html
 
     #Creates a new object, optionally with the given parent and initial properties
     create_object: (type, id, parent_type, parent_id, initial_properties) ->
