@@ -235,12 +235,8 @@ templates.RDSService = class RDSService extends Service
         if id
             return bbobjects.instance 'RDSInstance', id
 
-    #Creates a new RDS instance for this service
-    create_rds_instance: (instance) ->
-        if instance.get 'rds_instance'
-            throw new Error 'already have an instance'
-
-        rds_instance = bbobjects.instance 'RDSInstance', @id + '_instance1'
+    #Gets the parameters we use to create a new RDS instance
+    get_params_for_creating_instance: (instance) ->
         permanent_options = @_codebase.rds_options()
         sizing_options = @_codebase.get_sizing this
 
@@ -255,6 +251,17 @@ templates.RDSService = class RDSService extends Service
             bbobjects.put_s3_config @_get_credentials_key(instance), JSON.stringify(credentials)
         else
             credentials = null
+
+        return {permanent_options, sizing_options, credentials}
+
+    #Creates a new RDS instance for this service
+    create_rds_instance: (instance) ->
+        if instance.get 'rds_instance'
+            throw new Error 'already have an instance'
+
+        rds_instance = bbobjects.instance 'RDSInstance', @id + '_instance1'
+
+        {permanent_options, sizing_options, credentials} = @get_params_for_creating_instance instance
 
         rds_instance.create this, permanent_options, sizing_options, credentials
 

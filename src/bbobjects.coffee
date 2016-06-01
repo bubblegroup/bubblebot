@@ -92,6 +92,62 @@ bbobjects.get_bbserver = ->
 
     return instance
 
+
+_cached_bbdb_instance = null
+#Returns or creates and returns the rds instance for bbdb
+#
+#Ensures that u.context().db is set.
+bbobjects.get_bbdb_instance = ->
+    environment = bbobjects.bubblebot_environment()
+    service_instance = environment.get_service('BBDBService', null, true)
+
+    #Makes sure u.context().db is set
+    ensure_context_db = -> u.context().db ?= new bbdb.BBDatabase(service_instance)
+
+    if _cached_bbdb_instance?
+        ensure_context_db()
+        return _cached_bbdb_instance
+
+    instances = environment.list_rds_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb'))
+
+    #Screen out uninitialized instances
+    good = []
+    for instance in instances
+        if instance.get_tags()[config.get('status_tag')] isnt BUILD_COMPLETE
+            u.log 'warning... found an uninitialized bubblebot database!!'
+        else
+            good.push instance
+
+    if good.length > 1
+        throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
+    else if good.length is 1
+        ensure_context_db()
+        return good[0]
+
+    #It doesn't exist yet, so create it
+    {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
+
+    #Create and tag the database
+    rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '_instance1'
+    rds_instance.create null, permanent_options, sizing_options, credentials, true
+    @environment().tag_resource rds_instance.id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb')
+
+    #Write the initial code to it
+    service_instance._codebase.migrate_to rds_instance, 0
+
+    #It should now be useable as a database...
+    _cached_bbdb_instance = rds_instance
+    ensure_context_db()
+
+    #Save the service instance and rds_instance data
+    service_instance.create environment
+    rds_instance.create service_instance, null, null, null, 'just_write'
+
+    #Tag it build complete
+    @environment().tag_resource rds_instance.id, config.get('status_tag'), BUILD_COMPLETE
+
+    return rds_instance
+
 #Returns all the objects of a given type
 bbobjects.list_all = (type) -> (bbobjects.instance type, id for id in u.db().list_objects type)
 
@@ -772,6 +828,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         return res
 
+    list_rds_instances_by_tag: (key, value) ->
+        data = @rds 'describeDBInstances', {Filters: [{Name: 'tag:' + key, Values: [value]}]}
+        return (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+
     #Lists all the RDS instances in this environment's region
     list_rds_instances_in_region: ->
         data = @rds 'describeDBInstances', {}
@@ -1157,9 +1217,14 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Returns the service for this environment with the given template name.  If create_on_missing
     #is true, creates it if it does not already exist
-    get_service: (template_name, create_on_missing) ->
+    #
+    #If dont_check_exists is true, doesn't check if it exists or not, just returns it.  This is
+    #mainly for bootstrapping BBDB
+    get_service: (template_name, create_on_missing, dont_check_exists) ->
         templates.verify 'Service', template_name
         instance = bbobjects.instance 'ServiceInstance', @id + '_' + template_name
+        if dont_check_exists
+            return instance
         if not instance.exists()
             if create_on_missing
                 instance.create this
@@ -1874,12 +1939,24 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #
     #credentials -- optional.  If not included, we generate credentials automatically and store them
     #in the bubblebot database.  If included, caller is responsible for storing the credentials.
-    create: (parent, permanent_options, sizing_options, credentials) ->
+    #
+    #bootstrap -- this is for bootstrapping bbdb.  if 'just_create', creates without writing to
+    #the database; if 'just_write', writes to the database without creating
+    create: (parent, permanent_options, sizing_options, credentials, bootstrap) ->
         {Engine, EngineVersion} = permanent_options
         {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
 
+        if bootstrap is 'just_create'
+            throw new Error 'Need to include credentials when using just_create'
+        if bootstrap? and bootstrap not in ['just_create', 'just_write']
+            throw new Error 'unrecognized bootstrap: ' + bootstrap
+
         #Add to the database
-        super parent.type, parent.id
+        if bootstrap isnt 'just_create'
+            super parent.type, parent.id
+
+        if bootstrap is 'just_write'
+            return
 
         if credentials
             {MasterUsername, MasterUserPassword} = credentials
@@ -2023,8 +2100,10 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
     #Destroys this RDS instance.  As an extra safety layer, we only terminate production
     #instances if terminate prod is true
-    terminate: (terminate_prod) ->
-        if @is_production() and not terminate_prod
+    terminate: (terminate_prod, assume_production) ->
+        is_production = assume_production or @is_production()
+
+        if is_production and not terminate_prod
             throw new Error 'cannot terminate a production RDS instance without passing terminate_prod'
 
         u.log 'Deleting rds instance ' + @id
@@ -2032,11 +2111,18 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         #jus delete it.
         params = {
             DBInstanceIdentifier: @id
-            FinalDBSnapshotIdentifier: if @is_production() then @id + '_final_snapshot_' + String(Date.now()) else null
-            SkipFinalSnapshot: not @is_production()
+            FinalDBSnapshotIdentifier: if is_production then @id + '_final_snapshot_' + String(Date.now()) else null
+            SkipFinalSnapshot: not is_production
         }
         @environment().rds 'deleteDBInstance', params
         u.log 'Deleted rds instance ' + @id
+
+    get_tags: ->
+        tags = {}
+        for tag in @get_configuration().Tags ? []
+            tags[tag.Key] = tag.Value
+        return tags
+
 
 
 

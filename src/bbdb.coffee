@@ -2,14 +2,6 @@ bbdb = exports
 
 #Represents a connection to the database that powers bubble bot
 bbdb.BBDatabase = class BBDatabase extends databases.Postgres
-    constructor: ->
-        #The underlying RDS service instance
-        instance = bbobjects.bubblebot_environment().get_service('BBDBService', true)
-        if instance.version() isnt @instance.codebase().get_latest_version()
-            instance.deploy @instance.codebase().get_latest_version()
-
-        super instance
-
     #given a type, returns an array of all the ids of that type
     list_objects: (type) ->
 
@@ -91,6 +83,10 @@ databases = require './databases'
 templates = require './templates'
 
 templates.BBDBService = class BBDBService extends templates.RDSService
+    #We override the logic for fetching the actual instance, since we can't
+    #rely on BBDB to find BBDB
+    rds_instance: (instance) -> bbobjects.get_bbdb_instance()
+
     #We need to store our credentials in s3 instead of in the bubblebot database,
     #since we are the bubblebot database!
     use_s3_credentials: -> true

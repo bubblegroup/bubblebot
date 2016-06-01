@@ -3,109 +3,125 @@ bbserver = exports
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand(this)
-        @db = new bbdb.BBDatabase()
         @_monitor = new monitoring.Monitor(this)
-
         @_registered_tasks = {}
+
+    _build_bbdb: ->
+        #Make sure the database exists.  This will also set u.context().db
+        bbobjects.get_bbdb_instance()
+        if not u.context().db?
+            throw new Error 'u.context().db is not set'
+
+        #Get the service instance
+        instance = bbobjects.bubblebot_environment().get_service('BBDBService')
+
+        #Make sure it is fully upgraded
+        if instance.version() isnt @instance.codebase().get_latest_version()
+            instance.deploy @instance.codebase().get_latest_version()
+
+        return u.context().db
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
-        server = http.createServer (req, res) =>
-            path = (req.url ? '').split('/')
-            if path[0] is 'logs'
-                @show_logs req, res, path[1...]
-
-            else if not path[0]
-                res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
-                res.end()
-            else
-                res.statusCode = 404
-                res.write "You have reached Bubblebot, but we don't recognize " + req.url
-                res.end()
-
-        server.listen 8080
-
-        server2 = http.createServer (req, res) =>
-            if req.url is '/shutdown'
-                u.log 'Shutting down!'
-                res.end bbserver.SHUTDOWN_ACK
-                process.exit(1)
-            else
-                res.end 'unrecognized command'
-
-        server2.listen 8081
-
-        @slack_client = new slack.SlackClient(this)
-        @slack_client.on 'new_conversation', @new_conversation.bind(this)
-
-        log_stream = @get_server_log_stream()
-
-        #Also make this function write to the logger
-        wrap_in_log = (name, fn) ->
-            return (args...) ->
-                u.log name + ': ' + String(args)
-                res = fn args...
-                if res
-                    u.log name + ' response: ' + String(res)
-
-        #Create the default log environment for the server
-        u.set_default_loggers {
-            log: log_stream.log.bind(log_stream)
-            reply: wrap_in_log 'Reply', @slack_client.reply.bind(@slack_client)
-            message: wrap_in_log 'Message', @slack_client.message.bind(@slack_client)
-            ask: (msg, override_user_id) => wrap_in_log 'Ask' @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
-            confirm: (msg, override_user_id) => wrap_in_log 'Confirm' @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
-            announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
-            report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
-            report_no_log: @slack_client.report.bind(@slack_client)
-        }
-
-        u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
-
-        #Handle uncaught exceptions.
-        #We want to report them, with a rate limit of 10 per 30 minutes
-        rate_limit_count = 0
-        rate_limit_on = false
-        process.on 'uncaughtException', (err) =>
-            if rate_limit_on
-                return
-
-            rate_limit_count++
-            if rate_limit_count is 10
-                rate_limit_on = true
-                setTimeout ->
-                    rate_limit_count = 0
-                    rate_lmit_on = false
-                , 30 * 60 * 1000
-
-            message = 'Uncaught exception: ' + (err.stack ? err)
-            u.report message
-
-        #Start up the task engine
-        @load_tasks()
-        setTimeout =>
-            @start_task_engine()
-        , 10 * 1000
-
-        #Tell the various objects to start themselves up
         u.SyncRun =>
-            @build_context('startup')
+            @db = @_build_bbdb()
 
-            u.log 'Running startup'
+            server = http.createServer (req, res) =>
+                path = (req.url ? '').split('/')
+                if path[0] is 'logs'
+                    @show_logs req, res, path[1...]
 
-            #Make sure we have at least one user who is an admin
-            @get_admins()
+                else if not path[0]
+                    res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
+                    res.end()
+                else
+                    res.statusCode = 404
+                    res.write "You have reached Bubblebot, but we don't recognize " + req.url
+                    res.end()
 
-            #Make a list of each type that has a startup function
-            for typename, cls in bbobjects
-                if typeof(cls::startup) is 'function'
-                    u.log 'Startup: loading ' + typename + 's...'
-                    for id in u.db().list_objects typename
-                        u.log 'Startup: sending startup() to ' + id
-                        try
-                            bbobjects.instance(typename, id).startup()
-                        catch err
-                            u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
+            server.listen 8080
+
+            server2 = http.createServer (req, res) =>
+                if req.url is '/shutdown'
+                    u.log 'Shutting down!'
+                    res.end bbserver.SHUTDOWN_ACK
+                    process.exit(1)
+                else
+                    res.end 'unrecognized command'
+
+            server2.listen 8081
+
+            @slack_client = new slack.SlackClient(this)
+            @slack_client.on 'new_conversation', @new_conversation.bind(this)
+
+            log_stream = @get_server_log_stream()
+
+            #Also make this function write to the logger
+            wrap_in_log = (name, fn) ->
+                return (args...) ->
+                    u.log name + ': ' + String(args)
+                    res = fn args...
+                    if res
+                        u.log name + ' response: ' + String(res)
+
+            #Create the default log environment for the server
+            u.set_default_loggers {
+                log: log_stream.log.bind(log_stream)
+                reply: wrap_in_log 'Reply', @slack_client.reply.bind(@slack_client)
+                message: wrap_in_log 'Message', @slack_client.message.bind(@slack_client)
+                ask: (msg, override_user_id) => wrap_in_log 'Ask' @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+                confirm: (msg, override_user_id) => wrap_in_log 'Confirm' @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+                announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
+                report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
+                report_no_log: @slack_client.report.bind(@slack_client)
+            }
+
+            u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
+
+            #Handle uncaught exceptions.
+            #We want to report them, with a rate limit of 10 per 30 minutes
+            rate_limit_count = 0
+            rate_limit_on = false
+            process.on 'uncaughtException', (err) =>
+                if rate_limit_on
+                    return
+
+                rate_limit_count++
+                if rate_limit_count is 10
+                    rate_limit_on = true
+                    setTimeout ->
+                        rate_limit_count = 0
+                        rate_lmit_on = false
+                    , 30 * 60 * 1000
+
+                message = 'Uncaught exception: ' + (err.stack ? err)
+                u.report message
+
+            #Start up the task engine
+            @load_tasks()
+            setTimeout =>
+                @start_task_engine()
+            , 10 * 1000
+
+            #Tell the various objects to start themselves up
+            u.SyncRun =>
+                @build_context('startup')
+
+                u.log 'Running startup'
+
+                #Make sure we have at least one user who is an admin
+                @get_admins()
+
+                #Make a list of each type that has a startup function
+                for typename, cls in bbobjects
+                    if typeof(cls::startup) is 'function'
+                        u.log 'Startup: loading ' + typename + 's...'
+                        for id in u.db().list_objects typename
+                            u.log 'Startup: sending startup() to ' + id
+                            try
+                                bbobjects.instance(typename, id).startup()
+                            catch err
+                                u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
 
     #Returns the url bubblebot server is accessible at
     get_server_url: ->
