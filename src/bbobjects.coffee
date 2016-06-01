@@ -2016,6 +2016,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         endpoint.port = data.port
         endpoint.username = username ? @get 'MasterUsername'
         endpoint.password = password ? @get 'MasterUserPassword'
+        endpoint.database = 'postgres'
 
         return endpoint
 

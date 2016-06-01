@@ -630,7 +630,7 @@ templates.RDSCodebase = class RDSCodebase
     apply_migration: (rds_instance, codebase_id, migration) ->
         migration_data = @get_migration_data @_join_pieces(codebase_id, migration)
 
-        @get_migration_manager(rds_instance).apply migration, migration_data
+        @get_migration_manager(rds_instance).apply codebase_id, migration, migration_data
 
     #Applies the given rollback # to the rds instance
     apply_rollback: (rds_instance, codebase_id, migration) ->
@@ -638,7 +638,7 @@ templates.RDSCodebase = class RDSCodebase
         if not rollback_data
             throw new Error 'Cannot apply rollback ' + migration + ': not reversible'
 
-        @get_migration_manager(rds_instance).rollback migration, rollback_data
+        @get_migration_manager(rds_instance).rollback codebase_id, migration, rollback_data
 
 
     get_tests: ->
@@ -686,27 +686,88 @@ templates.RDSCodebase = class RDSCodebase
 
 
 migration_managers = {}
-migration_managers.postgres = class PostgresMigrator
-    constructor: (@rds_instance) ->
-
+migration_managers.postgres = class PostgresMigrator extends databases.Postgres
     #Given a codebase id, returns the number of the current migration (or -1 if we have
     #never applied one)
     get_migration: (codebase_id) ->
         @ensure_migration_table_exists()
+        return @_get_migration this, codebase_id
+
+    #Helper for get_migration -- trans should either be this class to call without transaction,
+    #or a transaction to call with it
+    _get_migration: (trans, codebase_id) ->
+        result = trans.query "SELECT migration FROM bubblebot.migrations WHERE codebase_id = $1", codebase_id
+        return result.rows[0]?.migration ? -1
 
     #Runs the given migration data, updating the migration table to be the given migration.
     #
     #Will throw an error if the current migration number is not migration - 1
-    apply: (migration, migration_data) ->
+    apply: (codebase_id, migration, migration_data) ->
+        @ensure_migration_table_exists()
+
+        @transaction (t) =>
+            #Acquire an exclusive lock on the migrations table
+            t.query "LOCK TABLE bubblebot.migrations"
+
+            #check that we are ready to run it
+            current = @_get_migration t, codebase_id
+            if current isnt migration - 1
+                throw new Error "trying to apply migration #{migration} but we are at #{current}"
+
+            #Run the migration
+            t.query migration_data
+
+            #Update the migration table
+            query = "INSERT INTO bubblebot.migrations (codebase_id, migration) VALUES ($1, $2) ON CONFLICT codebase_id DO UPDATE SET migration = $2"
+            t.query query, codebase_id, migration
+
 
     #Runs the given rollback, updating the migration table to be migration - 1.  Throws
     #an error if the current migration number is not migration.
-    rollback: (migration, rollback_data) ->
+    rollback: (codebase_id, migration, rollback_data) ->
+        @ensure_migration_table_exists()
+
+        @transaction (t) =>
+            #Acquire an exclusive lock on the migrations table
+            t.query "LOCK TABLE bubblebot.migrations"
+
+            #check that we are ready to run it
+            current = @_get_migration t, codebase_id
+            if current isnt migration
+                throw new Error "trying to roll back migration #{migration} but we are at #{current}"
+
+            #Run the migration
+            t.query rollback_data
+
+            #Update the migration table
+            query = "UPDATE bubblebot.migrations SET migration = $2 WHERE codebase_id = $1"
+            t.query query, codebase_id, migration - 1
 
     #Checks to see if the migration schema / table exists in the database, and creates them
     #if they don't.
     ensure_migration_table_exists: ->
-        #SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'name';
+        #If it exists, we are done
+        exists_query = "SELECT 1 FROM information_schema.tables WHERE table_schema = 'bubblebot' AND table_name = 'migrations'"
+        result = @query exists_query
+        if result.rows[0]
+            return
+
+        #Otherwise, create it in a transaction
+        @transaction (t) =>
+            #Do a lock to make sure no one else is doing this...
+            t.query 'select pg_advisory_xact_lock(62343)'
+
+            #Retry the exists query in case it got created in the meantime
+            result = t.query exists_query
+            if result.rows[0]
+                return
+
+            #Create the schema if it does not exist
+            t.query 'CREATE SCHEMA IF NOT EXISTS bubblebot'
+
+            #Create the table
+            t.query 'CREATE TABLE migrations (codebase_id varchar(512), migration int, CONSTRAINT migrations_pk PRIMARY KEY (codebase_id))'
+
 
     #Returns a string that represents the state of the database's schema.  Used for
     #things like confirming that a rollback returned the database to the same
@@ -854,3 +915,4 @@ class templates.EC2Build = class EC2Build
 
 
 bbobjects = require './bbobjects'
+databases = require './databases'
