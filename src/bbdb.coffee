@@ -91,24 +91,35 @@ templates.BBDBService = class BBDBService extends templates.RDSService
     #since we are the bubblebot database!
     use_s3_credentials: -> true
 
-    rds_options: ->
+    rds_options: -> {
+        Engine: 'postgres'
+        EngineVersion: '9.5.2'
+    }
 
-    get_sizing: ->
+    #BBDB doesn't have to be terribly fast or robust, but should not be publicly
+    #accessible, and should have good backups
+    get_sizing: -> {
+        AllocatedStorage: 5
+        DBInstanceClass: 'db.t2.micro'
+        BackupRetentionPeriod: 30
+        MultiAZ: false
+        StorageType: 'standard'
+        PubliclyAccessible: false
+    }
 
     get_additional_tests: -> []
 
     get_migrations: -> [
         "
-        --install psql
-        --check database default datatype for default schmea
-
         CREATE TABLE bbobjects (
             type varchar(512),
             id varchar(512),
             parent_id varchar(512),
             parent_type varchar(512),
-            properties jsonb
-        )
+            properties jsonb,
+            PRIMARY KEY (type, id)
+        );
+        CREATE INDEX ON bbobjects (parent_id, parent_type);
 
         CREATE TABLE history (
             history_type varchar(512),
@@ -116,30 +127,32 @@ templates.BBDBService = class BBDBService extends templates.RDSService
             timestamp bigint,
             reference varchar(512),
             properties jsonb
-        )
-        --Needs to be searchable by history_type / history_id / timestamp
-        --Needs to be searchable by history_type / history_id / reference
-
+        );
+        CREATE INDEX ON history (history_type, history_id, timestamp);
+        CREATE INDEX ON history (history_type, history_id, reference);
 
         CREATE TABLE scheduler (
             id bigserial,            --uid of task instance
             timestamp bigint,        --when we should run it
             owner bigint,            --who claimed the task
             task varchar(512),       --name of the task
-            properties jsonb         --data to pass to the task
-        )
-        --need to search by id
-        --need to search by timestamp
-        --need to search by task
+            properties jsonb,        --data to pass to the task
+            PRIMARY KEY (id)
+        );
+        CREATE INDEX ON scheduler (timestamp);
+        CREATE INDEX ON scheduler (task);
 
         CREATE TABLE scheduler_owners (
             owner_id bigserial,
-            last_access bigint
+            last_access bigint,
+            PRIMARY KEY (owner_id)
         )
         "
     ]
 
 
     get_rollbacks: -> [
-
+        "
+        DROP TABLE bbobjects, history, scheduler, scheduler_owners;
+        "
     ]
