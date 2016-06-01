@@ -1,12 +1,14 @@
 bbdb = exports
 
 #Represents a connection to the database that powers bubble bot
-bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
+bbdb.BBDatabase = class BBDatabase extends databases.Postgres
     constructor: ->
         #The underlying RDS service instance
-        @instance = bbobjects.bubblebot_environment().get_service('BBDBService', true)
-        if @instance.version() isnt @instance.codebase().get_latest_version()
-            @instance.deploy @instance.codebase().get_latest_version()
+        instance = bbobjects.bubblebot_environment().get_service('BBDBService', true)
+        if instance.version() isnt @instance.codebase().get_latest_version()
+            instance.deploy @instance.codebase().get_latest_version()
+
+        super instance
 
     #given a type, returns an array of all the ids of that type
     list_objects: (type) ->
@@ -81,6 +83,7 @@ bbdb.BBDatabase = class BBDatabase extends bbobjects.Database
 
 
 bbobjects = require './bbobjects'
+databases = require './databases'
 
 
 #We add some templates for creating the service

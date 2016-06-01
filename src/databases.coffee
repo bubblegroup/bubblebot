@@ -1,6 +1,7 @@
 databases = exports
 
 databases.Postgres = class Postgres
+    #rds_instance can be the rds_instance or an rds service: just needs to support endpoint
     constructor: (@rds_instance) ->
 
     #Gets the connection string for talking to this database
