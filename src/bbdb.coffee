@@ -4,36 +4,81 @@ bbdb = exports
 bbdb.BBDatabase = class BBDatabase extends databases.Postgres
     #given a type, returns an array of all the ids of that type
     list_objects: (type) ->
+        result = @query "SELECT id FROM bbobjects WHERE type = $1", type
+        return (row.id for row in result.rows)
 
     #Given an object, returns the property with the given name
     get_property: (type, id, name) ->
+        result = @query "SELECT properties->$3 as prop FROM bbobjects WHERE type = $1 AND id = $2", type, id, name
+        return result.rows[0]?.prop
 
     #Given an object, returns all the properties for that object.
     get_properties: (type, id) ->
+        result = @query "SELECT properties FROM bbobjects WHERE type = $1 AND id = $2", type, id
+        return result.rows[0]?.properties
 
-    #Given an object, sets the property with the given name
+    #Given an object, sets the property with the given name.  Errors if the object does not exist
     set_property: (type, id, name, value) ->
-        #see jsonb_set here: https://www.postgresql.org/docs/9.5/static/functions-json.html
+        query = "UPDATE bbobjects SET properties = COALESCE(properties, '{}'::jsonb) || jsonb_build_object($3, $4::jsonb) WHERE type = $1 AND id = $2 RETURNING id"
+        result = @query query, type, id, name, JSON.stringify(value)
+        if result.rows.length isnt 1
+            throw new Error 'set failed: modified ' + result.rows.length + ' rows'
+        return null
 
     #Creates a new object, optionally with the given parent and initial properties
     create_object: (type, id, parent_type, parent_id, initial_properties) ->
+        query = "INSERT INTO bbobjects (type, id, parent_type, parent_id, initial_properties) VALUES ($1, $2, $3, $4, $5::jsonb)"
+        @query query, type, id, parent_type, parent_id, JSON.stringify(initial_properties)
+        return null
 
     #Deletes this object from the database
     delete_object: (type, id) ->
+        query = "DELETE FROM bbobjects WHERE type = $1 and id = $2"
+        @query query, type, id
+        return null
 
     #Returns true if an object with this type and id exists
     exists: (type, id) ->
+        query = "SELECT 1 FROM bbobjects WHERE type = $1 and id = $2"
+        result = @query query, type, id
+        return result.rows[0]?
+
 
     #Returns the immediate parent, or if parent_type is set, searches upwards til it
     #finds an ancestor of that type.
     #
     #Returns [parent_type, parent_id], or [null, null] if not found
     find_parent: (type, id, parent_type) ->
+        #If parent_type is set, we need to do a recursive search
+        if parent_type
+            query = "WITH RECURSIVE parents(parent_type, parent_id) as (
+                      VALUES ($1, $2)
+                      UNION
+                      SELECT bbobjects.parent_type, bbobjects.parent_id FROM bbobjects
+                      INNER JOIN parents ON parents.parent_id = bbobjects.id AND parents.parent_type = bbobjects.type
+                    ) SELECT * from parents WHERE parent_type = $3"
+            result = @query query, type, id, parent_type
+
+
+        #No parent type, so this is just a straightforward select
+        else
+            query = "SELECT parent_type, parent_id FROM bbobjects WHERE type = $1 and id = $2"
+
+        first = result.rows[0]
+        return [first?.parent_type, first?.parent_id]
 
     #Lists all immediate children.  If child_type is set, filters by child type
     #
     #Returns [[child_type, child_id], [child_type, child_id]...]
     children: (type, id, child_type) ->
+        if child_type
+            query = "SELECT type, id FROM bbobjects WHERE parent_type = $1 AND parent_id = $2 AND type = $3"
+            result = @query query, type, id, child_type
+        else
+            query = "SELECT type, id FROM bbobjects WHERE parent_type = $1 AND parent_id = $2"
+            result = @query query, type, id
+
+        return ([row.type, row.id] for row in result.rows)
 
     #Creates an entry in the history table
     add_history: (history_type, history_id, reference, properties) ->
