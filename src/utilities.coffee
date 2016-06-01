@@ -8,10 +8,10 @@ u.create_tarball = (directory) ->
     return tempfile
 
 u.run_local = (cmd, options = {}) ->
-    {can_fail} = options
+    {can_fail, env} = options
     u.log 'Running locally: ' + cmd
     block = u.Block 'run_local ' + cmd
-    child_process.exec cmd, {encoding: 'utf8'}, (err, stdout, stderr) ->
+    child_process.exec cmd, {encoding: 'utf8', env}, (err, stdout, stderr) ->
         if err
             if can_fail
                 block.success stdout + stderr

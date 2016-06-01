@@ -773,7 +773,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
     #things like confirming that a rollback returned the database to the same
     #state as before
     capture_schema: ->
-
+        return @pg_dump '-s'
 
 
 #Tries this migration against a test database to make sure it works.  Tries the rollback

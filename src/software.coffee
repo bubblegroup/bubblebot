@@ -108,4 +108,13 @@ software.metrics = create ->
 
     return pkg
 
+#Installs pg_dump for postgres 9.5
+software.pg_dump95 = create ->
+    pkg = new Software()
+    #make have to do sudo yum -y erase postgresql92 postgresql92-libs
+
+    pkg.run 'sudo yum -y localinstall https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-6-x86_64/pgdg-ami201503-95-9.5-2.noarch.rpm'
+    pkg.run 'sudo yum -y install postgresql95'
+
+    return pkg
 

@@ -25,6 +25,14 @@ databases.Postgres = class Postgres
         else
             client.query statement, cb
 
+    #Calls pg_dump and returns the result
+    pg_dump: (options) ->
+        {username, password, address, port, database} = @rds_instance.endpoint()
+        command = "pg_dump -h #{address} -p #{port} -U #{username} -w #{options} #{database}"
+
+        return u.run_local command, {env: {PGPASSWORD: password}}
+
+
     #Runs the query and returns the results
     query: (statement, args...) ->
         [client, done] = @get_client()
