@@ -82,15 +82,27 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
     #Creates an entry in the history table
     add_history: (history_type, history_id, reference, properties) ->
+        query = "INSERT INTO history (history_type, history_id, timestamp, reference, properties) VALUES ($1, $2, $3, $4, $5::jsonb)"
+        @query query, history_type, history_id, Date.now(), reference, JSON.stringify(properties)
+        return null
 
     #Returns the last n_entries from the given history
-    recent_history: (history_type, history_id, n_entries) ->
+    recent_history: (history_type, history_id, n_entries = 10) ->
+        query = "SELECT * FROM history WHERE history_type = $1 AND history_id = $2 LIMIT $3"
+        result = @query query, history_type, history_id, n_entries
+        return result.rows
 
     #Finds entries for the given parameters
     find_entries: (history_type, history_id, reference) ->
+        query = "SELECT * FROM history WHERE history_type = $1 AND history_id = $2 AND reference = $3"
+        result = @query query, history_type, history_id, reference
+        return result.rows
 
     #Deletes entries for the given parameters
     delete_entries: (history_type, history_id, reference) ->
+        query = "DELETE FROM history WHERE history_type = $1 AND history_id = $2 AND reference = $3"
+        @query query, history_type, history_id, reference
+        return null
 
 
     #Scheduler support
