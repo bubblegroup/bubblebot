@@ -22,10 +22,11 @@ pagerduty.report_down = (object, downtime) -> send_to_pagerduty {
     event_type: 'trigger'
     incident_key: object.type + '_' + object.id
     description: 'Bubblebot monitoring: Cannot reach ' + String(object) + ' after ' + u.format_time(downtime)
-    details:
+    details: {
         object_type: object.type
         object_id: object.id
         downtime
+    }
 }
 
 
@@ -34,10 +35,11 @@ pagerduty.report_up = (object, downtime) -> send_to_pagerduty {
     event_type: 'resolve'
     incident_key: object.type + '_' + object.id
     description: 'Bubblebot monitoring: ' + String(object) + ' recovered after ' + u.format_time(downtime)
-    details:
+    details: {
         object_type: object.type
         object_id: object.id
         downtime
+    }
 }
 
 

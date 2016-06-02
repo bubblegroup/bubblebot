@@ -224,7 +224,7 @@ prompt_for_vpc = (region) ->
         vpc_id = null
         while vpc_id not in (vpc.VpcId for vpc in results.Vpcs)
             u.reply 'Please pick a VPC for region ' + region
-            u.reply 'Options are:\n' + ('  ' + vpc.VpcId + ': ' + vpc.State + ' ' + vpc.CidrBlock for vpc in results.Vpcs ? []).join('\n'
+            u.reply 'Options are:\n' + ('  ' + vpc.VpcId + ': ' + vpc.State + ' ' + vpc.CidrBlock for vpc in results.Vpcs ? []).join('\n')
             vpc_id = u.ask 'Pick an id (or type "cancel" to abort)'
 
     #otherwise, pick the first one
@@ -332,7 +332,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return (bbobjects.instance child_type, child_id for [child_type, child_id] in list)
 
     children_cmd:
-        params [{name: 'child_type', help: 'If specified, filters to the given type'}]
+        params: [{name: 'child_type', help: 'If specified, filters to the given type'}]
         help: 'lists all the children of this object.  to access a specific child, use the "child" command'
         reply: true
         groups: bbobjects.BASIC
@@ -381,7 +381,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         u.db().set_property @type, id, name, value
 
     set_cmd:
-        params: [[{name: 'name', required: true}, {name: 'value', required: true}]
+        params: [{name: 'name', required: true}, {name: 'value', required: true}]
         help: 'sets the given property of this object'
         reply: 'Property successfully set'
 
@@ -399,7 +399,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         reply: true
 
     #Creates this object in the database
-    create: (parent_type, parent_id, initial_properties ?= {}) ->
+    create: (parent_type, parent_id, initial_properties) ->
         if @hardcoded
             throw new Error 'we do not support creating this object'
 
@@ -707,7 +707,7 @@ bbobjects.validate_destroy_hours = (hours) ->
 #Retrieves an S3 configuration file as a string, or null if it does not exists
 bbobjects.get_s3_config = (Key) ->
     try
-        data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key}
+        data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key})
     catch err
         if err.code in ['NoSuchKey', 'AccessDenied']
             return null
@@ -978,7 +978,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             rules.push {UserIdGroupPairs: [{GroupId: @get_webserver_security_group()}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
             #if external is true, let external servers connect to the database on this port
             if external
-                rules.push {UserIdGroupPairs: [{IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+                rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
             #if this is not bubblebot, let the bubblebot server connect
             if @id isnt 'bubblebot'
                 bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
@@ -1302,7 +1302,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         @rds 'createDBSubnetGroup', {
             DBSubnetGroupDescription: 'Default Bubblebot-created subnet group for environment ' + @id
             DBSubnetGroupName: subnet_groupname
-            SubnetIds:
+            SubnetIds
         }
 
         return subnet_groupname
@@ -1519,9 +1519,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         groups: bbobjects.BASIC
 
     #Sets whether or not we should enter maintenance mode
-    set_maintenance: (on) ->
-        @set 'maintenance', on
-        u.reply 'Maintenance mode is ' + (if on then 'on' else 'off')
+    set_maintenance: (turn_on) ->
+        @set 'maintenance', turn_on
+        u.reply 'Maintenance mode is ' + (if turn_on then 'on' else 'off')
 
     set_maintenance_cmd:
         params: {name: 'on', type: 'boolean', required: true, help: 'If true, turns maintenance mode on, if false, turns it off'}
@@ -2216,7 +2216,7 @@ key_cache = new Cache(60 * 60 * 1000)
 sg_cache = new Cache(60 * 60 * 1000)
 vpc_to_subnets = new Cache(60 * 60 * 1000)
 log_stream_cache = new Cache(24 * 60 * 60 * 1000)
-rds_subnet_groups = = new Cache(60 * 60 * 1000)
+rds_subnet_groups = new Cache(60 * 60 * 1000)
 rds_cache = new Cache(60 * 1000)
 
 

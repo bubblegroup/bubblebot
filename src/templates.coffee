@@ -17,28 +17,28 @@ for i_name, _ of interfaces
 
 #Given the name of a template interface, and the id of a template, confirms that this
 #is a valid template id or throws an error
-templates.verify = (interface, id) ->
-    if not templates[interface]
-        throw new Error 'could not find interface ' + interface
-    if not templates[interface][id]
-        throw new Error 'could not find ' + interface + ' with id ' + id
-    for fn in interfaces[interface]
+templates.verify = (iface, id) ->
+    if not templates[iface]
+        throw new Error 'could not find interface ' + iface
+    if not templates[iface][id]
+        throw new Error 'could not find ' + iface + ' with id ' + id
+    for fn in interfaces[iface]
         if typeof(templates[id][fn]) isnt 'function'
-            throw new Error 'id ' + id + ' is not a valid ' + interface + ' (missing ' + fn + ')'
+            throw new Error 'id ' + id + ' is not a valid ' + ifrace + ' (missing ' + fn + ')'
 
 #Adds the given template
-templates.add = (interface, id, template) ->
-    templates.templates[interface][id] = template
-    templates.verify interface, id
+templates.add = (iface, id, template) ->
+    templates.templates[iface][id] = template
+    templates.verify iface, id
 
 #List the ids of all the registered templates that match this interface
-templates.list = (interface) ->
-    return (id for id, template of templates.templates[interface] ? throw new Error 'could not find interface ' + interface)
+templates.list = (iface) ->
+    return (id for id, template of templates.templates[iface] ? throw new Error 'could not find interface ' + iface)
 
 #Retrieves a template
-templates.get = (interface, id) ->
-    templates.verify interface, id
-    return templates.templates[interface][id]
+templates.get = (iface, id) ->
+    templates.verify iface, id
+    return templates.templates[iface][id]
 
 #Extend this to build environment templates
 templates.Environment = class Environment
@@ -108,7 +108,7 @@ templates.Service = class Service
                 return
             else
                 version = merged
-                u.reply "Your version was no longer ahead of the production version -- someone else probably deployed in the interim.  We were able to automatically merge it and will continue trying to deploy: ' + merged
+                u.reply "Your version was no longer ahead of the production version -- someone else probably deployed in the interim.  We were able to automatically merge it and will continue trying to deploy: " + merged
                 #Make sure the new version passes the tests
                 if not @ensure_tested instance, version
                     return
@@ -120,7 +120,7 @@ templates.Service = class Service
         instance.add_history 'deploy', version, {username: u.current_user().name(), deployment_message, rollback}
 
         #Notify re: the deployment
-        u.announce u.current_user().name() ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.  Deployment message: ' + deployment_message
+        u.announce u.current_user().name() + ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.  Deployment message: ' + deployment_message
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
         #Replace the existing servers with the new version
@@ -169,7 +169,7 @@ templates.Service = class Service
             else
                 message = u.ask 'Please enter a message to describe this deployment'
 
-            if message.length is < 4
+            if message.length < 4
                 u.reply 'You typed a really short message... was it a typo?  Please try again...'
                 return get_message()
             return message
@@ -853,7 +853,7 @@ templates.Test = class Test
 #default_size: (instance) -> see function of same name on bbobjects.EC2Build
 
 #
-class templates.EC2Build = class EC2Build
+templates.EC2Build = class EC2Build
     #The size of the box we use to build the AMI on
     ami_build_size: -> 't2.nano'
 

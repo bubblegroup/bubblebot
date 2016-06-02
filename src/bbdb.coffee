@@ -151,7 +151,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
         #Otherwise, update the access time of our owner (re-creating it if it was deleted)
         else
-            query = 'INSERT INTO scheduler_owners (owner_id, last_access) VALUES ($1, $2) ON CONFLICT (owner_id) DO UPDATE SET last_access = $2"
+            query = "INSERT INTO scheduler_owners (owner_id, last_access) VALUES ($1, $2) ON CONFLICT (owner_id) DO UPDATE SET last_access = $2"
             @query query, owner_id, Date.now()
 
         #Clean out owners that haven't claimed a task in the last minute

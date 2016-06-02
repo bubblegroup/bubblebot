@@ -179,6 +179,10 @@ u.retry = (a, b, c) ->
     else if not c?
         tries = a
         fn = b
+    else
+        tries = a
+        pause = b
+        fn = c
 
     tries ?= 10
     pause ?= 100

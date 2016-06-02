@@ -69,8 +69,8 @@ bbserver.Server = class Server
                 log: log_stream.log.bind(log_stream)
                 reply: wrap_in_log 'Reply', @slack_client.reply.bind(@slack_client)
                 message: wrap_in_log 'Message', @slack_client.message.bind(@slack_client)
-                ask: (msg, override_user_id) => wrap_in_log 'Ask' @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
-                confirm: (msg, override_user_id) => wrap_in_log 'Confirm' @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+                ask: (msg, override_user_id) => wrap_in_log 'Ask', @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+                confirm: (msg, override_user_id) => wrap_in_log 'Confirm', @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
                 announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
                 report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
                 report_no_log: @slack_client.report.bind(@slack_client)
@@ -160,7 +160,7 @@ bbserver.Server = class Server
     list_sub_loggers: ->
         block = u.Block 'loading subloggers'
         @get_sublogger_stream().get_events block.make_cb()
-        return (u.extend(JSON.parse(message), {timestamp} for {message, timestamp} of block.wait())
+        return (u.extend(JSON.parse(message), {timestamp}) for {message, timestamp} in block.wait())
 
     #Retrieves the sublogger with the given id
     get_sub_logger: (id) -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', id)
@@ -444,7 +444,7 @@ bbserver.CommandTree = class CommandTree
         if prev is ''
             res.push 'The following commands are available:'
         else
-            res.push "The command '#{prev} has the following sub-commands:\n'
+            res.push "The command '#{prev}' has the following sub-commands:\n"
 
         for name, command of @get_commands()
             full = prev + ' ' + name
@@ -713,7 +713,7 @@ class Help extends Command
             targ = @tree.get(command)
             if not targ?
                 parent = commands[0...idx].join(' ')
-                u.reply "We could not find the command '#{command}' under '#{parent}'.  Try 'help #{parent} to see what commands are available'
+                u.reply "We could not find the command '#{command}' under '#{parent}'.  Try 'help #{parent} to see what commands are available"
                 return
 
         u.reply targ.get_help(commands.join(' '))
@@ -793,6 +793,7 @@ class Loggers extends Command
     help: 'Show recent logging streams'
     params: [
         {name: 'number', type: 'number', default: 10, help: 'The number of recent streams to show'}
+    ]
 
     run: (number) ->
         server = u.context().server
@@ -849,7 +850,7 @@ class Monitor extends Command
 
     help: 'Prints out monitoring information'
     params: [
-        {name: 'show policies', type: 'boolean', help: 'If set, shows the monitoring policies instead of the current status'
+        {name: 'show policies', type: 'boolean', help: 'If set, shows the monitoring policies instead of the current status'}
     ]
 
     run: (show_policies) ->
@@ -860,7 +861,7 @@ class Monitor extends Command
 
     groups: bbobjects.BASIC
 
-            '
+
 class Sudo extends Command
     constructor: ->
 
@@ -978,6 +979,6 @@ http = require 'http'
 u = require './utilities'
 slack = require './slack'
 bbdb = require './bbdb'
-bbobjects = require './bbojbects'
+bbobjects = require './bbobjects'
 tasks = require './tasks'
 monitoring = require './monitoring'
