@@ -109,10 +109,31 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
     #Sets the given task to run at the given timestamp with the given properties
     schedule_task: (timestamp, task, properties) ->
+        query = "INSERT INTO scheduler (timestamp, task, properties) VALUES ($1, $2, $3::jsonb)"
+        @query query, timestamp, task, JSON.stringify(properties)
+        return null
 
     #If there is a task with the same name already in the scheduler, update the properties.
     #Otherwise, insert a new task scheduled to run now.
     upsert_task: (task, properties) ->
+        @transaction (t) =>
+            #acquire a lock on the taskname so that if someone else is trying the same upsert
+            #it will block til this finishes
+            t.advisory_lock task
+
+            #Update any current jobs...
+            query = "UPDATE scheduler SET properties = $2::jsonb WHERE task = $1"
+            result = t.query query, task, JSON.stringify(properties)
+            #If there was at least one row selected, we are done...
+            if result.rowCount > 0
+                return
+
+            #Insert a new task
+            query "INSERT INTO scheduler (timestamp, task, properties) VALUES ($1, $2, $3::jsonb)"
+            t.query query, Date.now(), task, JSON.stringify(properties)
+
+            return null
+
 
     #Retrieves the first task that a) is unclaimed and b) is ready to go.
     #
@@ -123,12 +144,47 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
     #
     #Return {owner_id, task_data}.  Task_data will be null if there is nothing
     get_next_task: (owner_id) ->
+        #If we don't have an owner id, generate a new one
+        if not owner_id
+            result = @query 'INSERT INTO scheduler_owners (last_access) VALUES ($1) RETURNING owner_id', Date.now()
+            owner_id = result.rows[0].owner_id
+
+        #Otherwise, update the access time of our owner (re-creating it if it was deleted)
+        else
+            query = 'INSERT INTO scheduler_owners (owner_id, last_access) VALUES ($1, $2) ON CONFLICT (owner_id) DO UPDATE SET last_access = $2"
+            @query query, owner_id, Date.now()
+
+        #Clean out owners that haven't claimed a task in the last minute
+        query = 'DELETE FROM scheduler_owners WHERE last_access < $1'
+        @query query, Date.now() - 60 * 1000
+
+        return @transaction (t) =>
+            #Lock the scheduler table
+            t.query 'LOCK scheduler'
+
+            #We want to find the first task that a) is unclaimed, b) has a timestamp < now,
+            #set ourselves as the current owner, and return that task
+            query = "
+                UPDATE scheduler SET owner = $1 WHERE id in
+                (SELECT id FROM scheduler
+                LEFT JOIN scheduler_owners ON scheduler_owners.owner_id = scheduler.owner
+                WHERE scheduler_owners.owner_id is null AND timestamp < $2
+                ORDER by timestamp LIMIT 1) RETURNING *
+                "
+            result = t.query query, owner_id, Date.now()
+
+            return {owner_id, task_data: result.rows[0]}
+
 
     #Indicates that we finished a task and can remove it from the scheduler
     complete_task: (id) ->
+        @query 'DELETE FROM scheduler WHERE id = $1', id
+        return null
 
     #Indicate that for some reason we could not complete the task, so we need to release it
     release_task: (id) ->
+        @query "UPDATE scheduler SET owner = null WHERE id = $1", id
+        return null
 
 
 

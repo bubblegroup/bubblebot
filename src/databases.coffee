@@ -80,16 +80,22 @@ databases.Postgres = class Postgres
                 block = u.Block statement
                 @_query client, block.make_cb(), statement, args
                 return block.wait()
+
+            #Convenience function for acquiring an advisory lock
+            advisory_lock: (text) ->
+                query = "SELECT pg_advisory_xact_lock(('x'||substr(md5($1),1,16))::bit(64)::bigint)"
+                t.query query, text
         }
         try
             t.query 'BEGIN'
             _should_commit = true
 
-            fn t
+            result = fn t
 
             if _should_commit
                 t.query 'COMMIT'
 
+            return result
         catch err
             t.rollback()
             throw err

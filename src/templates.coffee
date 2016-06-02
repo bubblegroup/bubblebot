@@ -725,7 +725,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
             t.query migration_data
 
             #Update the migration table
-            query = "INSERT INTO bubblebot.migrations (codebase_id, migration) VALUES ($1, $2) ON CONFLICT codebase_id DO UPDATE SET migration = $2"
+            query = "INSERT INTO bubblebot.migrations (codebase_id, migration) VALUES ($1, $2) ON CONFLICT (codebase_id) DO UPDATE SET migration = $2"
             t.query query, codebase_id, migration
 
 
