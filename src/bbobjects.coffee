@@ -697,7 +697,9 @@ bbobjects.get_s3_config = (Key) ->
             throw err
     if data.DeleteMarker
         return null
-    return String(data.body)
+    if not data.Body
+        throw new Error 'no body: ' + JSON.stringify data
+    return String(data.Body)
 
 #Puts an S3 configuration file
 bbobjects.put_s3_config = (Key, Body) ->

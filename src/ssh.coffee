@@ -97,6 +97,9 @@ exec_ssh = (host, private_key, cmd) ->
 
 #Gets or creates a connection to the given host
 get_connection = (host, private_key) ->
+    if not private_key
+        throw new Error 'missing private key!'
+
     context = u.context()
     ssh_connections = context.ssh_connections ?= {}
 
@@ -114,9 +117,6 @@ get_connection = (host, private_key) ->
         conn.on 'close', ->
             if ssh_connections[host] is conn
                 delete ssh_connections[host]
-
-        if not private_key
-            throw new Error 'missing private key!'
 
         conn.connect {
             host: host
