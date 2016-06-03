@@ -96,6 +96,8 @@ _cached_bbdb_instance = null
 bbobjects.get_bbdb_instance = ->
     environment = bbobjects.bubblebot_environment()
     service_instance = environment.get_service('BBDBService', null, true)
+    #we can't use the database, so manually record that the environment is the parent:
+    service_instance.parent = -> environment
 
     #Makes sure u.context().db is set
     ensure_context_db = -> u.context().db ?= new bbdb.BBDatabase(service_instance)
