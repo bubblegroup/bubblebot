@@ -118,7 +118,7 @@ bbobjects.get_bbdb_instance = ->
     {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
 
     #Create the database
-    rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '-instance1'
+    rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '-' + u.gen_password(5)
     #We need to tell it the environment manually...
     rds_instance.environment = -> environment
     rds_instance.create null, permanent_options, sizing_options, credentials, 'just_create'
