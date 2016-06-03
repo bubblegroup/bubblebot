@@ -819,8 +819,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
         return res
 
     list_rds_instances_by_tag: (key, value) ->
-        data = @rds 'describeDBInstances', {Filters: [{Name: 'tag:' + key, Values: [value]}]}
-        return (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+        data = @rds 'describeDBInstances', {}
+        rds_instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+        #There's no way to list by tag right now, so we find them all then filter
+        return (instance for instance in rds_instances when rds_instances.get_tags()[key] is value)
 
     #Lists all the RDS instances in this environment's region
     list_rds_instances_in_region: ->
