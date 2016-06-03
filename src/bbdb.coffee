@@ -196,7 +196,7 @@ bbobjects = require './bbobjects'
 #We add some templates for creating the service
 templates = require './templates'
 
-templates.BBDBService = class BBDBService extends templates.RDSService
+templates.add 'Service', 'BBDBService', class BBDBService extends templates.RDSService
     #We override the logic for fetching the actual instance, since we can't
     #rely on BBDB to find BBDB
     rds_instance: (instance) -> bbobjects.get_bbdb_instance()
