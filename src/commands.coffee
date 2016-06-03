@@ -54,7 +54,7 @@ commands.publish = (access_key) ->
         #First, try the quick version.  On error, do a full version
         try
             bbserver.run("cd bubblebot && git pull")
-            bbserver.run("npm install")
+            bbserver.run("cd bubblebot && npm install")
 
         catch err
             u.log 'Error trying quick update.  Will do full update.  Error:\n' + err.stack
