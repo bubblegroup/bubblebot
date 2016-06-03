@@ -1,6 +1,6 @@
 {
   "name": "bubblebot",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "A slackbot the manages cloud-hosted infrastructure",
   "main": "lib/index.js",
   "scripts": {
