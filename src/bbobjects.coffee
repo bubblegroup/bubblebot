@@ -722,7 +722,7 @@ bbobjects.get_s3_config = (Key) ->
     try
         data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key})
     catch err
-        if err.code in ['NoSuchKey', 'AccessDenied']
+        if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
             return null
         else
             throw err

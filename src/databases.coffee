@@ -13,7 +13,6 @@ databases.Postgres = class Postgres
 
         {username, password, address, port, database} = endpoint
         conn_string = "postgres://#{username}:#{password}@#{address}:#{port}/#{database}"
-        console.log 'TEMP: ' + conn_string
         return conn_string
 
     #Returns [client, done]
