@@ -10,8 +10,11 @@ databases.Postgres = class Postgres
         endpoint = @rds_instance.endpoint()
         if not endpoint?
             throw new Error 'endpoint not available!'
+
         {username, password, address, port, database} = endpoint
-        return "postgres://#{username}:#{password}@#{address}:#{port}/#{database}"
+        conn_string = "postgres://#{username}:#{password}@#{address}:#{port}/#{database}"
+        console.log 'TEMP: ' + conn_string
+        return conn_string
 
     #Returns [client, done]
     get_client: ->
