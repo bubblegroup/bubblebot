@@ -253,7 +253,7 @@ class BBDBCodebase extends templates.RDSCodebase
             owner_id bigserial,
             last_access bigint,
             PRIMARY KEY (owner_id)
-        )
+        );
         "
     ]
 

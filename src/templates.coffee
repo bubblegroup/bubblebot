@@ -717,6 +717,9 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
     #
     #Will throw an error if the current migration number is not migration - 1
     apply: (codebase_id, migration, migration_data) ->
+        if not migration_data
+            throw new Error 'missing migration data: ' + codebase_id + ' ' + migration + ' ' + migration_data
+
         @ensure_migration_table_exists()
 
         @transaction (t) =>
@@ -729,6 +732,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
                 throw new Error "trying to apply migration #{migration} but we are at #{current}"
 
             #Run the migration
+            u.log 'Applying migration:\n' + migration_data
             t.query migration_data
 
             #Update the migration table
@@ -739,6 +743,10 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
     #Runs the given rollback, updating the migration table to be migration - 1.  Throws
     #an error if the current migration number is not migration.
     rollback: (codebase_id, migration, rollback_data) ->
+        if not migration_data
+            throw new Error 'missing rollback data: ' + codebase_id + ' ' + migration + ' ' + rollback_data
+
+
         @ensure_migration_table_exists()
 
         @transaction (t) =>
