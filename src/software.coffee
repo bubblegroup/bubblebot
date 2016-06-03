@@ -118,3 +118,6 @@ software.pg_dump95 = create ->
 
     return pkg
 
+
+u = require './utilities'
+config = require './config'

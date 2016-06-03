@@ -1,4 +1,4 @@
-environments = exports
+bbobjects = exports
 
 #Retrieves an object with the given type and id
 bbobjects.instance = (type, id) ->
@@ -33,6 +33,7 @@ bbobjects.TRUSTED = 'trusted' #can escalate themselves to admin privileges (noti
 bbobjects.BASIC = 'basic'     #can perform unrestricted commands
 bbobjects.IGNORE = 'ignore'   #bot will ignore requests from this user
 
+BUILTIN_GROUP_DESCRIPTION = {}
 BUILTIN_GROUP_DESCRIPTION[bbobjects.ADMIN] = 'Administrators with full control over bubblebot'
 BUILTIN_GROUP_DESCRIPTION[bbobjects.TRUSTED]  = 'Trusted users who are allowed to grant themselves administrative access in an emergency (using the "sudo" command)'
 BUILTIN_GROUP_DESCRIPTION[bbobjects.BASIC] = 'Users who can give commands to bubblebot'
@@ -185,7 +186,7 @@ bbobjects.get_default_qa_environment = ->
     if not environment.exists()
         #use the same region and vpc as bubbleblot
         bubblebot_env = bbobjects.bubblebot_environment()
-        regions = bubblebot_env.region()
+        region = bubblebot_env.region()
         vpc = bubblebot_env.get_vpc()
         environment.create QA, 'blank', region, vpc
     return environment
@@ -378,7 +379,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     set: (name, value) ->
         if @hardcoded
             throw new Error 'we do not support setting properties on this object'
-        u.db().set_property @type, id, name, value
+        u.db().set_property @type, @id, name, value
 
     set_cmd:
         params: [{name: 'name', required: true}, {name: 'value', required: true}]
@@ -415,7 +416,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Deletes this object from the database
     delete: ->
-        u.db().delete_object @type, id
+        u.db().delete_object @type, @id
 
     #Returns true if this object exists in the database
     exists: ->
@@ -760,7 +761,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         #Make sure we remind the user to destroy this when finished
         interval = hours * 60 * 60 * 1000
-        instance.set 'expiration_time', Date.now() + (interval * 2)
+        box.set 'expiration_time', Date.now() + (interval * 2)
         u.context().schedule_once interval, 'follow_up_on_instance', {id: box.id}
 
         u.reply 'Okay, your box is ready:\n' + box.describe()
@@ -1321,7 +1322,7 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
         super parent.type, parent.id
 
     set_name: ->
-        prefix = environment.id + '_'
+        prefix = @environment().id + '_'
         return @id[prefix.length...]
 
     set_credential: (name, value, overwrite) ->
@@ -1353,7 +1354,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     #Returns a command tree allowing access to each test
     tests: ->
-        tree = new CommandTree()
+        tree = new bbserver.CommandTree()
         tree.get_commands = ->
             res = {}
             for test in @template().get_tests()
@@ -1395,7 +1396,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Checks if we are still using this instance
     should_delete: (instance) -> instance.should_delete this
 
-    should_delete_ec2instance: (ec2_instance) ->
+    should_delete_ec2instance: (ec2instance) ->
         #If we are active, delete any expiration time, and don't delete
         if ec2instance.get('status') is ACTIVE
             ec2instance.set 'expiration_time', null
@@ -1588,7 +1589,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
     #Creates a server with the given size owned by the given parent
     build: (parent, size, name) ->
-        ami = @get_ami environment.get_region()
+        ami = @get_ami parent.environment().get_region()
         software = @template().software()
         @_build parent, size, name, ami, software
 
@@ -1716,7 +1717,7 @@ bbobjects.Test = class Test extends BubblebotObject
     #as skip_tests unless include_skipped is set to true
     good_versions: (n_entries, include_skipped) ->
         versions = u.db().recent_history 'test_passed', n_entries
-        return (reference for {reference, properties} in versions when included_skipped or not properties?.skip_tests)
+        return (reference for {reference, properties} in versions when include_skipped or not properties?.skip_tests)
 
     good_versions_cmd:
         params: [
@@ -2232,3 +2233,4 @@ fs = require 'fs'
 cloudwatchlogs = require './cloudwatchlogs'
 bbserver = require './bbserver'
 templates = require './templates'
+bbdb = require './bbdb'

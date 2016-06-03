@@ -215,3 +215,7 @@ monitoring.Monitor = class Monitor
         for plugin in config.get_plugins('metrics')
             if typeof(plugin.measure) is 'function'
                 plugin.measure object.type + '_' + object.id, 'bubblebot_monitor_latency', latency
+
+
+u = require './utilities'
+config = require './config'

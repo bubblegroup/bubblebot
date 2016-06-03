@@ -273,7 +273,7 @@ bbserver.Server = class Server
                 u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
                 @schedule_once task_data.task, task_data.properties, 12 * 60 * 60 * 1000
             #If the task was cancelled externally, just log it
-            else if err.reason in U.EXTERNAL_CANCEL
+            else if err.reason in u.EXTERNAL_CANCEL
                 u.uncancel_fiber()
                 u.log 'Task cancelled externally: ' + JSON.stringify(task_data)
             else
@@ -336,7 +336,7 @@ bbserver.Server = class Server
                     u.reply 'Cancelled: ' + cmd
                 else if err.reason is u.USER_TIMEOUT
                     u.reply 'Timed out waiting for your reply: ' + cmd
-                else if err.reason in U.EXTERNAL_CANCEL
+                else if err.reason in u.EXTERNAL_CANCEL
                     u.uncancel_fiber()
                     u.reply 'Cancelled (via the cancel cmd): ' + cmd
                 else
@@ -550,7 +550,7 @@ bbserver.do_cast = do_cast = (param, val) ->
             result = do_cast param, u.ask feedback + "we're expecting no / false or yes / true, though.  " + prompt
     else if param.type is 'number'
         result = parseFloat val
-        if isNaN res
+        if isNaN result
             result = do_cast param, u.ask feedback + "we're expecting a number, though.  " + prompt
     else if param.type is 'list'
         options = param.options()
@@ -691,8 +691,8 @@ bbserver.Command = class Command
 
         if @additional_params?
             res += '\n    #{additional_params.name} (list of strings)'
-            if additional_params.help
-                res += ': ' + additional_params.help
+            if @additional_params.help
+                res += ': ' + @additional_params.help
         return res
 
 
@@ -822,7 +822,7 @@ class Cancel extends Command
                 if fiber.current_context?.user_id is u.current_user().id
                     to_cancel.push fiber
 
-        res = (get_full_fiber_display fiber for fiber in to_display)
+        res = (get_full_fiber_display fiber for fiber in to_cancel)
 
         for fiber in to_cancel
             u.cancel_fiber fiber
@@ -911,7 +911,7 @@ class EnvTree extends CommandTree
     get_commands: ->
         commands = {}
         for environment in bbobjects.list_environments()
-            commands[id] = environment
+            commands[environment.id] = environment
         return commands
 
 #A command tree that lets you navigate servers

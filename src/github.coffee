@@ -9,10 +9,11 @@ github.Repo = class Repo
     resolve_commit: (commit) ->
         if not commit
             return null
-        res = @_request @commit_url commit
+        url = @commit_url commit
+        res = @_request url
         if res.statusCode is 404
             return null
-        return @extract(res).sha[..@abbrev]
+        return @extract(res, url).sha[..@abbrev]
 
     #Returns true if second can be fast-forwarded to first
     ahead_of: (first, second) ->
@@ -21,10 +22,10 @@ github.Repo = class Repo
 
     #Given the raw github output of a commit, returns a human readable display
     display_commit: (commit) ->
-        name = res.commit?.author.name?.split(' ')[0]
+        name = commit.author.name?.split(' ')[0]
         if not name
-            name = res.commit?.author.email
-        return res.sha[..@abbrev - 3] + ' - ' + name + ' - "' + res.commit?.message[..80] + '"'
+            name = commit.author.email
+        return commit.sha[..@abbrev - 3] + ' - ' + name + ' - "' + commit.message[..80] + '"'
 
     #Returns a human-readable, newline seperated list of commits that first has but second doesn't
     show_new_commits: (first, second) ->
@@ -39,14 +40,15 @@ github.Repo = class Repo
         tempname = 'merge-branch-' + Date.now()
         @create_branch tempname, base
         try
-            res = @_request @repo_url() + '/merges', 'POST', {
+            url = @repo_url() + '/merges'
+            res = @_request url, 'POST', {
                 base: tempname
                 head
                 commit_message: 'Bubblebot automerge of ' + head + ' into ' + base
             }
             #successful merge
             if res.status is 201
-                return {success: true, commit: @extract(res).sha}
+                return {success: true, commit: @extract(res, url).sha}
 
             #base already contains head
             else if res.status is 204
@@ -102,7 +104,7 @@ github.Repo = class Repo
         return block.wait()
 
     #Retrieves the body from the response, throwing an error if not retrievable
-    extract: (res) ->
+    extract: (res, url) ->
         if res.statusCode < 200 or res.statusCode > 299
             throw new Error 'error hitting ' + url + ': ' + res.statusCode + ': ' + res.body
         try
@@ -111,7 +113,7 @@ github.Repo = class Repo
             throw new Error 'error hitting ' + url + ': could not parse body: ' + res.body
 
     #hits the url and returns the body, throwing an error if it's not a 200 response
-    request: (url, method, body) -> @extract @_request url, method, body
+    request: (url, method, body) -> @extract @_request(url, method, body), url
 
 
 
@@ -119,7 +121,7 @@ github.Repo = class Repo
 github_access_token = 'bb3ea1e6f7777a2f07f2efe1846e34dcdb5b8fbc'
 
 github_get = (url, msg404) ->
-    block = Block()
+    block = u.Block()
     request 'h' + url, {
         headers:
             Authorization: 'token ' + github_access_token

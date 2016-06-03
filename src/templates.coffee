@@ -24,7 +24,7 @@ templates.verify = (iface, id) ->
         throw new Error 'could not find ' + iface + ' with id ' + id
     for fn in interfaces[iface]
         if typeof(templates[id][fn]) isnt 'function'
-            throw new Error 'id ' + id + ' is not a valid ' + ifrace + ' (missing ' + fn + ')'
+            throw new Error 'id ' + id + ' is not a valid ' + iface + ' (missing ' + fn + ')'
 
 #Adds the given template
 templates.add = (iface, id, template) ->
@@ -354,7 +354,7 @@ templates.SingleBoxService = class SingleBoxService
     #Sets the size of the box for this service
     set_size: (instance, new_size) ->
         valid_sizes = @ec2build().valid_sizes(instance)
-        if size not in valid_sizes
+        if new_size not in valid_sizes
             u.reply 'Cannot set size ' + new_size + ': should be one of ' + valid_sizes.join(', ')
             return
         instance.set 'size', new_size
@@ -398,7 +398,7 @@ templates.MultiGitCodebase = class MultiGitCodebase
         commits = version.split(' ')
         results = []
         for repo, idx in @repos
-            canonical = rep.resolve_commit commits[idx]?.trim()
+            canonical = repo.resolve_commit commits[idx]?.trim()
             #if any commit can't be resolved, the overall version can't be resolved so return null
             if not canonical?
                 return null
@@ -532,6 +532,7 @@ templates.RDSCodebase = class RDSCodebase
             if saved?
                 throw new Error 'we have already locked version ' + version
 
+        [codebase_id, migration] = @_extract_pieces(version)
         bbobjects.put_s3_config 'RDSCodebase_' + version, @get_migrations()[migration]
         if @get_rollbacks()[migration]
             bbobjects.put_s3_config 'RDSCodebase_' + version + '_rollback', @get_rollbacks()[migration]
@@ -630,7 +631,7 @@ templates.RDSCodebase = class RDSCodebase
     get_migration_manager: (rds_instance) ->
         engine = rds_instance.get_configuration().Engine
         if not migration_managers[engine]
-            throw new error 'We do not currently support database of type ' + engine
+            throw new Error 'We do not currently support database of type ' + engine
         return new migration_managers[engine] rds_instance
 
     #Applies the given migration # to the rds instance
@@ -923,3 +924,5 @@ templates.EC2Build = class EC2Build
 
 bbobjects = require './bbobjects'
 databases = require './databases'
+u = require './utilities'
+config = require './config'

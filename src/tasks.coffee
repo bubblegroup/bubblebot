@@ -97,3 +97,5 @@ tasks.builtin.call_object_method = ({object_type, object_id, method, properties}
 
 bbobjects = require './bbobjects'
 bbserver = require './bbserver'
+u = require './utilities'
+config = require './config'

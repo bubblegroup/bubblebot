@@ -226,5 +226,4 @@ RtmClient = require('@slack/client').RtmClient
 WebClient = require('@slack/client').WebClient
 MemoryDataStore = require('@slack/client').MemoryDataStore
 u = require './utilities'
-
-
+config = require './config'

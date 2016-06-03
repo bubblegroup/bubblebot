@@ -116,7 +116,7 @@ u.log = (msg) -> u.get_logger('log') msg
 
 #Gets a log function.  Sees if it is set in the current context... if not, uses the default logger
 u.get_logger = (log_fn) ->
-    u.context().loggers[logger_fn] ? u.default_loggers[logger_fn] ? console.log.bind(console)
+    u.context().loggers[log_fn] ? u.default_loggers[log_fn] ? console.log.bind(console)
 
 #Sets a function in the current context
 u.set_logger = (name, fn) ->
@@ -238,14 +238,14 @@ class Lock
         #shift the first thing waiting on this lock off the stack and let it
         #try to acquire the lock again
         next = @waiting_on.shift()
-        block.success()
+        next.success()
 
 
 #Some standard error codes
 u.TIMEOUT = 'timeout'                 #generic timeout (lots of things could cause this)
 u.CANCEL = 'cancel'                   #user cancelled the command
 u.USER_TIMEOUT = 'user_timeout'       #timed out waiting on a user reply
-U.EXTERNAL_CANCEL = 'external_cancel' #was cancelled from off-fiber
+u.EXTERNAL_CANCEL = 'external_cancel' #was cancelled from off-fiber
 
 #Marks this fiber as cancelled, and schedules it to run
 u.cancel_fiber = (fiber) ->
@@ -285,7 +285,7 @@ class Block
     check_cancelled: ->
         if Fiber.current._externally_cancelled
             err = new Error 'this fiber was cancelled'
-            err.reason = U.EXTERNAL_CANCEL
+            err.reason = u.EXTERNAL_CANCEL
             throw err
 
     wait: (timeout) ->
