@@ -4,7 +4,7 @@
   "description": "A slackbot the manages cloud-hosted infrastructure",
   "main": "lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "test -d lib || coffee -o lib -c src/*.coffee",
     "prepublish": "coffee -o lib -c src/*.coffee && node node_modules/eslint/bin/eslint.js lib"
   },
   "bin": {
