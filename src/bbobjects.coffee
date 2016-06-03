@@ -2156,7 +2156,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         {username, password} = rds_credentials[@id] ? {}
 
         endpoint.address = data.Address
-        endpoint.port = data.port
+        endpoint.port = data.Port
         endpoint.username = username ? @get 'MasterUsername'
         endpoint.password = password ? @get 'MasterUserPassword'
         endpoint.database = 'postgres'
