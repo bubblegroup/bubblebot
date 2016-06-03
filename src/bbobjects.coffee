@@ -1290,7 +1290,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 return subnet_groupname
 
         catch err
-            if String(err).instanceOf('DBSubnetGroupNotFoundFault') is -1
+            if String(err).indexOf('DBSubnetGroupNotFoundFault') is -1
                 throw err
 
 
