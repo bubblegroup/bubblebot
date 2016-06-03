@@ -1970,7 +1970,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if credentials
             {MasterUsername, MasterUserPassword} = credentials
         else
-            MasterUsername = u.gen_password()
+            MasterUsername = 'bubblebot'
             MasterUserPassword = u.gen_password()
             @set 'MasterUsername', MasterUsername
             @set 'MasterUserPassword', MasterUserPassword

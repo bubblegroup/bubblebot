@@ -247,7 +247,7 @@ templates.RDSService = class RDSService extends Service
         #Most of the time we want to let the instance generate and store its own credentials,
         #but for special cases like BBDB we want to store the credentials in S3
         if @codebase().use_s3_credentials()
-            MasterUsername = u.gen_password()
+            MasterUsername = 'bubblebot'
             MasterUserPassword = u.gen_password()
             credentials = {MasterUsername, MasterUserPassword}
 
