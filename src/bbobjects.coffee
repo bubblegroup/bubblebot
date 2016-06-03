@@ -94,70 +94,75 @@ _cached_bbdb_instance = null
 #
 #Ensures that u.context().db is set.
 bbobjects.get_bbdb_instance = ->
-    environment = bbobjects.bubblebot_environment()
-    service_instance = environment.get_service('BBDBService', null, true)
-    #we can't use the database, so manually record that the environment is the parent:
-    service_instance.parent = -> environment
+    try
+        environment = bbobjects.bubblebot_environment()
+        service_instance = environment.get_service('BBDBService', null, true)
+        #we can't use the database, so manually record that the environment is the parent:
+        service_instance.parent = -> environment
 
-    #Makes sure u.context().db is set
-    ensure_context_db = -> u.context().db ?= new bbdb.BBDatabase(service_instance)
+        #Makes sure u.context().db is set
+        ensure_context_db = -> u.context().db ?= new bbdb.BBDatabase(service_instance)
 
-    if _cached_bbdb_instance?
+        if _cached_bbdb_instance?
+            ensure_context_db()
+            return _cached_bbdb_instance
+
+        to_delete = []
+        good = []
+        instances = environment.list_rds_instances_in_region()
+        for instance in instances
+            if instance.id.indexOf('bubblebot-bbdbservice-') is 0
+                instance.environment = -> environment
+                if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
+                    good.push instance
+                else
+                    to_delete.push instance
+
+        instances = good
+
+        if instances.length > 1
+            throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
+        else if instances.length is 1
+            ensure_context_db()
+            return instances[0]
+
+        #If we are creating it, make sure we don't have any old ones hanging around
+        for instance in to_delete
+            u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
+            instance.terminate(true, true, true)
+        if to_delete.length > 0
+            #we don't want to create a new instance if there was an old one still deleting to avoid creating a million
+            throw new Error 'deleted old instances, so aborting'
+
+        #It doesn't exist yet, so create it
+        {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
+
+        #Create the database
+        rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '-' + u.gen_password(5)
+        #We need to tell it the environment manually...
+        rds_instance.environment = -> environment
+        rds_instance.create null, permanent_options, sizing_options, credentials, 'just_create'
+        rds_instance.wait_for_available()
+
+        #Write the initial code to it
+        service_instance.codebase().migrate_to rds_instance, service_instance.codebase().get_latest_version()
+
+        #It should now be useable as a database...
+        _cached_bbdb_instance = rds_instance
         ensure_context_db()
-        return _cached_bbdb_instance
 
-    to_delete = []
-    good = []
-    instances = environment.list_rds_instances_in_region()
-    for instance in instances
-        if instance.id.indexOf('bubblebot-bbdbservice-') is 0
-            instance.environment = -> environment
-            if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
-                good.push instance
-            else
-                to_delete.push instance
+        #Save the service instance and rds_instance data
+        service_instance.create environment
+        rds_instance.create service_instance, null, null, null, 'just_write'
 
-    instances = good
+        #Tag it build complete
+        environment.tag_resource rds_instance.id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb')
 
-    if instances.length > 1
-        throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
-    else if instances.length is 1
-        ensure_context_db()
-        return instances[0]
-
-    #If we are creating it, make sure we don't have any old ones hanging around
-    for instance in to_delete
-        u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
-        instance.terminate(true, true, true)
-    if to_delete.length > 0
-        #we don't want to create a new instance if there was an old one still deleting to avoid creating a million
-        throw new Error 'deleted old instances, so aborting'
-
-    #It doesn't exist yet, so create it
-    {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
-
-    #Create the database
-    rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '-' + u.gen_password(5)
-    #We need to tell it the environment manually...
-    rds_instance.environment = -> environment
-    rds_instance.create null, permanent_options, sizing_options, credentials, 'just_create'
-    rds_instance.wait_for_available()
-
-    #Write the initial code to it
-    service_instance.codebase().migrate_to rds_instance, service_instance.codebase().get_latest_version()
-
-    #It should now be useable as a database...
-    _cached_bbdb_instance = rds_instance
-    ensure_context_db()
-
-    #Save the service instance and rds_instance data
-    service_instance.create environment
-    rds_instance.create service_instance, null, null, null, 'just_write'
-
-    #Tag it build complete
-    environment.tag_resource rds_instance.id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb')
-
-    return rds_instance
+        return rds_instance
+    catch err
+        #if we had an error creating bubblebot database, we want to exit WITHOUT signalling supervisor for a restart
+        console.log err.stack ? err
+        process.exit(0)
 
 #Returns all the objects of a given type
 bbobjects.list_all = (type) -> (bbobjects.instance type, id for id in u.db().list_objects type)
