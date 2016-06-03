@@ -128,7 +128,7 @@ bbobjects.get_bbdb_instance = ->
     #If we are creating it, make sure we don't have any old ones hanging around
     for instance in to_delete
         u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
-        instance.terminate(true, true)
+        instance.terminate(true, true, true)
 
     #It doesn't exist yet, so create it
     {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
@@ -2131,19 +2131,21 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
     #Destroys this RDS instance.  As an extra safety layer, we only terminate production
     #instances if terminate prod is true
-    terminate: (terminate_prod, assume_production) ->
+    terminate: (terminate_prod, assume_production, SkipFinalSnapshot) ->
         is_production = assume_production or @is_production()
 
         if is_production and not terminate_prod
             throw new Error 'cannot terminate a production RDS instance without passing terminate_prod'
+
+        SkipFinalSnapshot ?= not is_production
 
         u.log 'Deleting rds instance ' + @id
         #If it is a production instance, we want to save a final snapshot.  Otherwise,
         #jus delete it.
         params = {
             DBInstanceIdentifier: @id
-            FinalDBSnapshotIdentifier: if is_production then @id + '_final_snapshot_' + String(Date.now()) else null
-            SkipFinalSnapshot: not is_production
+            FinalDBSnapshotIdentifier: if not SkipFinalSnapshot then @id + '-final-snapshot-' + String(Date.now()) else null
+            SkipFinalSnapshot: SkipFinalSnapshot
         }
         @environment().rds 'deleteDBInstance', params
         u.log 'Deleted rds instance ' + @id
