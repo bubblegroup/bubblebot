@@ -2093,7 +2093,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if not force_refresh and rds_cache.get @id
             return rds_cache.get @id
 
-        data = @environment().rds 'DescribeDBInstances', {DBInstanceIdentifier: @id}
+        data = @environment().rds 'describeDBInstances', {DBInstanceIdentifier: @id}
         res = data.DBInstances?[0]
         rds_cache.set @id, res
         return res
