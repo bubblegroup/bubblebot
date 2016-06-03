@@ -7,8 +7,6 @@ bbserver = require './bbserver'
 bbobjects.instance = (type, id) ->
     if not bbobjects[type]
         throw new Error 'missing type: ' + type
-    if not (bbobjects[type] instanceof BubblebotObject)
-        throw new Error type + ' is not a BubblebotObject'
     return new bbobjects[type] type, id
 
 #Returns the bubblebot environment
@@ -45,20 +43,10 @@ bbobjects.get_bbserver = ->
     environment = bbobjects.bubblebot_environment()
     instances = environment.get_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver'))
 
-    #Clean up any bubblebot server instances not tagged as initialized -- they represent
-    #abortive attempts at creating the server
-    good = []
-    for instance in instances
-        if instance.get_tags()[config.get('status_tag')] isnt BUILD_COMPLETE
-            u.log 'found an uninitialized bubbblebot server.  Terminating it...'
-            instance.terminate()
-        else
-            good.push instance
-
-    if good.length > 1
+    if instances.length > 1
         throw new Error 'Found more than one bubblebot server!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbserver')
-    else if good.length is 1
-        return good[0]
+    else if instances.length is 1
+        return instances[0]
 
     #We didn't find it, so create it...
     image_id = config.get('bubblebot_image_id')
@@ -66,12 +54,16 @@ bbobjects.get_bbserver = ->
 
     id = environment.create_server_raw image_id, instance_type
 
-    @tag_resource id, 'Name', 'Bubble Bot'
-    @tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
+    environment.tag_resource id, 'Name', 'Bubble Bot'
+
 
     instance = bbobjects.instance 'EC2Instance', id
 
     u.log 'bubblebot server created, waiting for it to ready...'
+
+    #manually set environment because we can't check database
+    instance.environment = -> environment
+
     instance.wait_for_ssh()
 
     u.log 'bubblebot server ready, installing software...'
@@ -84,7 +76,7 @@ bbobjects.get_bbserver = ->
     to_install.add(software.pg_dump95())
     to_install.install(instance)
 
-    environment.tag_resource(instance.id, config.get('status_tag'), BUILD_COMPLETE)
+    environment.tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
 
     u.log 'bubblebot server has base software installed'
 
@@ -108,27 +100,19 @@ bbobjects.get_bbdb_instance = ->
 
     instances = environment.list_rds_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb'))
 
-    #Screen out uninitialized instances
-    good = []
-    for instance in instances
-        if instance.get_tags()[config.get('status_tag')] isnt BUILD_COMPLETE
-            u.log 'warning... found an uninitialized bubblebot database!!'
-        else
-            good.push instance
-
-    if good.length > 1
+    if instances.length > 1
         throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
-    else if good.length is 1
+    else if instances.length is 1
         ensure_context_db()
-        return good[0]
+        return instances[0]
 
     #It doesn't exist yet, so create it
     {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
 
-    #Create and tag the database
+    #Create the database
     rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '_instance1'
     rds_instance.create null, permanent_options, sizing_options, credentials, true
-    @environment().tag_resource rds_instance.id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb')
+
 
     #Write the initial code to it
     service_instance._codebase.migrate_to rds_instance, service_instance._codebase.get_latest_version()
@@ -142,7 +126,7 @@ bbobjects.get_bbdb_instance = ->
     rds_instance.create service_instance, null, null, null, 'just_write'
 
     #Tag it build complete
-    @environment().tag_resource rds_instance.id, config.get('status_tag'), BUILD_COMPLETE
+    environment.tag_resource rds_instance.id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb')
 
     return rds_instance
 
