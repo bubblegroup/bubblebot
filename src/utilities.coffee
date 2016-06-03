@@ -123,7 +123,7 @@ u.log = (msg) -> u.get_logger('log') msg
 
 #Gets a log function.  Sees if it is set in the current context... if not, uses the default logger
 u.get_logger = (log_fn) ->
-    u.context().loggers?[log_fn] ? u.default_loggers?[log_fn] ? console.log.bind(console)
+    u.context()?.loggers?[log_fn] ? u.default_loggers?[log_fn] ? console.log.bind(console)
 
 #Sets a function in the current context
 u.set_logger = (name, fn) ->

@@ -113,6 +113,10 @@ commands.update = ->
         build()
         process.exit()
 
+commands.dev = ->
+    u.SyncRun ->
+        u.log u.run_local 'coffee -o node_modules/bubblebot/lib -c node_modules/bubblebot/src/*.coffee && node node_modules/bubblebot/node_modules/eslint/bin/eslint.js node_modules/bubblebot/lib'
+        process.exit()
 
 #Prints the help for the bubblebot command line tool
 commands.print_help = ->
@@ -121,6 +125,7 @@ commands.print_help = ->
     u.log '  build -- packages this directory for distribution'
     u.log '  publish -- deploys bubblebot to a remote repository'
     u.log '  update  -- updates the bubblebot code (npm update bubblebot)'
+    u.log '  dev -- builds bubblebot assuming a development symlink'
     process.exit()
 
 
