@@ -217,7 +217,7 @@ class BBDBCodebase extends templates.RDSCodebase
     get_additional_tests: -> []
 
     get_migrations: -> [
-        "
+        """
         CREATE TABLE bbobjects (
             type varchar(512),
             id varchar(512),
@@ -254,14 +254,14 @@ class BBDBCodebase extends templates.RDSCodebase
             last_access bigint,
             PRIMARY KEY (owner_id)
         );
-        "
+        """
     ]
 
 
     get_rollbacks: -> [
-        "
+        """
         DROP TABLE bbobjects, history, scheduler, scheduler_owners;
-        "
+        """
     ]
 
 templates.add 'Codebase', 'BBDBCodebase', new BBDBCodebase()
