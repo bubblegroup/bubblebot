@@ -2071,12 +2071,12 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
         u.log 'Resizing RDB ' + @id + ' with params: ' + JSON.stringify params
 
-        @rds 'modifyDBInstance', params
+        @environment().rds 'modifyDBInstance', params
 
         u.log 'Resizing RDB succesful'
 
         if reboot_required
-            @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
+            @environment().rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
 
         #Force a refresh of our cache
         @get_configuration true
@@ -2088,7 +2088,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if not force_refresh and rds_cache.get @id
             return rds_cache.get @id
 
-        data = @rds 'DescribeDBInstances', {DBInstanceIdentifier: @id}
+        data = @environment().rds 'DescribeDBInstances', {DBInstanceIdentifier: @id}
         res = data.DBInstances?[0]
         rds_cache.set @id, res
         return res
