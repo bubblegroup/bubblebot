@@ -1,5 +1,22 @@
 commands = exports
 
+build = ->
+    #Load the local configuration from disk
+    config.init()
+
+    u.log u.run_local 'rm npm-shrinkwrap.json', {can_fail: true}
+    u.log u.run_local 'npm prune'
+    u.run_local 'npm install'
+    u.run_local 'npm dedupe'
+    u.run_local 'npm shrinkwrap'
+    u.log 'Build complete'
+
+
+commands.build = ->
+    u.SyncRun ->
+        build()
+        process.exit()
+
 commands.publish = (access_key) ->
     u.SyncRun ->
         #Load the local configuration from disk
@@ -85,6 +102,7 @@ commands.install = (force) ->
 
 update = ->
     u.log 'Checking for updates...'
+    u.log u.run_local 'rm npm-shrinkwrap.json', {can_fail: true}
     u.log u.run_local 'npm install bubblebot'
     u.log u.run_local 'npm update bubblebot'
 
@@ -92,6 +110,7 @@ update = ->
 commands.update = ->
     u.SyncRun ->
         update()
+        build()
         process.exit()
 
 
@@ -99,6 +118,7 @@ commands.update = ->
 commands.print_help = ->
     u.log 'Available commands:'
     u.log '  install -- creates default files for a bubblebot installation'
+    u.log '  build -- packages this directory for distribution'
     u.log '  publish -- deploys bubblebot to a remote repository'
     u.log '  update  -- updates the bubblebot code (npm update bubblebot)'
     process.exit()
