@@ -243,7 +243,7 @@ class ChildCommand extends bbserver.CommandTree
         subs = {}
         for child in @bbobject.children()
             if subs[child.id]
-                subs[child.id + '_' + child.type.toLowerCase()] = child
+                subs[child.id + '-' + child.type.toLowerCase()] = child
             else
                 subs[child.id] = child
         return subs
@@ -416,7 +416,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return u.db().exists @type, @id
 
     #Gets the history type for this item
-    history_type: (event_type) -> @type + '_' + event_type
+    history_type: (event_type) -> @type + '-' + event_type
 
     #Adds an item to the history of this object
     add_history: (event_type, reference, properties) ->
@@ -1219,7 +1219,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #mainly for bootstrapping BBDB
     get_service: (template_name, create_on_missing, dont_check_exists) ->
         templates.verify 'Service', template_name
-        instance = bbobjects.instance 'ServiceInstance', @id + '_' + template_name
+        instance = bbobjects.instance 'ServiceInstance', @id + '-' + template_name
         if dont_check_exists
             return instance
         if not instance.exists()
@@ -1231,7 +1231,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Gets a credential set for this environment, creating it if it does not exist
     get_credential_set: (set_name) ->
-        set = bbobjects.instance 'CredentialSet', @id + '_' + set_name
+        set = bbobjects.instance 'CredentialSet', @id + '-' + set_name
         if not set.exists()
             set.create this
         return set
@@ -1318,13 +1318,13 @@ bbobjects.Environment = class Environment extends BubblebotObject
 bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
     #Adds it to the database
     create: (environment) ->
-        prefix = environment.id + '_'
+        prefix = environment.id + '-'
         if @id.indexOf(prefix) isnt 0
             throw new Error 'CredentialSet ids should be of the form [environment id]_[set name]'
         super parent.type, parent.id
 
     set_name: ->
-        prefix = @environment().id + '_'
+        prefix = @environment().id + '-'
         return @id[prefix.length...]
 
     set_credential: (name, value, overwrite) ->
@@ -1345,7 +1345,7 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
 bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Adds it to the database
     create: (environment) ->
-        prefix = environment.id + '_'
+        prefix = environment.id + '-'
         if @id.indexOf(prefix) isnt 0
             throw new Error 'ServiceInstance ids should be of the form [environment id]_[template]'
 
@@ -1427,7 +1427,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     #Returns the template for this service or null if not found
     template: ->
-        prefix = @parent().id + '_'
+        prefix = @parent().id + '-'
         template = @id[prefix.length..]
         if not template
             return null
