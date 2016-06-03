@@ -56,8 +56,9 @@ bbobjects.get_bbserver = ->
     #We didn't find it, so create it...
     image_id = config.get('bubblebot_image_id')
     instance_type = config.get('bubblebot_instance_type')
+    instance_profile = config.get('bubblebot_instance_profile')
 
-    id = environment.create_server_raw image_id, instance_type
+    id = environment.create_server_raw image_id, instance_type, instance_profile
 
     environment.tag_resource id, 'Name', 'Bubble Bot'
 
@@ -874,7 +875,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Creates and returns a new ec2 server in this environment, and returns the id
     #
     #ImageId and InstanceType are the ami and type to create this with
-    create_server_raw: (ImageId, InstanceType) ->
+    create_server_raw: (ImageId, InstanceType, IamInstanceProfile) ->
         KeyName = @get_keypair_name()
         SecurityGroupIds = [@get_webserver_security_group()]
         SubnetId = @get_subnet()
@@ -887,6 +888,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             MaxCount
             MinCount
             SubnetId
+            IamInstanceProfile
             KeyName
             SecurityGroupIds
             InstanceType

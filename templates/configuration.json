@@ -22,6 +22,11 @@
     //The size we use for the bubblebot database
     "bbbdb_instance_type": "db.t2.micro",
     
+    //The permissions we run bubblebot server with
+    "bbdb_instance_profile": {
+        "Arn": "ENTER ARN"
+    },
+    
     //The slack token we use
     "slack_token": "MY_TOKEN",
     
