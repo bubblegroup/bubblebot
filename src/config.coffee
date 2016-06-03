@@ -78,14 +78,14 @@ DEFAULTS =
     accessKeyId: ->
         #If this is running on the command line, prompt for it
         #otherwise, return null to indicate we are using IAM roles
-        if not config.get('command_line')
+        if not config.get('command_line', false)
             return null
         return prompt_for 'AWS access key'
 
     secretAccessKey: ->
         #If this is running on the command line, prompt for it
         #otherwise, return null to indicate we are using IAM roles
-        if not config.get('command_line')
+        if not config.get('command_line', false)
             return null
         return prompt_for 'AWS secret', {properties: {"AWS secret": {hidden: true}}}
 

@@ -1892,7 +1892,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     #Returns the address bubblebot can use for ssh / http requests to this instance
     get_address: ->
-        if config.get('command_line')
+        if config.get('command_line', false)
             @get_public_ip_address()
         else
             @get_private_ip_address()
