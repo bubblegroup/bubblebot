@@ -2010,7 +2010,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         delete safe_params.MasterUserPassword
         u.log 'Creating new RDS instance: ' + JSON.stringify safe_params
 
-        results = @rds 'createDBInstance', params
+        results = @environment().rds 'createDBInstance', params
 
         u.log 'RDS instance succesfully created with id ' + @id
         return null
