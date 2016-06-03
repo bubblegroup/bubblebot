@@ -6,7 +6,6 @@ build = ->
 
     u.run_local 'npm prune'
     u.run_local 'npm install'
-    u.run_local 'npm dedupe'
     u.run_local 'npm shrinkwrap'
     u.run_local './node_modules/bubblebot/node_modules/.bin/shrinkpack'
     u.log 'Build complete'
