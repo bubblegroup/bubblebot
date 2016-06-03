@@ -141,7 +141,7 @@ bbobjects.get_bbdb_instance = ->
     #We need to tell it the environment manually...
     rds_instance.environment = -> environment
     rds_instance.create null, permanent_options, sizing_options, credentials, 'just_create'
-
+    rds_instance.wait_for_available()
 
     #Write the initial code to it
     service_instance.codebase().migrate_to rds_instance, service_instance.codebase().get_latest_version()
@@ -1458,6 +1458,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Returns the endpoint that this service is accessible at
     endpoint: -> @template().endpoint this
 
+    #Waits until this service is available
+    wait_for_available: -> @template().wait_for_available this
+
     #Request that other users don't deploy to this service
     block: (explanation) ->
         blocker_id = u.context().user_id
@@ -2102,6 +2105,17 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         @get_configuration true
 
         return null
+
+    #Waits til the instance is in the available state
+    wait_for_available: (retries = 20) ->
+        u.log 'waiting for rds instance to be to be available (' + retries + ')'
+        if @get_configuration(true).DBInstanceStatus is 'available'
+            return
+        else if retries is 0
+            throw new Error 'timed out while waiting for ' + @id + ' to be available: ' + @get_state()
+        else
+            u.pause 10000
+            @wait_for_available(retries - 1)
 
     #Fetches the current state of this instance from RDS
     get_configuration: (force_refresh) ->

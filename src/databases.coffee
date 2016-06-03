@@ -3,10 +3,14 @@ databases = exports
 databases.Postgres = class Postgres
     #rds_instance can be the rds_instance or an rds service: just needs to support endpoint
     constructor: (@rds_instance) ->
+        @rds_instance.wait_for_available()
 
     #Gets the connection string for talking to this database
     get_connection_string: ->
-        {username, password, address, port, database} = @rds_instance.endpoint()
+        endpoint = @rds_instance.endpoint()
+        if not endpoint?
+            throw new Error 'endpoint not available!'
+        {username, password, address, port, database} = endpoint
         return "postgres://#{username}:#{password}@#{address}:#{port}/#{database}"
 
     #Returns [client, done]

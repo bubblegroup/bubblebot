@@ -239,6 +239,8 @@ templates.RDSService = class RDSService extends Service
         if id
             return bbobjects.instance 'RDSInstance', id
 
+    wait_for_available: (instance) -> @rds_instance(instance).wait_for_available()
+
     #Gets the parameters we use to create a new RDS instance
     get_params_for_creating_instance: (instance) ->
         permanent_options = @codebase().rds_options()
