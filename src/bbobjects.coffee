@@ -825,6 +825,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
     list_rds_instances_by_tag: (key, value) ->
         data = @rds 'describeDBInstances', {}
         rds_instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+
+        #If there is no db, we tag them all with this environment as the environment
+        if not u.context().db?
+            instance.environment = (=> this) for instance in rds_instances
+
         #There's no way to list by tag right now, so we find them all then filter
         return (instance for instance in rds_instances when instance.get_tags()[key] is value)
 
