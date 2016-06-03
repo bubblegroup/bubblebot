@@ -217,7 +217,9 @@ templates.Service = class Service
 
 #Represents a service that's an RDS-managed database
 templates.RDSService = class RDSService extends Service
-    constructor: (@_codebase) ->
+    constructor: (@codebase_id) ->
+
+    codebase: -> templates.get 'Codebase', @codebase_id
 
     #We don't actually replace database boxes since that's generally a bad idea,
     #but when we call replace we make sure they have an RDS instance are up to date with the latest version
@@ -229,7 +231,7 @@ templates.RDSService = class RDSService extends Service
         if not @rds_instance(instance)
             @create_rds_instance(instance)
 
-        @_codebase.migrate_to @rds_instance(), version
+        @codebase().migrate_to @rds_instance(), version
 
     #Gets the rds instance
     rds_instance: (instance) ->
@@ -239,12 +241,12 @@ templates.RDSService = class RDSService extends Service
 
     #Gets the parameters we use to create a new RDS instance
     get_params_for_creating_instance: (instance) ->
-        permanent_options = @_codebase.rds_options()
-        sizing_options = @_codebase.get_sizing this
+        permanent_options = @codebase().rds_options()
+        sizing_options = @codebase().get_sizing this
 
         #Most of the time we want to let the instance generate and store its own credentials,
         #but for special cases like BBDB we want to store the credentials in S3
-        if @_codebase.use_s3_credentials()
+        if @codebase().use_s3_credentials()
             MasterUsername = u.gen_password()
             MasterUserPassword = u.gen_password()
             credentials = {MasterUsername, MasterUserPassword}
@@ -272,14 +274,14 @@ templates.RDSService = class RDSService extends Service
     #S3 key we use to store credentials
     _get_credentials_key: (instance) -> 'RDSService_' + instance.id + '_credentials'
 
-    codebase: -> @_codebase
+    codebase: -> @codebase()
 
     endpoint: (instance) ->
         rds_instance = @rds_instance(instance)
         if not rds_instance
             return null
 
-        if @_codebase.use_s3_credentials()
+        if @codebase().use_s3_credentials()
             credentials = JSON.parse bbobjects.get_s3_config @_get_credentials_key(instance)
         else
             credentials = null
@@ -287,13 +289,13 @@ templates.RDSService = class RDSService extends Service
 
     #Before deploying, we want to confirm that the migration is reversibe.
     deploy_safe: (instance, version) ->
-        if not @_codebase.confirm_reversible @rds_instance(instance), version
+        if not @codebase().confirm_reversible @rds_instance(instance), version
             return false
 
         return true
 
 
-    get_tests: -> @_codebase.get_tests()
+    get_tests: -> @codebase().get_tests()
 
 
 #Base class for services that have a single box.  They take a template,

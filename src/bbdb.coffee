@@ -191,16 +191,9 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
 
 bbobjects = require './bbobjects'
-
-
-#We add some templates for creating the service
 templates = require './templates'
 
-templates.add 'Service', 'BBDBService', class BBDBService extends templates.RDSService
-    #We override the logic for fetching the actual instance, since we can't
-    #rely on BBDB to find BBDB
-    rds_instance: (instance) -> bbobjects.get_bbdb_instance()
-
+class BBDBCodebase extends templates.RDSCodebase
     #We need to store our credentials in s3 instead of in the bubblebot database,
     #since we are the bubblebot database!
     use_s3_credentials: -> true
@@ -270,3 +263,14 @@ templates.add 'Service', 'BBDBService', class BBDBService extends templates.RDSS
         DROP TABLE bbobjects, history, scheduler, scheduler_owners;
         "
     ]
+
+templates.add 'Codebase', 'BBDBCodebase', new BBDBCodebase()
+
+
+class BBDBService extends templates.RDSService
+    #We override the logic for fetching the actual instance, since we can't
+    #rely on BBDB to find BBDB
+    rds_instance: (instance) -> bbobjects.get_bbdb_instance()
+
+templates.add 'Service', 'BBDBService', new BBDBService 'BBDBCodebase'
+
