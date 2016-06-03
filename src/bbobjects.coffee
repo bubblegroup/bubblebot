@@ -119,6 +119,8 @@ bbobjects.get_bbdb_instance = ->
 
     #Create the database
     rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '_instance1'
+    #We need to tell it the environment manually...
+    rds_instance.environment = -> environment
     rds_instance.create null, permanent_options, sizing_options, credentials, 'just_create'
 
 
@@ -1962,7 +1964,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             @set 'MasterUserPassword', MasterUserPassword
 
         VpcSecurityGroupIds = [@environment().get_database_security_group(PubliclyAccessible)]
-        DBSubnetGroupName = @environment.get_rds_subnet_group()
+        DBSubnetGroupName = @environment().get_rds_subnet_group()
 
         params = {
             DBInstanceIdentifier: @id
