@@ -21,6 +21,13 @@ u.run_local = (cmd, options = {}) ->
             block.success stdout + stderr
     return block.wait()
 
+#Removes all occurrences of val from this array
+u.array_remove = (array, val) ->
+    if not array?
+        return
+    while (idx = array.indexOf val) != -1
+        array.splice idx, 1
+
 
 #Given a destination object and one or more source objects, copies
 #the key / values from the sources into the destination.  Not recursive, just
@@ -389,12 +396,12 @@ u.SyncRun = SyncRun = (cb) ->
             finally
                 f.fiber_is_finished = true #fibers will restart if run is called after they finished!
 
-                u.active_fibers.remove f
+                u.array_remove u.active_fibers, f
 
                 #Keeping a reference to the fiber will hold it in memory permanently
                 f = null
 
-        f = (Fiber run_fn)
+        f = Fiber run_fn
         f._u_fiber_timeout = 90 * 1000 #we set a default timeout, since accidentally not setting a timeout can lead to memory leaks
         start_fiber_run f
 
