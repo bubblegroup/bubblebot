@@ -125,7 +125,7 @@ bbobjects.get_bbdb_instance = ->
 
 
     #Write the initial code to it
-    service_instance.codebase().migrate_to rds_instance, service_instance._codebase.get_latest_version()
+    service_instance.codebase().migrate_to rds_instance, service_instance.codebase().get_latest_version()
 
     #It should now be useable as a database...
     _cached_bbdb_instance = rds_instance
