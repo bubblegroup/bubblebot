@@ -1283,10 +1283,16 @@ bbobjects.Environment = class Environment extends BubblebotObject
             return subnet_groupname
 
         #check if it is created
-        results = @rds 'describeDBSubnetGroups', {DBSubnetGroupName: subnet_groupname}
-        if results.DBSubnetGroups?.length > 0
-            rds_subnet_groups.set(subnet_groupname, true)
-            return subnet_groupname
+        try
+            results = @rds 'describeDBSubnetGroups', {DBSubnetGroupName: subnet_groupname}
+            if results.DBSubnetGroups?.length > 0
+                rds_subnet_groups.set(subnet_groupname, true)
+                return subnet_groupname
+
+        catch err
+            if String(err).instanceOf('DBSubnetGroupNotFoundFault') is -1
+                throw err
+
 
         #not created, so create it
 
