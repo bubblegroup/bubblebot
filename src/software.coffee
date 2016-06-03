@@ -75,7 +75,7 @@ software.supervisor = create (name, command, pwd) ->
 
     pkg.run 'sudo pip install supervisor==3.1'
     pkg.run '/usr/local/bin/echo_supervisord_conf > tmp'
-    pkg.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\directory=' + pwd + '\n\nEOF'
+    pkg.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\ndirectory=' + pwd + '\n\nEOF'
     pkg.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
 
     return pkg

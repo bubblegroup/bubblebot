@@ -46,7 +46,12 @@ bbobjects.get_bbserver = ->
     if instances.length > 1
         throw new Error 'Found more than one bubblebot server!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbserver')
     else if instances.length is 1
-        return instances[0]
+        instance = instances[0]
+
+        #manually set environment in case database is not built yet
+        instance.environment = -> environment
+
+        return instance
 
     #We didn't find it, so create it...
     image_id = config.get('bubblebot_image_id')
