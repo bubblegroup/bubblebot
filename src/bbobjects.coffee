@@ -2132,6 +2132,10 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #Destroys this RDS instance.  As an extra safety layer, we only terminate production
     #instances if terminate prod is true
     terminate: (terminate_prod, assume_production, SkipFinalSnapshot) ->
+        if @get_configuration(true).DBInstanceStatus is 'deleting'
+            u.log 'skipping termination, already deleting'
+            return
+
         is_production = assume_production or @is_production()
 
         if is_production and not terminate_prod
