@@ -1,5 +1,7 @@
 bbserver = exports
 
+constants = require './constants'
+
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand(this)
@@ -178,13 +180,13 @@ bbserver.Server = class Server
     #Returns an array of all the admin users.  If we don't have any admin users,
     #we set the owner of the slack channel as an admin user
     get_admins: ->
-        admin_users = (user for user in bbobjects.list_all('User') when user.is_in_group(bbobjects.ADMIN))
+        admin_users = (user for user in bbobjects.list_all('User') when user.is_in_group(constants.ADMIN))
         if admin_users.length > 0
             return admin_users
 
         #No admins found, so make the slack owner an admin
         owner = bbobjects.instance 'User', @slack_client.get_slack_owner()
-        owner.add_to_group bbobjects.ADMIN
+        owner.add_to_group constants.ADMIN
         return [owner]
 
     #Loads pre-built tasks and schedules
@@ -311,14 +313,14 @@ bbserver.Server = class Server
 
             #If we are not in the basic group, we are not allowed to talk to the bot
             current_user = context.current_user()
-            if not current_user.is_in_group bbobjects.BASIC
+            if not current_user.is_in_group constants.BASIC
                 #if we are not in the ignore group, and we haven't been reported to the admins
                 #yet, let them know we have a new user
                 @_reported_new_users ?= {}
                 if not @_reported_new_users[current_user.id]
                     @_reported_new_users[current_user.id] = true
-                    if not current_user.is_in_group bbobjects.IGNORE
-                        u.report 'A new user is attempting to talk to bubblebot.  The user is ' + current_user + '.  Consider adding to a security group, such as ' + [bbobjects.ADMIN, bbobjects.TRUSTED, bbobjects.BASIC, bbobjects.IGNORE].join(', ')
+                    if not current_user.is_in_group constants.IGNORE
+                        u.report 'A new user is attempting to talk to bubblebot.  The user is ' + current_user + '.  Consider adding to a security group, such as ' + [constants.ADMIN, constants.TRUSTED, constants.BASIC, constants.IGNORE].join(', ')
 
                 u.log 'Ignoring command from unauthorized user ' + current_user
                 return
@@ -343,7 +345,7 @@ bbserver.Server = class Server
                     u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
                     if context.user_id
                         current_user = bbobjects.instance('User', context.user_id)
-                    if not current_user?.is_in_group(bbobjects.ADMIN)
+                    if not current_user?.is_in_group(constants.ADMIN)
                         name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
                         u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
 
@@ -629,7 +631,7 @@ bbserver.Command = class Command
 
         #if groups is null, assume a) that it requires admin permissions, and b) that it is dangerous
         if not groups?
-            groups = [bbobjects.ADMIN]
+            groups = [constants.ADMIN]
             dangerous = true
 
         #otherwise, see if dangerous is defined
@@ -719,7 +721,7 @@ class Help extends Command
         u.reply targ.get_help(commands.join(' '))
         return
 
-    groups: bbobjects.BASIC
+    groups: constants.BASIC
 
 class New extends Command
     help: 'Creates a new environment'
@@ -750,7 +752,7 @@ class New extends Command
         u.reply 'Environment successfully created!'
         return
 
-    groups: bbobjects.BASIC
+    groups: constants.BASIC
 
 get_fiber_user = (fiber) ->
     if fiber.current_context.user_id
@@ -786,7 +788,7 @@ class PS extends Command
 
         u.reply res.join('\n')
 
-    groups: bbobjects.BASIC
+    groups: constants.BASIC
 
 #Command for listing recent loggers
 class Loggers extends Command
@@ -804,7 +806,7 @@ class Loggers extends Command
             res.push String(new Date(timestamp)) + ' ' + description + ' ' + logger.get_tail_url()
         u.reply res.join('\n')
 
-    groups: bbobjects.BASIC
+    groups: constants.BASIC
 
 class Cancel extends Command
     help: 'Cancels running commands.  By default, cancels all commands that you started'
@@ -832,15 +834,15 @@ class Cancel extends Command
     #Anyone can cancel their own commands, admins can cancel other users
     groups: (command) ->
         if not command
-            return bbobjects.BASIC
+            return constants.BASIC
 
         for fiber in u.active_fibers
             if command
                 if fiber._fiber_id is command
                     if fiber.current_context?.user_id isnt u.current_user().id
-                        return bbobjects.ADMIN
+                        return constants.ADMIN
 
-        return bbobjects.BASIC
+        return constants.BASIC
 
 
 
@@ -859,7 +861,7 @@ class Monitor extends Command
         else
             u.reply @server._monitor.statuses()
 
-    groups: bbobjects.BASIC
+    groups: constants.BASIC
 
 
 class Sudo extends Command
@@ -881,7 +883,7 @@ class Sudo extends Command
         u.current_user().set 'sudo', Date.now()
         u.reply 'Okay, you now have temporary administrator privileges'
 
-    groups: bbobjects.TRUSTED
+    groups: constants.TRUSTED
 
 #The initial command structure for the bot
 class RootCommand extends CommandTree
@@ -965,7 +967,7 @@ class SecurityGroupsTree extends CommandTree
 
             help: 'Creates a new security group'
 
-            groups: bbobjects.TRUSTED
+            groups: constants.TRUSTED
         }
 
         return commands

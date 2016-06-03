@@ -1,5 +1,8 @@
 bbobjects = exports
 
+constants = require './constants'
+bbserver = require './bbserver'
+
 #Retrieves an object with the given type and id
 bbobjects.instance = (type, id) ->
     if not bbobjects[type]
@@ -27,17 +30,11 @@ PROD = 'prod'
 QA = 'qa'
 DEV = 'dev'
 
-#Special security groups
-bbobjects.ADMIN = 'admin'     #essentially, root access
-bbobjects.TRUSTED = 'trusted' #can escalate themselves to admin privileges (notifies admin)
-bbobjects.BASIC = 'basic'     #can perform unrestricted commands
-bbobjects.IGNORE = 'ignore'   #bot will ignore requests from this user
-
 BUILTIN_GROUP_DESCRIPTION = {}
-BUILTIN_GROUP_DESCRIPTION[bbobjects.ADMIN] = 'Administrators with full control over bubblebot'
-BUILTIN_GROUP_DESCRIPTION[bbobjects.TRUSTED]  = 'Trusted users who are allowed to grant themselves administrative access in an emergency (using the "sudo" command)'
-BUILTIN_GROUP_DESCRIPTION[bbobjects.BASIC] = 'Users who can give commands to bubblebot'
-BUILTIN_GROUP_DESCRIPTION[bbobjects.IGNORE] = 'Users who are ignored by bubblebot'
+BUILTIN_GROUP_DESCRIPTION[constants.ADMIN] = 'Administrators with full control over bubblebot'
+BUILTIN_GROUP_DESCRIPTION[constants.TRUSTED]  = 'Trusted users who are allowed to grant themselves administrative access in an emergency (using the "sudo" command)'
+BUILTIN_GROUP_DESCRIPTION[constants.BASIC] = 'Users who can give commands to bubblebot'
+BUILTIN_GROUP_DESCRIPTION[constants.IGNORE] = 'Users who are ignored by bubblebot'
 bbobjects.BUILTIN_GROUP_DESCRIPTION = BUILTIN_GROUP_DESCRIPTION
 
 #Returns the bubblebot server (creating it if it does not exist)
@@ -153,7 +150,7 @@ bbobjects.get_bbdb_instance = ->
 bbobjects.list_all = (type) -> (bbobjects.instance type, id for id in u.db().list_objects type)
 
 #Returns all the users.  We get the list of ids from slack rather than from the database
-bbobjects.list_users = (bbobjects.instance 'User', slack_user.id for slack_user in u.context().server.slack_client.get_all_users() ? [])
+bbobjects.list_users = -> (bbobjects.instance 'User', slack_user.id for slack_user in u.context().server.slack_client.get_all_users() ? [])
 
 
 #Returns all the environments in our database
@@ -325,7 +322,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         params: [{name: 'type', help: 'If specified, searches up the parent tree til it finds this type'}]
         help: 'finds either the immediate parent, or an ancestor of a given type'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Returns the immediate children of this object, optionally filtering by child type
     children: (child_type) ->
@@ -336,7 +333,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         params: [{name: 'child_type', help: 'If specified, filters to the given type'}]
         help: 'lists all the children of this object.  to access a specific child, use the "child" command'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Retrieves the environment that this is in
     environment: -> @parent 'Environment'
@@ -350,7 +347,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     is_development_cmd:
         help: 'Displays whether this is a development environment'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Returns true if this object is production.  See comment on is_development
     is_production: -> @environment().is_production()
@@ -358,11 +355,11 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     is_production_cmd:
         help: 'Displays whether this is a production environment'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     environment_cmd:
         help: 'returns the environment that this is in'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Gets the given property of this object
     get: (name) ->
@@ -452,7 +449,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     creator_cmd:
         help: 'Gets the user who created this'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Returns the user who owns this
     owner: ->
@@ -463,7 +460,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     owner_cmd:
         help: 'Gets the user who owns this'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Prints out a multi line human readable description
     describe: ->
@@ -486,7 +483,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     describe_cmd:
         help: 'Describes this'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
 
 GROUP_PREFIX = 'group_member_'
@@ -506,21 +503,21 @@ bbobjects.User = class User extends BubblebotObject
     name_cmd:
         help: 'shows the name of this user'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     profile: -> @slack().get_user_info().profile
 
     profile_cmd:
         help: 'shows the slack profile for this user'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     slack_info: -> @slack().get_user_info()
 
     slack_info_cmd:
         help: 'shows all the slack data for this user'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Adds this user to a security group
     add_to_group: (groupname) ->
@@ -528,20 +525,20 @@ bbobjects.User = class User extends BubblebotObject
             @create()
 
         #See if they currently have access to talk to bubblebot
-        can_talk_to_us = @is_in_group bbobjects.BASIC
+        can_talk_to_us = @is_in_group constants.BASIC
 
         @set GROUP_PREFIX + groupname, true
 
         #If they didn't have permission to talk to us, but now do, welcome them!
-        if not can_talk_to_us and @is_in_group bbobjects.BASIC
+        if not can_talk_to_us and @is_in_group constants.BASIC
             u.message @id, "Hi!  I'm Bubblebot.  Feel free to ask me to do useful stuff.  To start learning about what I can do, type 'help'"
 
     add_to_group_cmd:
         params: [{name: 'groupname', required: true, help: 'The group to add this user to'}]
         help: 'Adds this user to a given security group'
         reply: 'Added successfully'
-        groups: bbobjects.TRUSTED
-        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
+        groups: constants.TRUSTED
+        dangerous: (groupname) -> groupname in [constants.TRUSTED, constants.ADMIN]
 
     #Removes this user from the given group
     remove_from_group: (groupname) ->
@@ -553,8 +550,8 @@ bbobjects.User = class User extends BubblebotObject
         params: [{name: 'groupname', required: true, help: 'The group to remove this user from'}]
         help: 'Removes this user from a given security group'
         reply: 'Removed successfully'
-        groups: bbobjects.TRUSTED
-        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
+        groups: constants.TRUSTED
+        dangerous: (groupname) -> groupname in [constants.TRUSTED, constants.ADMIN]
 
     #Checks if this user is in a given group
     is_in_group: (groupname, checked) ->
@@ -578,7 +575,7 @@ bbobjects.User = class User extends BubblebotObject
                     return true
 
         #If this is the admin group we are checking, see if the user has sudo privileges
-        if groupname is bbobjects.ADMIN
+        if groupname is constants.ADMIN
             sudo_time = @get 'sudo'
             if sudo_time and sudo_time > Date.now() - 30 * 60 * 1000
                 return true
@@ -589,7 +586,7 @@ bbobjects.User = class User extends BubblebotObject
         params: [{name: 'groupname', required: true, help: 'The group to check'}]
         help: 'Checks to see if this user is in a given security group'
         reply: true
-        groups: bbobjects.TRUSTED
+        groups: constants.TRUSTED
 
     #Returns all the groups this user is directly a member of
     list_groups: ->
@@ -600,7 +597,7 @@ bbobjects.User = class User extends BubblebotObject
     list_groups_cmd:
         help: 'Lists all the groups this user is directly a member of'
         reply: true
-        groups: bbobjects.TRUSTED
+        groups: constants.TRUSTED
 
 CONTAINED_PREFIX = 'group_contains_'
 
@@ -625,8 +622,8 @@ bbobjects.SecurityGroup = class SecurityGroup
         will now be counted as part of the containing group"
 
         reply: 'Added succesfully'
-        groups: bbobjects.TRUSTED
-        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
+        groups: constants.TRUSTED
+        dangerous: (groupname) -> groupname in [constants.TRUSTED, constants.ADMIN]
 
     #Removes this security group from a containing group
     remove_from_group: (groupname) ->
@@ -643,9 +640,9 @@ bbobjects.SecurityGroup = class SecurityGroup
 
         reply: 'Removed succesfully'
 
-        groups: bbobjects.TRUSTED
+        groups: constants.TRUSTED
 
-        dangerous: (groupname) -> groupname in [bbobjects.TRUSTED, bbobjects.ADMIN]
+        dangerous: (groupname) -> groupname in [constants.TRUSTED, constants.ADMIN]
 
     #Returns an array of all the groups contained by this group
     contained_groups: ->
@@ -654,19 +651,19 @@ bbobjects.SecurityGroup = class SecurityGroup
         #Add in some builtin containment rules
 
         #The basic group contains all trusted users
-        if @id is bbobjects.BASIC
-            res.push bbobjects.TRUSTED
+        if @id is constants.BASIC
+            res.push constants.TRUSTED
 
         #The trusted group contains all admin users
-        if @id is bbobjects.TRUSTED
-            res.push bbobjects.ADMIN
+        if @id is constants.TRUSTED
+            res.push constants.ADMIN
 
         return (bbobjects.instance 'SecurityGroup', id for id in res)
 
     contained_groups_cmd:
         help: 'Lists the groups directly contained by this group (does not list sub-sub-groups)'
         reply: true
-        groups: bbobjects.TRUSTED
+        groups: constants.TRUSTED
 
     #Sets the message that describes what this group is about
     set_about: (msg) ->
@@ -679,7 +676,7 @@ bbobjects.SecurityGroup = class SecurityGroup
         params: [{name: 'msg', required: true, help: 'The description for this security group'}]
         help: 'Sets the "about" description for this security group'
         reply: 'Description set'
-        groups: bbobjects.TRUSTED
+        groups: constants.TRUSTED
 
     #Returns the message that describes what this group is about
     about: ->
@@ -690,7 +687,7 @@ bbobjects.SecurityGroup = class SecurityGroup
     about_cmd:
         help: 'Gets a description of this security group'
         reply: true
-        groups: bbobjects.TRUSTED
+        groups: constants.TRUSTED
 
 
 #If the user enters a really high value for hours, double-checks to see if it is okay
@@ -800,7 +797,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         help: 'Creates a new server in this environment for testing or other purposes'
 
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Given a key, value pair, returns a list of instanceids that match that pair
     get_instances_by_tag: (key, value) ->
@@ -1252,9 +1249,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
         dangerous: -> not @environment().type().is_development()
         groups: ->
             if @environment().type().is_development()
-                return bbobjects.BASIC
+                return constants.BASIC
             else
-                return bbobjects.ADMIN
+                return constants.ADMIN
 
     #Sets a credential for this environment
     set_credential: (set_name, name, value, overwrite) ->
@@ -1273,9 +1270,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             if not value?
                 throw new Error 'assertion error: ' + JSON.stringify({set_name, name, value, overwrite})
             if overwrite and @environment().type().is_development()
-                return bbobjects.ADMIN
+                return constants.ADMIN
             else
-                return bbobjects.BASIC
+                return constants.BASIC
 
 
     #Gets the RDS subnet group for this environment, creating it if necessary
@@ -1391,7 +1388,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
                 entry += '\n' + (if rollback then '(ROLLBACK) ' else '') + deployment_message
                 formatted.push entry
             return formatted.join('\n\n')
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Checks if we are still using this instance
     should_delete: (instance) -> instance.should_delete this
@@ -1446,7 +1443,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     block_cmd:
         params: [{name: 'explanation', required: true}]
         help: 'Ask other users not to deploy to this service til further notice.  Can be cancelled with "unblock"'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Remove a request created with block
     unblock: ->
@@ -1467,7 +1464,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     unblock_cmd:
         help: 'Removes a block on deploying created with the "block" command'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
 
     #Deploys this version to this service
@@ -1486,7 +1483,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     deploy_cmd:
         params: [{name: 'version', required: true, help: 'The version to deploy'}, {name: 'rollback', type: 'boolean', help: 'If true, allows deploying versions that are not ahead of the current version'}]
         help: 'Deploys the given version to this service.  Ensures that the new version is tested and ahead of the current version'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Returns the current version of this service
     version: -> @get 'version'
@@ -1494,7 +1491,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     version_cmd:
         help: 'Returns the current version of this service'
         reply: (version) -> @template().codebase().pretty_print version
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #On startup, we make sure we are monitoring this
     startup: -> u.context().server.monitor this
@@ -1517,7 +1514,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     maintenance_cmd:
         help: 'Returns whether we are in maintenance mode'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Sets whether or not we should enter maintenance mode
     set_maintenance: (turn_on) ->
@@ -1527,14 +1524,14 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     set_maintenance_cmd:
         params: {name: 'on', type: 'boolean', required: true, help: 'If true, turns maintenance mode on, if false, turns it off'}
         help: 'Turns maintenance mode on or off'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Replaces the underlying boxes for this service
     replace: -> @template().replace this
 
     replace_cmd:
         help: 'Replaces the underlying boxes for this service'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
 
 #Represents the AMI and software needed to build an ec2 instance
@@ -1605,7 +1602,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         params: [{name: 'region', required: true, help: 'The region to retrieve the AMI for'}]
         help: 'Retrieves the current AMI for this build in the given region.  If one does not exist, creates it.'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Make sure we are scheduling replacing
     startup: ->
@@ -1658,7 +1655,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     replace_ami_cmd:
         params: [{name: 'region', required: true, help: 'The region to replace the AMI for'}]
         help: 'Replaces the current AMI for this build in the given region'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Tells this ec2 instance that it is receiving external traffic.
     #Some builds might want notification given to the box.
@@ -1725,12 +1722,12 @@ bbobjects.Test = class Test extends BubblebotObject
             {name: 'include_skipped', type: 'boolean', default: false, help: 'If set, includes versions where tests were skipped instead of being run'}
         ]
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     run_cmd:
         params: [{name: 'version', required: true, help: 'The version of the codebase to run this test against'}]
         help: 'Runs this test against the given version'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Marks this version as tested without actually running the tests
     skip_tests: (version) ->
@@ -1741,7 +1738,7 @@ bbobjects.Test = class Test extends BubblebotObject
         help: 'Marks this version as tested without actually running the tests'
         params: [{name: 'version', required: true, help: 'The version of the codebase to mark as tested'}]
         reply: 'Version marked as tested'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     mark_tested: (version) ->
         @add_history 'test_passed', version
@@ -1886,9 +1883,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         dangerous: -> @environment().is_production()
         groups: ->
             if @environment().is_production() or @owner().id isnt @current_user().id
-                return bbobjects.ADMIN
+                return constants.ADMIN
             else
-                return bbobjects.BASIC
+                return constants.BASIC
 
 
     #Writes the given private key to the default location on the box

@@ -1,5 +1,7 @@
 bbdb = exports
 
+databases = require './databases'
+
 #Represents a connection to the database that powers bubble bot
 bbdb.BBDatabase = class BBDatabase extends databases.Postgres
     #given a type, returns an array of all the ids of that type
@@ -189,7 +191,6 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
 
 bbobjects = require './bbobjects'
-databases = require './databases'
 
 
 #We add some templates for creating the service

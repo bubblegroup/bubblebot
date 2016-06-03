@@ -1,5 +1,7 @@
 templates = exports
 
+constants = require './constants'
+
 #For each type of template, we define the functions we use to determine whether
 #this is an instance of the template.  We use this for templates.verify and templates.list
 interfaces =
@@ -18,12 +20,12 @@ for i_name, _ of interfaces
 #Given the name of a template interface, and the id of a template, confirms that this
 #is a valid template id or throws an error
 templates.verify = (iface, id) ->
-    if not templates[iface]
+    if not templates.templates[iface]
         throw new Error 'could not find interface ' + iface
-    if not templates[iface][id]
+    if not templates.templates[iface][id]
         throw new Error 'could not find ' + iface + ' with id ' + id
     for fn in interfaces[iface]
-        if typeof(templates[id][fn]) isnt 'function'
+        if typeof(templates.templates[iface][id][fn]) isnt 'function'
             throw new Error 'id ' + id + ' is not a valid ' + iface + ' (missing ' + fn + ')'
 
 #Adds the given template
@@ -45,7 +47,7 @@ templates.Environment = class Environment
     initialize: (environment) ->
 
 #A blank environment...
-templates.add 'Enivronment', 'blank', new Environment()
+templates.add 'Environment', 'blank', new Environment()
 
 
 #Extend this to build service templates
@@ -349,7 +351,7 @@ templates.SingleBoxService = class SingleBoxService
     get_size_cmd:
         help: 'Gets the size of the box for this service'
         reply: true
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
 
     #Sets the size of the box for this service
     set_size: (instance, new_size) ->
@@ -363,7 +365,7 @@ templates.SingleBoxService = class SingleBoxService
         params: [{name: 'new_size', type: 'number', required: true}]
         help: 'Sets the size of the box for this service'
         reply: 'Size successfully set'
-        groups: bbobjects.BASIC
+        groups: constants.BASIC
         dangerous: -> @environment().is_production()
 
 
@@ -693,6 +695,8 @@ templates.RDSCodebase = class RDSCodebase
     capture_schema: (rds_instance) -> @get_migration_manager(rds_instance).capture_schema()
 
 
+databases = require './databases'
+
 migration_managers = {}
 migration_managers.postgres = class PostgresMigrator extends databases.Postgres
     #Given a codebase id, returns the number of the current migration (or -1 if we have
@@ -923,6 +927,5 @@ templates.EC2Build = class EC2Build
 
 
 bbobjects = require './bbobjects'
-databases = require './databases'
 u = require './utilities'
 config = require './config'
