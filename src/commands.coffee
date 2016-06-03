@@ -4,10 +4,12 @@ build = ->
     #Load the local configuration from disk
     config.init()
 
-    u.run_local 'npm prune'
-    u.run_local 'npm install'
-    u.run_local 'npm shrinkwrap'
-    u.run_local './node_modules/bubblebot/node_modules/.bin/shrinkpack'
+    u.log u.run_local 'rm npm-shrinkwrap.json', {can_fail: true}
+    u.log u.run_local 'rm -rf node_shrinkwrap', {can_fail: true}
+    u.log u.run_local 'rm -rf node_modules', {can_fail: true}
+    u.log u.run_local 'npm update'
+    u.log u.run_local 'npm shrinkwrap'
+    u.log u.run_local './node_modules/bubblebot/node_modules/.bin/shrinkpack'
     u.log 'Build complete'
 
 
@@ -110,7 +112,6 @@ update = ->
 commands.update = ->
     u.SyncRun ->
         update()
-        build()
         process.exit()
 
 
