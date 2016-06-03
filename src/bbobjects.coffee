@@ -110,10 +110,12 @@ bbobjects.get_bbdb_instance = ->
     good = []
     instances = environment.list_rds_instances_in_region()
     for instance in instances
-        if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
-            good.push instance
-        else if instance.id.indexOf('bubblebot-bbdbservice-') is 0
-            to_delete.push instance
+        if instance.id.indexOf('bubblebot-bbdbservice-') is 0
+            instance.environment = -> environment
+            if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
+                good.push instance
+            else
+                to_delete.push instance
 
     instances = good
 
