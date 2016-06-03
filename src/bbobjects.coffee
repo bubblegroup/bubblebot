@@ -88,6 +88,8 @@ bbobjects.get_bbserver = ->
 
     return instance
 
+#For debugging issues with bbdb startup -- reuses the same database rather than creating a new one each time
+REUSE_DB = true
 
 _cached_bbdb_instance = null
 #Returns or creates and returns the rds instance for bbdb
@@ -113,7 +115,7 @@ bbobjects.get_bbdb_instance = ->
         for instance in instances
             if instance.id.indexOf('bubblebot-bbdbservice-') is 0
                 instance.environment = -> environment
-                if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
+                if REUSE_DB or instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
                     good.push instance
                 else
                     to_delete.push instance
