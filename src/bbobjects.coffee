@@ -1978,6 +1978,11 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         VpcSecurityGroupIds = [@environment().get_database_security_group(PubliclyAccessible)]
         DBSubnetGroupName = @environment().get_rds_subnet_group()
 
+        StorageEncrypted = (DBInstanceClass not in ['db.t2.micro', 'db.t2.small', 'db.t2.medium'])
+        if not StorageEncrypted
+            u.log 'Creating unencrypted database (DBInstanceClass too small: ' + DBInstanceClass + ')'
+
+
         params = {
             DBInstanceIdentifier: @id
 
@@ -2007,7 +2012,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             VpcSecurityGroupIds
             DBSubnetGroupName
 
-            StorageEncrypted: true
+            StorageEncrypted  #t2.large supports this, smaller ones do not
         }
 
         #Remove credentials from the parameters...
