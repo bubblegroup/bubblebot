@@ -125,7 +125,7 @@ bbobjects.get_bbdb_instance = ->
 
 
     #Write the initial code to it
-    service_instance._codebase.migrate_to rds_instance, service_instance._codebase.get_latest_version()
+    service_instance.codebase().migrate_to rds_instance, service_instance._codebase.get_latest_version()
 
     #It should now be useable as a database...
     _cached_bbdb_instance = rds_instance
@@ -826,7 +826,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         data = @rds 'describeDBInstances', {}
         rds_instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
         #There's no way to list by tag right now, so we find them all then filter
-        return (instance for instance in rds_instances when rds_instances.get_tags()[key] is value)
+        return (instance for instance in rds_instances when instance.get_tags()[key] is value)
 
     #Lists all the RDS instances in this environment's region
     list_rds_instances_in_region: ->
