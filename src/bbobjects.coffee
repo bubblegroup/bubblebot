@@ -130,9 +130,6 @@ bbobjects.get_bbdb_instance = ->
         for instance in to_delete
             u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
             instance.terminate(true, true, true)
-        if to_delete.length > 0
-            #we don't want to create a new instance if there was an old one still deleting to avoid creating a million
-            throw new Error 'deleted old instances, so aborting'
 
         #It doesn't exist yet, so create it
         {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
