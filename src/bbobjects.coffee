@@ -106,13 +106,27 @@ bbobjects.get_bbdb_instance = ->
         ensure_context_db()
         return _cached_bbdb_instance
 
-    instances = environment.list_rds_instances_by_tag(config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb'))
+    to_delete = []
+    good = []
+    instances = environment.list_rds_instances_in_region()
+    for instance in instances
+        if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
+            good.push instance
+        else if instance.id.indexOf('bubblebot-bbdbservice-') is 0
+            to_delete.push instance
+
+    instances = good
 
     if instances.length > 1
         throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
     else if instances.length is 1
         ensure_context_db()
         return instances[0]
+
+    #If we are creating it, make sure we don't have any old ones hanging around
+    for instance in to_delete
+        u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
+        instance.terminate(true, true)
 
     #It doesn't exist yet, so create it
     {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
@@ -825,10 +839,6 @@ bbobjects.Environment = class Environment extends BubblebotObject
     list_rds_instances_by_tag: (key, value) ->
         data = @rds 'describeDBInstances', {}
         rds_instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
-
-        #If there is no db, we tag them all with this environment as the environment
-        if not u.context().db?
-            instance.environment = (=> this) for instance in rds_instances
 
         #There's no way to list by tag right now, so we find them all then filter
         return (instance for instance in rds_instances when instance.get_tags()[key] is value)
