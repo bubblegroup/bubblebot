@@ -1941,7 +1941,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         {Engine, EngineVersion} = permanent_options
         {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
 
-        if bootstrap is 'just_create'
+        if bootstrap is 'just_create' and not credentials?
             throw new Error 'Need to include credentials when using just_create'
         if bootstrap? and bootstrap not in ['just_create', 'just_write']
             throw new Error 'unrecognized bootstrap: ' + bootstrap
