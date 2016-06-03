@@ -51,19 +51,27 @@ commands.publish = (access_key) ->
 
         u.log 'Found bubblebot server'
 
-        #Ensure we have the necessary deployment key installed
-        bbserver.install_private_key config.get('deploy_key_path')
+        #First, try the quick version.  On error, do a full version
+        try
+            bbserver.run("cd bubblebot && git pull")
+            bbserver.run("npm install")
 
-        #Clone our bubblebot installation to a fresh directory, and run npm install and npm test
-        install_dir = 'bubblebot-' + Date.now()
-        bbserver.run('git clone ' + config.get('remote_repo') + ' ' + install_dir)
-        bbserver.run("cd #{install_dir} && npm install && npm test")
+        catch err
+            u.log 'Error trying quick update.  Will do full update.  Error:\n' + err.stack
 
-        #Create a symbolic link pointing to the new directory, deleting the old one if it exits
-        bbserver.run('rm -rf bubblebot-old', {can_fail: true})
-        bbserver.run("mv $(readlink #{config.get('install_directory')}) bubblebot-old", {can_fail: true})
-        bbserver.run('unlink ' + config.get('install_directory'), {can_fail: true})
-        bbserver.run('ln -s ' + install_dir + ' ' +  config.get('install_directory'))
+            #Ensure we have the necessary deployment key installed
+            bbserver.install_private_key config.get('deploy_key_path')
+
+            #Clone our bubblebot installation to a fresh directory, and run npm install and npm test
+            install_dir = 'bubblebot-' + Date.now()
+            bbserver.run('git clone ' + config.get('remote_repo') + ' ' + install_dir)
+            bbserver.run("cd #{install_dir} && npm install")
+
+            #Create a symbolic link pointing to the new directory, deleting the old one if it exits
+            bbserver.run('rm -rf bubblebot-old', {can_fail: true})
+            bbserver.run("mv $(readlink #{config.get('install_directory')}) bubblebot-old", {can_fail: true})
+            bbserver.run('unlink ' + config.get('install_directory'), {can_fail: true})
+            bbserver.run('ln -s ' + install_dir + ' ' +  config.get('install_directory'))
 
         #Ask bubblebot to restart itself
         try
