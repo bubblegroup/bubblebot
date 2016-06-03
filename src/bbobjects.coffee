@@ -1954,6 +1954,8 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     bubblebot_role: -> @get_tags[config.get('bubblebot_role_tag')]
 
+#Storage for credentials that we don't store in the bubblebot database
+rds_credentials = {}
 
 #Represents an RDS instance.
 bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
@@ -1994,6 +1996,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
         if credentials
             {MasterUsername, MasterUserPassword} = credentials
+            @override_credentials MasterUsername, MasterUserPassword
         else
             MasterUsername = 'bubblebot'
             MasterUserPassword = u.gen_password()
@@ -2133,13 +2136,25 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         help: 'Fetches the configuration information about this database from RDS'
         reply: true
 
-    #Returns the endpoint we can access this instance at.  Optionally provide
-    #a username and password... if missing, we use whatever we stored in the database
+    #Store credentials for accessing this database... override checking the database for them
+    override_credentials: (username, password) ->
+        rds_credentials[@id] = {username, password}
+
+    #Returns the endpoint we can access this instance at.
+    #
+    #Can optionally override credentials
     endpoint: (username, password) ->
+        if username?
+            @override_credentials username, password
+
         endpoint = {}
         data = @get_configuration()?.Endpoint
         if not data
             return null
+
+        #See if we have stored credentials
+        {username, password} = rds_credentials[@id] ? {}
+
         endpoint.address = data.Address
         endpoint.port = data.port
         endpoint.username = username ? @get 'MasterUsername'
