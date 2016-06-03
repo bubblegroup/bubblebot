@@ -119,7 +119,7 @@ bbobjects.get_bbdb_instance = ->
 
     #Create the database
     rds_instance = bbobjects.instance 'RDSInstance', service_instance.id + '_instance1'
-    rds_instance.create null, permanent_options, sizing_options, credentials, true
+    rds_instance.create null, permanent_options, sizing_options, credentials, 'just_create'
 
 
     #Write the initial code to it
