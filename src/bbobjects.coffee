@@ -2109,7 +2109,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         return null
 
     #Waits til the instance is in the available state
-    wait_for_available: (retries = 50) ->
+    wait_for_available: (retries = 100) ->
         u.log 'waiting for rds instance to be to be available (' + retries + ')'
         if @get_configuration(true).DBInstanceStatus is 'available'
             return
