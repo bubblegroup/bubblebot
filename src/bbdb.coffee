@@ -271,7 +271,7 @@ class BBDBService extends templates.RDSService
     #We override the logic for fetching the actual instance, since we can't
     #rely on BBDB to find BBDB
     rds_instance: (instance) ->
-        console.log 'Debugging: in get rds_instance (BBDBService)'
+        console.log (new Error 'Debugging: in get rds_instance (BBDBService)').stack
         return bbobjects.get_bbdb_instance()
 
 templates.add 'Service', 'BBDBService', new BBDBService 'BBDBCodebase'
