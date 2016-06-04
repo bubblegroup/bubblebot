@@ -732,7 +732,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
                 throw new Error "trying to apply migration #{migration} but we are at #{current}"
 
             #Run the migration
-            u.log 'Applying migration ' + codbase_id + ' ' + migration + ':\n' + migration_data
+            u.log 'Applying migration ' + codebase_id + ' ' + migration + ':\n' + migration_data
             t.query migration_data
 
             #Update the migration table
