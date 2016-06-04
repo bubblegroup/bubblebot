@@ -438,7 +438,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         u.db().create_object @type, @id, parent_type, parent_id, initial_properties
 
         #perform any startup logic
-        @startup()
+        @startup?()
 
     #Deletes this object from the database
     delete: ->
