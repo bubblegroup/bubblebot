@@ -130,6 +130,8 @@ bbobjects.get_bbdb_instance = ->
             u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
             instance.terminate(true, true, true)
 
+        u.log 'No bbdb instance found, so creating it'
+
         #It doesn't exist yet, so create it
         {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
 
@@ -143,21 +145,30 @@ bbobjects.get_bbdb_instance = ->
         #Write the initial code to it
         service_instance.codebase().migrate_to rds_instance, service_instance.codebase().get_latest_version()
 
+        u.log 'BBDB created, caching it'
+
         #It should now be useable as a database...
         _cached_bbdb_instance = rds_instance
         ensure_context_db()
+
+        u.log 'About to save initial data'
 
         #Save the service instance and rds_instance data
         service_instance.create environment
         rds_instance.create service_instance, null, null, null, 'just_write'
 
+        u.log 'Initial data saved, tagging it complete'
+
         #Tag it build complete
         environment.tag_resource rds_instance.id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb')
 
+        u.log 'Tagged complete'
+
         return rds_instance
     catch err
+        u.log 'Error creating BBDB!  Printing error then exiting'
         #if we had an error creating bubblebot database, we want to exit WITHOUT signalling supervisor for a restart
-        console.log err.stack ? err
+        u.log err.stack ? err
         process.exit(0)
 
 #Returns all the objects of a given type
