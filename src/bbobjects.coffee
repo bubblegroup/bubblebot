@@ -2176,8 +2176,10 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #Returns the endpoint we can access this instance at.
     #
     #Can optionally override credentials
-    endpoint: (username, password) ->
-        if username?
+    endpoint: (credentials) ->
+        if credentials?
+            username = credentials.MasterUsername
+            password = credentials.MasterUserPassword
             @override_credentials username, password
 
         endpoint = {}
