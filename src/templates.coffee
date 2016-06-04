@@ -235,7 +235,6 @@ templates.RDSService = class RDSService extends Service
 
     #Gets the rds instance
     rds_instance: (instance) ->
-        console.log 'Debugging: in get rds_instance (old style)'
         id = instance.get 'rds_instance'
         if id
             return bbobjects.instance 'RDSInstance', id
