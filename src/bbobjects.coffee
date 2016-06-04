@@ -93,44 +93,47 @@ _cached_bbdb_instance = null
 #
 #Ensures that u.context().db is set.
 bbobjects.get_bbdb_instance = ->
+    environment = bbobjects.bubblebot_environment()
+    service_instance = environment.get_service('BBDBService', null, true)
+    #we can't use the database, so manually record that the environment is the parent:
+    service_instance.parent = -> environment
+
+    #Makes sure u.context().db is set
+    ensure_context_db = (rds_instance) ->
+        u.context().db ?= new bbdb.BBDatabase(service_instance)
+
+    if _cached_bbdb_instance?
+        ensure_context_db()
+        return _cached_bbdb_instance
+
+    to_delete = []
+    good = []
+    instances = environment.list_rds_instances_in_region()
+    for instance in instances
+        if instance.id.indexOf('bubblebot-bbdbservice-') is 0
+            instance.environment = -> environment
+            if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
+                good.push instance
+            else
+                to_delete.push instance
+
+    instances = good
+
+    if instances.length > 1
+        throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
+    else if instances.length is 1
+        ensure_context_db()
+        _cached_bbdb_instance = instances[0]
+        return _cached_bbdb_instance
+
+    #If we are creating it, make sure we don't have any old ones hanging around
+    for instance in to_delete
+        u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
+        instance.terminate(true, true, true)
+
+    u.log 'No bbdb instance found, so creating it'
+
     try
-        environment = bbobjects.bubblebot_environment()
-        service_instance = environment.get_service('BBDBService', null, true)
-        #we can't use the database, so manually record that the environment is the parent:
-        service_instance.parent = -> environment
-
-        #Makes sure u.context().db is set
-        ensure_context_db = -> u.context().db ?= new bbdb.BBDatabase(service_instance)
-
-        if _cached_bbdb_instance?
-            ensure_context_db()
-            return _cached_bbdb_instance
-
-        to_delete = []
-        good = []
-        instances = environment.list_rds_instances_in_region()
-        for instance in instances
-            if instance.id.indexOf('bubblebot-bbdbservice-') is 0
-                instance.environment = -> environment
-                if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
-                    good.push instance
-                else
-                    to_delete.push instance
-
-        instances = good
-
-        if instances.length > 1
-            throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
-        else if instances.length is 1
-            ensure_context_db()
-            return instances[0]
-
-        #If we are creating it, make sure we don't have any old ones hanging around
-        for instance in to_delete
-            u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
-            instance.terminate(true, true, true)
-
-        u.log 'No bbdb instance found, so creating it'
 
         #It doesn't exist yet, so create it
         {permanent_options, sizing_options, credentials} = service_instance.template().get_params_for_creating_instance(service_instance)
@@ -164,7 +167,7 @@ bbobjects.get_bbdb_instance = ->
 
         u.log 'Tagged complete'
 
-        return rds_instance
+        return _cached_bbdb_instance
     catch err
         u.log 'Error creating BBDB!  Printing error then exiting'
         #if we had an error creating bubblebot database, we want to exit WITHOUT signalling supervisor for a restart
@@ -2123,6 +2126,11 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
     #Waits til the instance is in the available state
     wait_for_available: (retries = 100) ->
+        #first do a quick check using cached data...
+        if @get_configuration().DBInstanceStatus is 'available'
+            return
+
+        #Then log and refresh the data
         u.log 'waiting for rds instance to be to be available (' + retries + ')'
         if @get_configuration(true).DBInstanceStatus is 'available'
             return
