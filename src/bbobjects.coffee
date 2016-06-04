@@ -1993,8 +1993,8 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #bootstrap -- this is for bootstrapping bbdb.  if 'just_create', creates without writing to
     #the database; if 'just_write', writes to the database without creating
     create: (parent, permanent_options, sizing_options, credentials, bootstrap) ->
-        {Engine, EngineVersion} = permanent_options
-        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
+        {Engine, EngineVersion} = permanent_options ? {}
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options ? {}
 
         if bootstrap is 'just_create' and not credentials?
             throw new Error 'Need to include credentials when using just_create'
