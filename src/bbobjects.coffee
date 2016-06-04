@@ -1538,7 +1538,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         groups: constants.BASIC
 
     #On startup, we make sure we are monitoring this
-    startup: -> u.context().server.monitor this
+    startup: -> u.context().server?.monitor this
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: -> @template().get_monitoring_policy this
