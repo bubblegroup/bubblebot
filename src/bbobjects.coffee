@@ -93,18 +93,28 @@ _cached_bbdb_instance = null
 #
 #Ensures that u.context().db is set.
 bbobjects.get_bbdb_instance = ->
+    console.log 'Debugging: getting bbdb instance'
     environment = bbobjects.bubblebot_environment()
+    console.log 'Debugging: about got get service'
     service_instance = environment.get_service('BBDBService', null, true)
     #we can't use the database, so manually record that the environment is the parent:
     service_instance.parent = -> environment
 
     #Makes sure u.context().db is set
-    ensure_context_db = (rds_instance) ->
-        u.context().db ?= new bbdb.BBDatabase(service_instance)
+    ensure_context_db = ->
+        console.log 'Debugging: in ensure_context_db'
+        if not u.context().db
+            console.log 'Debugging: no context db'
+            u.context().db = new bbdb.BBDatabase(service_instance)
+            console.log 'Debugging: context db created'
 
     if _cached_bbdb_instance?
+        console.log 'Debugging: cached bbdb instance'
         ensure_context_db()
+        console.log 'Debugging: returning cached db instance'
         return _cached_bbdb_instance
+
+    console.log 'Debugging: looking for instances'
 
     to_delete = []
     good = []
@@ -112,9 +122,12 @@ bbobjects.get_bbdb_instance = ->
     for instance in instances
         if instance.id.indexOf('bubblebot-bbdbservice-') is 0
             instance.environment = -> environment
+            console.log 'Debugging: getting tags'
             if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
+                console.log 'Debugging: found good instance'
                 good.push instance
             else
+                console.log 'Debugging: found bad instance'
                 to_delete.push instance
 
     instances = good
@@ -122,8 +135,10 @@ bbobjects.get_bbdb_instance = ->
     if instances.length > 1
         throw new Error 'Found more than one bbdb!  Should only be one server tagged ' + config.get('bubblebot_role_tag') + ' = ' + config.get('bubblebot_role_bbdb')
     else if instances.length is 1
-        ensure_context_db()
+        console.log 'Debugging: returning good instance, ensuring'
         _cached_bbdb_instance = instances[0]
+        ensure_context_db()
+        console.log 'Debugging: in context ensured so returning'
         return _cached_bbdb_instance
 
     #If we are creating it, make sure we don't have any old ones hanging around
