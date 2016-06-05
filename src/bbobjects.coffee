@@ -990,7 +990,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         if @id isnt 'bubblebot'
             bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
             #Allow bubblebot to connect on any port
-            rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}]}
+            rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}], IpProtocol: '-1'}
 
         @ensure_security_group_rules group_name, rules
         return id
