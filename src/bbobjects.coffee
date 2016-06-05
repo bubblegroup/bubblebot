@@ -113,6 +113,10 @@ bbobjects.get_bbdb_instance = ->
     for instance in instances
         if instance.id.indexOf('bubblebot-bbdbservice-') is 0
             instance.environment = -> environment
+
+            credentials = service_instance.template().get_s3_saved_credentials(instance)
+            instance.override_credentials credentials.MasterUsername, credentials.MasterUserPassword
+
             #See if the bbdb initial version is installed...
             if service_instance.codebase().get_installed_migration(instance, 'BBDBCodebase') > -1
                 good.push instance

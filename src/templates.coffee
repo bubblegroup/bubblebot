@@ -276,13 +276,15 @@ templates.RDSService = class RDSService extends Service
     #S3 key we use to store credentials
     _get_credentials_key: (instance) -> 'RDSService_' + instance.id + '_credentials'
 
+    get_s3_saved_credentials: (instance) -> JSON.parse bbobjects.get_s3_config @_get_credentials_key(instance)
+
     endpoint: (instance) ->
         rds_instance = @rds_instance(instance)
         if not rds_instance
             return null
 
         if @codebase().use_s3_credentials()
-            credentials = JSON.parse bbobjects.get_s3_config @_get_credentials_key(instance)
+            credentials = @get_s3_saved_credentials instance
         else
             credentials = null
         return rds_instance.endpoint(credentials)
