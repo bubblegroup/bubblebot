@@ -27,8 +27,10 @@ commands.publish = (access_key, secret_access_key) ->
 
         #If the user passed in an access key / secret, set it
         if access_key
+            u.log 'Got access key from command line: ' + access_key
             config.set('accessKeyId', access_key)
         if secret
+            u.log 'Got secret from command line'
             config.set('secretAccessKey', secret_access_key)
 
         #This will prompt the user for the access key if we don't have it alraedy
