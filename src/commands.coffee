@@ -29,7 +29,7 @@ commands.publish = (access_key, secret_access_key) ->
         if access_key
             u.log 'Got access key from command line: ' + access_key
             config.set('accessKeyId', access_key)
-        if secret
+        if secret_access_key
             u.log 'Got secret from command line'
             config.set('secretAccessKey', secret_access_key)
 
