@@ -125,7 +125,7 @@ templates.Service = class Service
         #Okay, we have a tested version that is ahead of the current version, so deploy it and announce!
         instance.set 'version', version
 
-        username = u.current_user?().name() ? '<automated>'
+        username = u.current_user()?.name() ? '<automated>'
 
         #update history...
         instance.add_history 'deploy', version, {username, deployment_message, rollback}
