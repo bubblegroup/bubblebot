@@ -31,18 +31,10 @@ config.init = (options) ->
     else
         _config = JSON.parse JSON.stringify options
 
-    load_access_key_specific()
 
-
-_load_access = null
-#load any access_key specific configuration
-load_access_key_specific = ->
-    #see if we have an id + secret set, and that are different from loaded
-    if not (_config.accessKeyId and _config.secretAccessKey and _config.accessKeyId + _config.secretAccessKey isnt _load_access)
-        return
-    _load_access = _config.accessKeyId + _config.secretAccessKey
-
-    u.log 'Loading local access environment'
+#load any account specific configuration
+config.init_account_specific = ->
+    u.log 'Loading account specific environment'
 
     #Get the id of the AWS user we are running as
     aws_user = bbobjects.bubblebot_environment().get_aws_user()
@@ -83,8 +75,6 @@ config.get = (key, default_value) ->
 #Sets a key on our configuration
 config.set = (key, value) ->
     _config[key] = value
-
-    load_access_key_specific()
 
 #Retrieves all the config options as JSON
 config.export = -> return JSON.stringify _config

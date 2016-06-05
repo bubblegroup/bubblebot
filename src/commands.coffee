@@ -1,9 +1,6 @@
 commands = exports
 
 build = ->
-    #Load the local configuration from disk
-    config.init()
-
     u.log u.run_local 'rm npm-shrinkwrap.json', {can_fail: true}
     u.log u.run_local 'npm prune'
     u.run_local 'npm install'
@@ -33,8 +30,7 @@ commands.publish = (access_key, secret_access_key) ->
             u.log 'Got secret from command line'
             config.set('secretAccessKey', secret_access_key)
 
-        #This will prompt the user for the access key if we don't have it alraedy
-        u.log 'Publishing to account ' + config.get('accessKeyId')
+        config.init_account_specific()
 
         u.log 'Searching for bubblebot server...'
 
