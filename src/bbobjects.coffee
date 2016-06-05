@@ -1210,7 +1210,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     s3: (method, parameters) -> @aws 'S3', method, parameters
 
     #Calls iam and returns the results
-    iam: (methd, parameters) -> @aws 'IAM', method, parameters
+    iam: (method, parameters) -> @aws 'IAM', method, parameters
 
     CloudWatchLogs: (method, parameters) -> @aws 'CloudWatchLogs', method, parameters
 
