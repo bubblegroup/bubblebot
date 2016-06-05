@@ -28,4 +28,4 @@ bubblebot.initialize_configuration = (options, cb) ->
 bubblebot.Server = bbserver.Server
 
 #Export Utilities
-bubblebot.utilities = utilities
+bubblebot.utilities = u
