@@ -27,8 +27,34 @@ config.init = (options) ->
         #Load the options from disk
         u.log 'Loading options from disk: ' + config.get('configuration_file') + ' (cwd: ' + process.cwd() + ')'
         _config = JSON.parse strip_comments fs.readFileSync config.get('configuration_file'), {encoding: 'utf8'}
+
     else
         _config = JSON.parse JSON.stringify options
+
+    if _config.accessKeyId?
+        load_access_key_specific()
+
+
+
+#load any access_key specific configuration
+load_access_key_specific = ->
+    #Get the id of the AWS user we are running as
+    aws_user = bbobjects.bubblebot_environment().get_aws_user()
+
+    env_config_path = aws_user.UserId + '.json'
+    try
+        raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
+    catch err
+        u.log "Creating #{env_config_path} to save access-key-specific configuration..."
+        raw = '{\n//Store access-key-specific configuration here\n}'
+        fs.writeFileSync env_config_path, raw
+
+    try
+        for k, v of JSON.parse strip_comments raw
+            config.set k, v
+    catch err
+        u.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
+        throw err
 
 #Retrieves an individual key, throwing an error if undefined
 #
@@ -49,6 +75,9 @@ config.get = (key, default_value) ->
 #Sets a key on our configuration
 config.set = (key, value) ->
     _config[key] = value
+
+    if key is 'accessKeyId'
+        load_access_key_specific()
 
 #Retrieves all the config options as JSON
 config.export = -> return JSON.stringify _config
@@ -120,3 +149,5 @@ strip_comments = require 'strip-json-comments'
 fs = require 'fs'
 prompt = require 'prompt'
 u = require './utilities'
+
+bbobjects = require './bbobjects'

@@ -21,29 +21,16 @@ commands.publish = (access_key) ->
     u.SyncRun ->
         #Load the local configuration from disk
         config.init()
-        if access_key
-            config.set('accessKeyId', access_key)
 
         #Indicate that we are running from the command line
         config.set 'command_line', true
 
+        #If the user passed in an access key, set it
+        if access_key
+            config.set('accessKeyId', access_key)
+
+        #This will prompt the user for the access key if we don't have it alraedy
         u.log 'Publishing to account ' + config.get('accessKeyId')
-
-        #load any access_key specific configuration
-        env_config_path = config.get('accessKeyId') + '.json'
-        try
-            raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
-        catch err
-            u.log "Creating #{env_config_path} to save access-key-specific configuration..."
-            raw = '{\n//Store access-key-specific configuration here\n}'
-            fs.writeFileSync env_config_path, raw
-
-        try
-            for k, v of JSON.parse strip_comments raw
-                config.set k, v
-        catch err
-            u.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
-            throw err
 
         u.log 'Searching for bubblebot server...'
 

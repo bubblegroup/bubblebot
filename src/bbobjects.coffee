@@ -1197,6 +1197,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             Tags: [{Key, Value}]
         }
 
+    #Gets the user Bubblebot is logged into AWS as
+    get_aws_user: -> @iam('getUser').User
+
     #Calls ec2 and returns the results
     ec2: (method, parameters) -> @aws 'EC2', method, parameters
 
@@ -1205,6 +1208,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Calls s3 and returns the results
     s3: (method, parameters) -> @aws 'S3', method, parameters
+
+    #Calls iam and returns the results
+    iam: (methd, parameters) -> @aws 'IAM', method, parameters
 
     CloudWatchLogs: (method, parameters) -> @aws 'CloudWatchLogs', method, parameters
 
