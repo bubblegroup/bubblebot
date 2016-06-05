@@ -759,7 +759,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
     #Runs the given rollback, updating the migration table to be migration - 1.  Throws
     #an error if the current migration number is not migration.
     rollback: (codebase_id, migration, rollback_data) ->
-        if not migration_data
+        if not rollback_data
             throw new Error 'missing rollback data: ' + codebase_id + ' ' + migration + ' ' + rollback_data
 
 
