@@ -113,7 +113,8 @@ bbobjects.get_bbdb_instance = ->
     for instance in instances
         if instance.id.indexOf('bubblebot-bbdbservice-') is 0
             instance.environment = -> environment
-            if instance.get_tags()[config.get('bubblebot_role_tag')] is config.get('bubblebot_role_bbdb')
+            #See if the bbdb initial version is installed...
+            if service_instance.codebase().get_installed_migration(rds_instance, 'BBDBCodebase') > -1
                 good.push instance
             else
                 to_delete.push instance
@@ -161,12 +162,7 @@ bbobjects.get_bbdb_instance = ->
         service_instance.create environment
         rds_instance.create service_instance, null, null, null, 'just_write'
 
-        u.log 'Initial data saved, tagging it complete'
-
-        #Tag it build complete
-        environment.tag_resource rds_instance.id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbdb')
-
-        u.log 'Tagged complete'
+        u.log 'Initial data saved'
 
         return _cached_bbdb_instance
     catch err
@@ -2208,12 +2204,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         }
         @environment().rds 'deleteDBInstance', params
         u.log 'Deleted rds instance ' + @id
-
-    get_tags: ->
-        tags = {}
-        for tag in @get_configuration().Tags ? []
-            tags[tag.Key] = tag.Value
-        return tags
 
 
 
