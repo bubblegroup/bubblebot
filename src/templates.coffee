@@ -106,7 +106,7 @@ templates.Service = class Service
                 return
 
         #make sure that the version hasn't been updated in the interim
-        while not codebase.ahead_of version, instance.version()
+        while instance.version() and not codebase.ahead_of version, instance.version()
             #see if we can merge
             merged = codebase.merge version, instance.version()
             if not merged
