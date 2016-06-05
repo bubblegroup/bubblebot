@@ -17,7 +17,7 @@ commands.build = ->
         build()
         process.exit()
 
-commands.publish = (access_key) ->
+commands.publish = (access_key, secret_access_key) ->
     u.SyncRun ->
         #Load the local configuration from disk
         config.init()
@@ -25,9 +25,11 @@ commands.publish = (access_key) ->
         #Indicate that we are running from the command line
         config.set 'command_line', true
 
-        #If the user passed in an access key, set it
+        #If the user passed in an access key / secret, set it
         if access_key
             config.set('accessKeyId', access_key)
+        if secret
+            config.set('secretAccessKey', secret_access_key)
 
         #This will prompt the user for the access key if we don't have it alraedy
         u.log 'Publishing to account ' + config.get('accessKeyId')
