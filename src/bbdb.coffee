@@ -65,6 +65,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
         #No parent type, so this is just a straightforward select
         else
             query = "SELECT parent_type, parent_id FROM bbobjects WHERE type = $1 and id = $2"
+            result = @query query, type, id
 
         first = result.rows[0]
         return [first?.parent_type, first?.parent_id]
