@@ -466,6 +466,9 @@ extract_rds_version_pieces = (version) ->
     migration = parseInt migration
     return [codebase_id, migration]
 
+#Returns an RDSCodebase version
+join_rds_version_pieces = (codebase_id, migration) -> codebase_id + '/' + String(migration)
+
 #Represents a set of schema migrations for an RDS managed database
 #
 #Children should implement:
@@ -481,7 +484,7 @@ templates.RDSCodebase = class RDSCodebase
         [codebase_id, migration] = String(version).split('/')
         if codebase_id isnt @get_id() or not String(parseInt(migration)) is migration
             return null
-        return @_join_pieces codebase_id, migration
+        return join_rds_version_pieces codebase_id, migration
 
     #returns [codebase_id (string), migration (number)], and throws an error
     #if codebase_id is wrong
@@ -490,9 +493,6 @@ templates.RDSCodebase = class RDSCodebase
         if codebase_id isnt @get_id()
             throw new Error 'codebase mismatch: is ' + codebase_id + ', should be ' + @get_id()
         return [codebase_id, migration]
-
-    #Given a codebase_id and migration combines it into the migration object
-    _join_pieces: (codebase_id, migration) -> codebase_id + '/' + String(migration)
 
     #Retrieves the id of this codebase.  We need to search the templates to find it..
     get_id: ->
@@ -571,7 +571,7 @@ templates.RDSCodebase = class RDSCodebase
             return @get_migrations()[migration]
 
     #Returns the most up-to-date version of this codebase
-    get_latest_version: -> @_join_pieces @get_id(), @get_migrations().length - 1
+    get_latest_version: -> join_rds_version_pieces @get_id(), @get_migrations().length - 1
 
     #Returns true if upgrading the given rds_instance to the given version is reversible.
     #If not reversible, will ask the user to confirm that it is okay to migrate anyway.
@@ -654,13 +654,13 @@ templates.RDSCodebase = class RDSCodebase
 
     #Applies the given migration # to the rds instance
     apply_migration: (rds_instance, codebase_id, migration) ->
-        migration_data = @get_migration_data @_join_pieces(codebase_id, migration)
+        migration_data = @get_migration_data join_rds_version_pieces(codebase_id, migration)
 
         @get_migration_manager(rds_instance).apply codebase_id, migration, migration_data
 
     #Applies the given rollback # to the rds instance
     apply_rollback: (rds_instance, codebase_id, migration) ->
-        rollback_data = @get_migration_data @_join_pieces(codebase_id, migration), true
+        rollback_data = @get_migration_data join_rds_version_pieces(codebase_id, migration), true
         if not rollback_data
             throw new Error 'Cannot apply rollback ' + migration + ': not reversible'
 
@@ -829,7 +829,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             #Capture the current state of the schema to compare the rollback
             pre_schema = codebase.capture_schema rds_instance
             u.log 'Schema before migration:\n' + pre_schema
-            pre_version = codebase.get_installed_migration rds_instance, codebase_id
+            pre_version = join_rds_version_pieces codebase_id, codebase.get_installed_migration(rds_instance, codebase_id)
 
             #Apply the migration
             codebase.migrate_to rds_instance, version
