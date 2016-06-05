@@ -859,7 +859,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             codebase.lock_migration_data version
 
         finally
-            rds_instance.terminate()
+            rds_instance?.terminate()
 }
 
 
