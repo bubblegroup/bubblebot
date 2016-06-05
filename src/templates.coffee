@@ -693,6 +693,9 @@ templates.RDSCodebase = class RDSCodebase
         rds_instance = bbobjects.instance 'RDSInstance', 'test-' + u.gen_password()
         rds_instance.create environment, @rds_options(), sizing_options
 
+        #Migrate the instance to the given migration
+        @migrate_to rds_instance, join_rds_version_pieces @get_id(), migration
+
         return rds_instance
 
     #Returns the default sizing options for test instances: ie, as cheap as possible
