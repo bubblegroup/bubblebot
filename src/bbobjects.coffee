@@ -1512,7 +1512,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
 
     #Deploys this version to this service
-    deploy: (version, rollback) ->
+    #
+    #Deployment_message is optional... will prompt the user otherwise.  We use special prompting
+    #logic so we don't use the _cmd standard prompting.
+    deploy: (version, rollback, deployment_message) ->
         #See if a user is blocking deploys
         {blocker_id, explanation} = (@get('blocked') ? {blocker_id: null})
         if blocker_id and blocker_id isnt u.context().user_id
@@ -1522,7 +1525,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             u.reply 'To override this, say: ' + command
             return
 
-        @template().deploy this, version, rollback
+        @template().deploy this, version, rollback, deployment_message
 
     deploy_cmd:
         params: [{name: 'version', required: true, help: 'The version to deploy'}, {name: 'rollback', type: 'boolean', help: 'If true, allows deploying versions that are not ahead of the current version'}]

@@ -59,7 +59,12 @@ templates.add 'Environment', 'blank', new Environment()
 # endpoint: -> should return the endpoint
 #
 templates.Service = class Service
-    deploy: (instance, version, rollback) ->
+    #Deploys a new version to this service.  Instance is the service instance, version
+    #is the version to deploy, rollback should be true if this is a rollback.
+    #
+    #Deployment message allows hard-coded one; if absent (which it usually should be),
+    #prompts the user for one
+    deploy: (instance, version, rollback, deployment_message) ->
         codebase = @codebase()
 
         #Get the canonical version
@@ -86,7 +91,7 @@ templates.Service = class Service
                 u.reply 'Okay, aborting deploy'
                 return false
 
-        deployment_message = @get_deployment_message instance, version
+        deployment_message ?= @get_deployment_message instance, version
 
         #Make sure it passed the tests
         if not @ensure_tested instance, version
@@ -118,11 +123,13 @@ templates.Service = class Service
         #Okay, we have a tested version that is ahead of the current version, so deploy it and announce!
         instance.set 'version', version
 
+        username = u.current_user?().name() ? '<automated>'
+
         #update history...
-        instance.add_history 'deploy', version, {username: u.current_user().name(), deployment_message, rollback}
+        instance.add_history 'deploy', version, {username, deployment_message, rollback}
 
         #Notify re: the deployment
-        u.announce u.current_user().name() + ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.  Deployment message: ' + deployment_message
+        u.announce (username + ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.  Deployment message: ' + deployment_message
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
         #Replace the existing servers with the new version

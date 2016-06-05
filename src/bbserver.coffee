@@ -19,7 +19,7 @@ bbserver.Server = class Server
 
         #Make sure it is fully upgraded
         if instance.version() isnt instance.codebase().get_latest_version()
-            instance.deploy instance.codebase().get_latest_version()
+            instance.deploy instance.codebase().get_latest_version(), false, 'Automatically upgrading BBDB'
 
         return u.context().db
 
