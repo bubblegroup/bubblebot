@@ -2166,6 +2166,8 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #
     #Can optionally override credentials
     endpoint: (credentials) ->
+        @wait_for_available()
+
         if credentials?
             username = credentials.MasterUsername
             password = credentials.MasterUserPassword

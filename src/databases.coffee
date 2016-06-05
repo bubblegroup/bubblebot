@@ -6,7 +6,6 @@ databases.Postgres = class Postgres
 
     #Gets the connection string for talking to this database
     get_connection_string: ->
-        @rds_instance.wait_for_available()
         endpoint = @rds_instance.endpoint()
         if not endpoint?
             throw new Error 'endpoint not available!'

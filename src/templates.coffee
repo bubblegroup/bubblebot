@@ -690,7 +690,7 @@ templates.RDSCodebase = class RDSCodebase
 
         #Create a new instance with a random id
         environment = bbobjects.get_default_qa_environment()
-        rds_instance = bbobjects.instance 'RDSInstance', u.gen_password()
+        rds_instance = bbobjects.instance 'RDSInstance', 'test_' + u.gen_password()
         rds_instance.create environment, @rds_options(), sizing_options
 
         return rds_instance
