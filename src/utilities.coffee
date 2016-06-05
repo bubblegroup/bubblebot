@@ -296,6 +296,9 @@ class Block
             throw err
 
     wait: (timeout) ->
+        if not Fiber.current
+            throw new Error 'Not inside SyncRun!'
+
         @check_cancelled()
 
         old_timeout = Fiber.current._u_fiber_timeout
@@ -303,8 +306,6 @@ class Block
             Fiber.current._u_fiber_timeout = timeout
 
         if not @finished
-            if not Fiber.current
-                throw new Error 'Not inside SyncRun!'
             @my_fiber = Fiber.current
             start_fiber_timeout()
 
