@@ -18,8 +18,8 @@ bbserver.Server = class Server
         instance = bbobjects.bubblebot_environment().get_service('BBDBService')
 
         #Make sure it is fully upgraded
-        if instance.version() isnt @instance.codebase().get_latest_version()
-            instance.deploy @instance.codebase().get_latest_version()
+        if instance.version() isnt instance.codebase().get_latest_version()
+            instance.deploy instance.codebase().get_latest_version()
 
         return u.context().db
 
