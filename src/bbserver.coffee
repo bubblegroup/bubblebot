@@ -108,11 +108,10 @@ bbserver.Server = class Server
             catch err
                 #If we have an error during startup, we do NOT want to restart bubblebot
                 msg = 'Error starting bubblebot server, permanently quitting.  Error is:\n' + (err.stack ? err)
-                console.log msg
                 try
                     u.log msg
                 catch e2
-                    true
+                    console.log msg
                 process.exit(0)
 
             #Tell the various objects to start themselves up
