@@ -711,6 +711,10 @@ templates.RDSCodebase = class RDSCodebase
     #state as before
     capture_schema: (rds_instance) -> @get_migration_manager(rds_instance).capture_schema()
 
+    #Compares two schema created by capture schema: returns null if they are equivalent,
+    #or a string error message if not.
+    compare_schema: (rds_instance, s1, s2) -> @get_migration_manager(rds_instance).compare_schema(s1, s2)
+
 
 databases = require './databases'
 
@@ -856,7 +860,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             #schema capturing is probably incomplete and therefore not actually testing
             #the rollback properly).
             new_schema = codebase.capture_schema rds_instance
-            comparison = codebase.compare_schema pre_schema, new_schema
+            comparison = codebase.compare_schema rds_instance, pre_schema, new_schema
             if not comparison?
                 throw new Error 'The post-migration schema is the same as the pre-migration schema: ' + new_schema
             else
@@ -874,7 +878,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
 
                 #Make sure the schema is now the same as it was originally
                 post_schema = codebase.capture_schema rds_instance
-                comparison = codebase.compare_schema pre_schema, post_schema
+                comparison = codebase.compare_schema rds_instance, pre_schema, post_schema
                 if comparison?
                     throw new Error 'The rollback did not restore the schema.  Differences:\n' + comparison
                 u.log 'post schema matches pre-schema... locking migration data'
