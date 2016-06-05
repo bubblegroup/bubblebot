@@ -672,6 +672,7 @@ templates.RDSCodebase = class RDSCodebase
         #The final test is always trying it to see if it runs without errors, and if so
         #saving it to S3 so that it's locked down
         tests.push bbobjects.instance 'Test', 'RDS_migration_try_and_save'
+        return tests
 
     #This should generally be false.  If true, we will store the credentials in S3 instead
     #of in the bubblebot database.
