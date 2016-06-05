@@ -813,6 +813,24 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
     capture_schema: ->
         return @pg_dump '-s'
 
+    #Compares two schema created by capture schema: returns null if they are equivalent,
+    #or a string error message if not.
+    compare_schema: (s1, s2) ->
+        errors = []
+        first = {}
+        second = {}
+        first[line] = true for line in s1.split('\n')
+        second[line] = true for line in s2.split('\n')
+        for line, _ of second
+            if not first[line]
+                error.push 'missing from first: ' + line
+        for line, _ of first
+            if not second[line]
+                error.push 'missing from second: ' + line
+        if errors.length is 0
+            return null
+        return errors.join('\n')
+
 
 #Tries this migration against a test database to make sure it works.  Tries the rollback
 #and confirms it leaves the database in a consistent state.
@@ -838,10 +856,11 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             #schema capturing is probably incomplete and therefore not actually testing
             #the rollback properly).
             new_schema = codebase.capture_schema rds_instance
-            if new_schema is pre_schema
+            comparison = codebase.compare_schema pre_schema, new_schema
+            if not comparison?
                 throw new Error 'The post-migration schema is the same as the pre-migration schema: ' + new_schema
             else
-                u.log 'Schema after migration:\n' + new_schema
+                u.log 'Comparison after migration:\n' + comparison
 
             #See if this migration has a rollback
             no_rollback = not codebase.get_migration_data(version, true)
@@ -855,8 +874,9 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
 
                 #Make sure the schema is now the same as it was originally
                 post_schema = codebase.capture_schema rds_instance
-                if post_schema isnt pre_schema
-                    throw new Error 'The rollback did not restore the schema.\nPre:\n' + pre_schema + '\n\nPost:\n' + post_schema
+                comparison = codebase.compare_schema pre_schema, post_schema
+                if comparison?
+                    throw new Error 'The rollback did not restore the schema.  Differences:\n' + comparison
                 u.log 'post schema matches pre-schema... locking migration data'
 
             #save both migration and rollback to S3
