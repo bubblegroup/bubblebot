@@ -55,11 +55,11 @@ config.init_account_specific = ->
             throw err
 
         #Save the configuration to S3
-        bbobjects.bubblebot_environment().put_s3_config 'bubblebot_account_specific_config.json', JSON.stringify specific_config
+        bbobjects.put_s3_config 'bubblebot_account_specific_config.json', JSON.stringify specific_config
 
     #Otherwise, load it from s3
     else
-        from_s3 = bbobjects.bubblebot_environment().get_s3_config 'bubblebot_account_specific_config.json'
+        from_s3 = bbobjects.get_s3_config 'bubblebot_account_specific_config.json'
         if not from_s3?
             throw new Error 'could not find bubble account specific configuration in s3'
         specific_config = JSON.parse from_s3
