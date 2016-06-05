@@ -26,84 +26,94 @@ bbserver.Server = class Server
     #should listen on port 8081 for commands such as shutdown
     start: ->
         u.SyncRun =>
-            @db = @_build_bbdb()
+            try
+                @db = @_build_bbdb()
 
-            server = http.createServer (req, res) =>
-                path = (req.url ? '').split('/')
-                if path[0] is 'logs'
-                    @show_logs req, res, path[1...]
+                server = http.createServer (req, res) =>
+                    path = (req.url ? '').split('/')
+                    if path[0] is 'logs'
+                        @show_logs req, res, path[1...]
 
-                else if not path[0]
-                    res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
-                    res.end()
-                else
-                    res.statusCode = 404
-                    res.write "You have reached Bubblebot, but we don't recognize " + req.url
-                    res.end()
+                    else if not path[0]
+                        res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
+                        res.end()
+                    else
+                        res.statusCode = 404
+                        res.write "You have reached Bubblebot, but we don't recognize " + req.url
+                        res.end()
 
-            server.listen 8080
+                server.listen 8080
 
-            server2 = http.createServer (req, res) =>
-                if req.url is '/shutdown'
-                    u.log 'Shutting down!'
-                    res.end bbserver.SHUTDOWN_ACK
-                    process.exit(1)
-                else
-                    res.end 'unrecognized command'
+                server2 = http.createServer (req, res) =>
+                    if req.url is '/shutdown'
+                        u.log 'Shutting down!'
+                        res.end bbserver.SHUTDOWN_ACK
+                        process.exit(1)
+                    else
+                        res.end 'unrecognized command'
 
-            server2.listen 8081
+                server2.listen 8081
 
-            @slack_client = new slack.SlackClient(this)
-            @slack_client.on 'new_conversation', @new_conversation.bind(this)
+                @slack_client = new slack.SlackClient(this)
+                @slack_client.on 'new_conversation', @new_conversation.bind(this)
 
-            log_stream = @get_server_log_stream()
+                log_stream = @get_server_log_stream()
 
-            #Also make this function write to the logger
-            wrap_in_log = (name, fn) ->
-                return (args...) ->
-                    u.log name + ': ' + String(args)
-                    res = fn args...
-                    if res
-                        u.log name + ' response: ' + String(res)
+                #Also make this function write to the logger
+                wrap_in_log = (name, fn) ->
+                    return (args...) ->
+                        u.log name + ': ' + String(args)
+                        res = fn args...
+                        if res
+                            u.log name + ' response: ' + String(res)
 
-            #Create the default log environment for the server
-            u.set_default_loggers {
-                log: log_stream.log.bind(log_stream)
-                reply: wrap_in_log 'Reply', @slack_client.reply.bind(@slack_client)
-                message: wrap_in_log 'Message', @slack_client.message.bind(@slack_client)
-                ask: (msg, override_user_id) => wrap_in_log 'Ask', @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
-                confirm: (msg, override_user_id) => wrap_in_log 'Confirm', @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
-                announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
-                report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
-                report_no_log: @slack_client.report.bind(@slack_client)
-            }
+                #Create the default log environment for the server
+                u.set_default_loggers {
+                    log: log_stream.log.bind(log_stream)
+                    reply: wrap_in_log 'Reply', @slack_client.reply.bind(@slack_client)
+                    message: wrap_in_log 'Message', @slack_client.message.bind(@slack_client)
+                    ask: (msg, override_user_id) => wrap_in_log 'Ask', @slack_client.ask override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+                    confirm: (msg, override_user_id) => wrap_in_log 'Confirm', @slack_client.confirm override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg
+                    announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
+                    report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
+                    report_no_log: @slack_client.report.bind(@slack_client)
+                }
 
-            u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
+                u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
 
-            #Handle uncaught exceptions.
-            #We want to report them, with a rate limit of 10 per 30 minutes
-            rate_limit_count = 0
-            rate_limit_on = false
-            process.on 'uncaughtException', (err) =>
-                if rate_limit_on
-                    return
+                #Handle uncaught exceptions.
+                #We want to report them, with a rate limit of 10 per 30 minutes
+                rate_limit_count = 0
+                rate_limit_on = false
+                process.on 'uncaughtException', (err) =>
+                    if rate_limit_on
+                        return
 
-                rate_limit_count++
-                if rate_limit_count is 10
-                    rate_limit_on = true
-                    setTimeout ->
-                        rate_limit_count = 0
-                        rate_lmit_on = false
-                    , 30 * 60 * 1000
+                    rate_limit_count++
+                    if rate_limit_count is 10
+                        rate_limit_on = true
+                        setTimeout ->
+                            rate_limit_count = 0
+                            rate_lmit_on = false
+                        , 30 * 60 * 1000
 
-                message = 'Uncaught exception: ' + (err.stack ? err)
-                u.report message
+                    message = 'Uncaught exception: ' + (err.stack ? err)
+                    u.report message
 
-            #Start up the task engine
-            @load_tasks()
-            setTimeout =>
-                @start_task_engine()
-            , 10 * 1000
+                #Start up the task engine
+                @load_tasks()
+                setTimeout =>
+                    @start_task_engine()
+                , 10 * 1000
+            catch err
+                #If we have an error during startup, we do NOT want to restart bubblebot
+                msg = 'Error starting bubblebot server, permanently quitting.  Error is:\n' + (err.stack ? err)
+                console.log msg
+                try
+                    u.log msg
+                catch e2
+                    true
+                process.exit(0)
 
             #Tell the various objects to start themselves up
             u.SyncRun =>
