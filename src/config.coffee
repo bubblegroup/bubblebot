@@ -36,25 +36,37 @@ config.init = (options) ->
 config.init_account_specific = ->
     u.log 'Loading account specific environment'
 
-    #Get the id of the AWS user we are running as
-    aws_user = bbobjects.bubblebot_environment().get_aws_user()
+    #If we have the aws username, use that to find the json file...
 
-    u.log 'AWS user: ' + aws_user.UserName + ' ' + aws_user.UserId
+    if _config.accessKeyId
+        env_config_path = aws_user.UserId + '.json'
+        try
+            raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
+            u.log 'Loaded account specific config from ' + env_config_path
+        catch err
+            u.log "Creating #{env_config_path} to save access-key-specific configuration..."
+            raw = '{\n//Store access-key-specific configuration here\n}'
+            fs.writeFileSync env_config_path, raw
 
-    env_config_path = aws_user.UserId + '.json'
-    try
-        raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
-    catch err
-        u.log "Creating #{env_config_path} to save access-key-specific configuration..."
-        raw = '{\n//Store access-key-specific configuration here\n}'
-        fs.writeFileSync env_config_path, raw
+        try
+            specific_config = JSON.parse strip_comments raw
+        catch err
+            u.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
+            throw err
 
-    try
-        for k, v of JSON.parse strip_comments raw
-            config.set k, v
-    catch err
-        u.log 'Error parsing ' + env_config_path + '; make sure it is valid json!'
-        throw err
+        #Save the configuration to S3
+        bbobjects.bubblebot_environment().put_s3_config 'bubblebot_account_specific_config.json', JSON.stringify specific_config
+
+    #Otherwise, load it from s3
+    else
+        from_s3 = bbobjects.bubblebot_environment().get_s3_config 'bubblebot_account_specific_config.json'
+        if not from_s3?
+            throw new Error 'could not find bubble account specific configuration in s3'
+        specific_config = JSON.parse from_s3
+
+    #And add it to our configuration
+    for k, v of specific_config
+        config.set k, v
 
 #Retrieves an individual key, throwing an error if undefined
 #
