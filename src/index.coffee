@@ -11,7 +11,7 @@ for k, v of commands
 
 #Export config.init
 bubblebot.initialize_configuration = (options, cb) ->
-    if typeof(options) is 'fn'
+    if typeof(options) is 'function'
         cb = options
         options = null
 
