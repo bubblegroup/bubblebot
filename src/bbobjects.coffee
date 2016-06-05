@@ -212,7 +212,7 @@ bbobjects.get_default_qa_environment = ->
     if not environment.exists()
         #use the same region and vpc as bubbleblot
         bubblebot_env = bbobjects.bubblebot_environment()
-        region = bubblebot_env.region()
+        region = bubblebot_env.get_region()
         vpc = bubblebot_env.get_vpc()
         environment.create QA, 'blank', region, vpc
     return environment
