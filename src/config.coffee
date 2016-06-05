@@ -31,13 +31,17 @@ config.init = (options) ->
     else
         _config = JSON.parse JSON.stringify options
 
-    if _config.accessKeyId?
-        load_access_key_specific()
+    load_access_key_specific()
 
 
-
+_load_access = null
 #load any access_key specific configuration
 load_access_key_specific = ->
+    #see if we have an id + secret set, and that are different from loaded
+    if not (_config.accessKeyId and _config.secretAccessKey and config.accessKeyId + _config.secretAccessKey isnt _load_access)
+        return
+    _load_access = config.accessKeyId + _config.secretAccessKey
+
     #Get the id of the AWS user we are running as
     aws_user = bbobjects.bubblebot_environment().get_aws_user()
 
@@ -76,8 +80,7 @@ config.get = (key, default_value) ->
 config.set = (key, value) ->
     _config[key] = value
 
-    if key is 'accessKeyId'
-        load_access_key_specific()
+    load_access_key_specific()
 
 #Retrieves all the config options as JSON
 config.export = -> return JSON.stringify _config
