@@ -21,7 +21,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
     #Given an object, sets the property with the given name.  Errors if the object does not exist
     set_property: (type, id, name, value) ->
-        query = "UPDATE bbobjects SET properties = COALESCE(properties, '{}'::jsonb) || jsonb_build_object($3, $4::jsonb) WHERE type = $1 AND id = $2 RETURNING id"
+        query = "UPDATE bbobjects SET properties = COALESCE(properties, '{}'::jsonb) || jsonb_build_object($3::text, $4::jsonb) WHERE type = $1 AND id = $2 RETURNING id"
         result = @query query, type, id, name, JSON.stringify(value)
         if result.rows.length isnt 1
             throw new Error 'set failed: modified ' + result.rows.length + ' rows'

@@ -212,7 +212,10 @@ templates.Service = class Service
 
     #Returns true if this version has passed all the tests for this service
     is_tested: (version) ->
-        for test in @get_tests()
+        tests = @get_tests()
+        if not tests.length
+            throw new Error 'No tests specified!  If this is the desired behavior, should specify one no-op test'
+        for test in tests
             if not test.is_tested version
                 return false
         return true
