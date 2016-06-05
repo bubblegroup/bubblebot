@@ -828,6 +828,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
 
             #Capture the current state of the schema to compare the rollback
             pre_schema = codebase.capture_schema rds_instance
+            u.log 'Schema before migration:\n' + pre_schema
             pre_version = codebase.get_installed_migration rds_instance, codebase_id
 
             #Apply the migration
@@ -839,6 +840,8 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             new_schema = codebase.capture_schema rds_instance
             if new_schema is pre_schema
                 throw new Error 'The post-migration schema is the same as the pre-migration schema: ' + new_schema
+            else
+                u.log 'Schema after migration:\n' + new_schema
 
             #See if this migration has a rollback
             no_rollback = not codebase.get_migration_data(version, true)
@@ -854,6 +857,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
                 post_schema = codebase.capture_schema rds_instance
                 if post_schema isnt pre_schema
                     throw new Error 'The rollback did not restore the schema.\nPre:\n' + pre_schema + '\n\nPost:\n' + post_schema
+                u.log 'post schema matches pre-schema... locking migration data'
 
             #save both migration and rollback to S3
             codebase.lock_migration_data version
