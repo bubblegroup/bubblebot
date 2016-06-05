@@ -39,7 +39,7 @@ config.init_account_specific = ->
     #If we have the aws username, use that to find the json file...
 
     if _config.accessKeyId
-        env_config_path = aws_user.UserId + '.json'
+        env_config_path = _config.accessKeyId + '.json'
         try
             raw = fs.readFileSync env_config_path, {encoding: 'utf8'}
             u.log 'Loaded account specific config from ' + env_config_path
