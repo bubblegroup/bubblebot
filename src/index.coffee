@@ -3,6 +3,7 @@ bubblebot = exports
 commands = require './commands'
 config = require './config'
 bbserver = require './bbserver'
+u = require './utilities'
 
 #Export everything in commands
 for k, v of commands
@@ -25,3 +26,6 @@ bubblebot.initialize_configuration = (options, cb) ->
 
 #Export the Server class
 bubblebot.Server = bbserver.Server
+
+#Export Utilities
+bubblebot.utilities = utilities
