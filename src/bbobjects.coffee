@@ -114,7 +114,7 @@ bbobjects.get_bbdb_instance = ->
         if instance.id.indexOf('bubblebot-bbdbservice-') is 0
             instance.environment = -> environment
             #See if the bbdb initial version is installed...
-            if service_instance.codebase().get_installed_migration(rds_instance, 'BBDBCodebase') > -1
+            if service_instance.codebase().get_installed_migration(instance, 'BBDBCodebase') > -1
                 good.push instance
             else
                 to_delete.push instance
