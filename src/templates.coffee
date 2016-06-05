@@ -827,10 +827,10 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
         second[line] = true for line in s2.split('\n')
         for line, _ of second
             if not first[line]
-                error.push 'missing from first: ' + line
+                errors.push 'missing from first: ' + line
         for line, _ of first
             if not second[line]
-                error.push 'missing from second: ' + line
+                errors.push 'missing from second: ' + line
         if errors.length is 0
             return null
         return errors.join('\n')
