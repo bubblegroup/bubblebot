@@ -1224,7 +1224,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         if @id is 'bubblebot'
             true
         else
-            throw new Error 'not implemented!'
+            return @is_development()
 
     #Returns the elastic ip for this environment with the given name.  If no such
     #elastic ip exists, creates it
