@@ -598,7 +598,7 @@ bbobjects.User = class User extends BubblebotObject
         checked[groupname] = true
 
         #Check the groups this group contains to see if we are indirectly a member
-        for sub_group in @contained_groups()
+        for sub_group in bbobjects.instance('SecurityGroup', groupname).contained_groups()
             if not checked[sub_group.id]
                 if @is_in_group sub_group.id
                     return true
