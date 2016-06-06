@@ -142,7 +142,7 @@ bbserver.Server = class Server
     #Returns the url bubblebot server is accessible at
     get_server_url: ->
         eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
-        if eip.get_instance().id isnt bbobjects.get_bbserver().id
+        if eip.get_instance()?.id isnt bbobjects.get_bbserver().id
             eip.switch bbobjects.get_bbserver()
         return eip.endpoint()
 
