@@ -150,7 +150,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Sends a message to the announcements channel
     announce: (msg) ->
-        u.ensure_fiber ->
+        u.ensure_fiber =>
             channel = @get_announcement_channel()
             block = u.Block 'sending message'
             @api.sendMessage msg, channel.id, block.make_cb()
