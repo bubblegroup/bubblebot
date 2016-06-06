@@ -631,7 +631,7 @@ bbobjects.User = class User extends BubblebotObject
 CONTAINED_PREFIX = 'group_contains_'
 
 #Represents a security group
-bbobjects.SecurityGroup = class SecurityGroup
+bbobjects.SecurityGroup = class SecurityGroup extends BubblebotObject
     create: (about) ->
         super null, null, {about}
 
