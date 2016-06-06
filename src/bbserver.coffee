@@ -228,7 +228,12 @@ bbserver.Server = class Server
 
     #Schedules a task to run at a future time
     schedule_once: (timeout, task, data) ->
-        if not @_registered_tasks[task]
+        if data.is_recurring_task
+            task_fn = data.task
+        else
+            task_fn = task
+
+        if not @_registered_tasks[task_fn]
             throw new Error 'task ' + task + ' is not registered!'
         u.db().schedule_task Date.now() + timeout, task, data
 
