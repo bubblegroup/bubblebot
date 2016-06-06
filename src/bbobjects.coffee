@@ -12,8 +12,7 @@ bbobjects.instance = (type, id) ->
 #Returns the bubblebot environment
 bbobjects.bubblebot_environment = ->
     environment = bbobjects.instance 'Environment', 'bubblebot'
-    if not environment.exists()
-        u.db().create_object environment.type, environment.id
+
     return environment
 
 
@@ -407,6 +406,11 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     set: (name, value) ->
         if @hardcoded?[name]
             throw new Error 'we do not support setting property ' + name + ' on this object'
+        #make sure it exists in the db
+        else if @hardcoded
+            if u.db() and not u.db().exists @type, @id
+                u.db().create_object @type, @id
+
         u.db().set_property @type, @id, name, value
 
     set_cmd:
@@ -445,6 +449,8 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Returns true if this object exists in the database
     exists: ->
+        if @hardcoded
+            return true
         return u.db().exists @type, @id
 
     #Gets the history type for this item
