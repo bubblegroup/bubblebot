@@ -32,7 +32,7 @@ bbserver.Server = class Server
                 server = http.createServer (req, res) =>
                     u.SyncRun =>
                         @build_context('http_request')
-                        path = (req.url ? '').split('/')
+                        path = (req.url ? '').split('/')[1..]
                         if path[0] is 'logs'
                             @show_logs req, res, path[1...]
 
