@@ -2229,7 +2229,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
     create: (parent, name) ->
         super parent.type, parent.id, {name}
-        @environment().tag_resource @id, 'Name', name
 
     #fetches the amazon metadata for this address and caches it
     refresh: ->
