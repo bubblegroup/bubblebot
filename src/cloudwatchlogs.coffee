@@ -84,7 +84,7 @@ cloudwatchlogs.LogStream = class LogStream
 
     #Returns the most recent events
     get_events: (cb) ->
-        response = @environment.CloudWatchLogs 'getLogEvents' {
+        response = @environment.CloudWatchLogs 'getLogEvents', {
             logGroupName: @groupname
             logStreamName: @name
         }
