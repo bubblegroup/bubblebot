@@ -239,7 +239,7 @@ bbobjects.get_default_dev_environment = (region) ->
 #Lists the regions in a VPC, and prompts for the user to pick one
 #(or picks the first one if there is no user id)
 prompt_for_vpc = (region) ->
-    ec2 = new AWS.ec2(aws_config region)
+    ec2 = new AWS.EC2(aws_config region)
     block = u.Block 'listing vpcs'
     ec2.describeVpcs {}, block.make_cb()
     results = block.wait()
