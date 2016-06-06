@@ -47,10 +47,12 @@ tasks.builtin.follow_up_on_instance = ({id}) ->
 
 
 #Goes through every instance and deletes ones that look unowned / dead
-tasks.builtin.audit_instances = ({auto_delete_mode}) ->
+tasks.builtin.audit_instances = (data) ->
+    {auto_delete_mode} = data ? {}
+
     #if we are in autodelete mode, we want to do this hourly, if we are in report
     #mode we want to do it daily.  we abort if the mode doesn't match our autodelete setting
-    autodelete = if config.get('audit_instances_autodelete') then true else false
+    autodelete = if config.get('audit_instances_autodelete', false) then true else false
     auto_delete_mode ?= false
     if autodelete isnt auto_delete_mode
         return

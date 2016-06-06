@@ -173,6 +173,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             @rate_limit_count++
             if @rate_limit_count is 10
                 @rate_limit_on = true
+                u.log 'Turning on report rate limiting'
                 setTimeout =>
                     @rate_limit_count = 0
                     @rate_limit_on = false
