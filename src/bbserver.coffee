@@ -194,6 +194,9 @@ bbserver.Server = class Server
     #Returns an array of all the admin users.  If we don't have any admin users,
     #we set the owner of the slack channel as an admin user
     get_admins: ->
+        #make sure we have a DB set in this context...
+        u.context().db ?= @db
+
         admin_users = (user for user in bbobjects.list_all('User') when user.is_in_group(constants.ADMIN))
         if admin_users.length > 0
             return admin_users
