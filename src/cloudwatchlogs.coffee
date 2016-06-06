@@ -23,8 +23,13 @@ cloudwatchlogs.LogStream = class LogStream
                 break
 
         if not @uploadSequenceToken
+            #Possibility 1: exists, but didn't show up in results
             if response.nextToken
                 throw new Error 'Unable to list all the streams in ' + @groupname + ' ' + @name + ' on one page!  Pick a better stream naming convention'
+            #Possibility 2: does not exist
+            else
+                @environment.CloudWatchLogs 'createLogStream', {logGroupName: @groupname, logStreamName: @name}
+
 
         @queue = []
 

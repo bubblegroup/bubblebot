@@ -30,17 +30,19 @@ bbserver.Server = class Server
                 @db = @_build_bbdb()
 
                 server = http.createServer (req, res) =>
-                    path = (req.url ? '').split('/')
-                    if path[0] is 'logs'
-                        @show_logs req, res, path[1...]
+                    u.SyncRun =>
+                        @build_context('http_request')
+                        path = (req.url ? '').split('/')
+                        if path[0] is 'logs'
+                            @show_logs req, res, path[1...]
 
-                    else if not path[0]
-                        res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
-                        res.end()
-                    else
-                        res.statusCode = 404
-                        res.write "You have reached Bubblebot, but we don't recognize " + req.url
-                        res.end()
+                        else if not path[0]
+                            res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
+                            res.end()
+                        else
+                            res.statusCode = 404
+                            res.write "You have reached Bubblebot, but we don't recognize " + req.url
+                            res.end()
 
                 server.listen 8080
 
@@ -78,6 +80,8 @@ bbserver.Server = class Server
                     report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
                     report_no_log: @slack_client.report.bind(@slack_client)
                 }
+
+                @build_context('initial_announcement')
 
                 u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
 
