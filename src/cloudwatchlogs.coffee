@@ -15,7 +15,6 @@ cloudwatchlogs.LogStream = class LogStream
             #create it...
             @environment.CloudWatchLogs 'createLogGroup', {logGroupName: @groupname}
 
-
         #Retrieve the uploadSequenceToken
         response = @environment.CloudWatchLogs 'describeLogStreams', {logGroupName: @groupname, logStreamNamePrefix: @name}
         for stream in response.logStreams ? []
@@ -56,9 +55,11 @@ cloudwatchlogs.LogStream = class LogStream
         }, (err, res) =>
             if err
                 u.report_no_log 'Error writing to cloud watch logs: ' + (err.stack ? err)
+                console.log 'Error writing to cloud watch logs: ' + (err.stack ? err)
                 return
 
             if res.rejectedLogEventsInfo?
+                console.log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
                 u.report_no_log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
 
             @uploadSequenceToken = res.nextSequenceToken
