@@ -300,12 +300,7 @@ bbserver.Server = class Server
         finally
             #We always want to make sure scheduled tasks get rescheduled
             if task_data.properties.is_recurring_task
-                try
-                    @schedule_once task_data.task, task_data.properties, task_data.properties.interval
-                catch err
-                    #if we can't reschedule it, we should not mark it as complete
-                    u.db().release_task task_data.id
-                    throw err
+                @schedule_once task_data.task, task_data.properties, task_data.properties.interval
 
             #Mark the task as complete.
             u.db().complete_task task_data.id
