@@ -31,18 +31,25 @@ bbserver.Server = class Server
 
                 server = http.createServer (req, res) =>
                     u.SyncRun =>
-                        @build_context('http_request')
-                        path = (req.url ? '').split('/')[1..]
-                        if path[0] is 'logs'
-                            @show_logs req, res, path[1...]
+                        try
+                            @build_context('http_request')
+                            path = (req.url ? '').split('/')[1..]
+                            if path[0] is 'logs'
+                                @show_logs req, res, path[1...]
 
-                        else if not path[0]
-                            res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
+                            else if not path[0]
+                                res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
+                                res.end()
+                            else
+                                res.statusCode = 404
+                                res.write "You have reached Bubblebot, but we don't recognize " + req.url
+                                res.end()
+                        catch err
+                            res.statusCode = 500
+                            res.write 'Error processing requests'
                             res.end()
-                        else
-                            res.statusCode = 404
-                            res.write "You have reached Bubblebot, but we don't recognize " + req.url
-                            res.end()
+                            u.report 'Error loading data from Cloudwatch: ' + (err.stack ? err)
+                            return
 
                 server.listen 8080
 
@@ -174,9 +181,7 @@ bbserver.Server = class Server
 
     #Returns an array of {id, description, timestamp} of recently created subloggers
     list_sub_loggers: ->
-        block = u.Block 'loading subloggers'
-        @get_sublogger_stream().get_events block.make_cb()
-        return (u.extend(JSON.parse(message), {timestamp}) for {message, timestamp} in block.wait())
+        return (u.extend(JSON.parse(message), {timestamp}) for {message, timestamp} in @get_sublogger_stream().get_events())
 
     #Retrieves the sublogger with the given id
     get_sub_logger: (id) -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', id)
