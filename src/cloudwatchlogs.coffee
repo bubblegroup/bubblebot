@@ -72,7 +72,10 @@ cloudwatchlogs.LogStream = class LogStream
                 @put_scheduled = false
 
     #Returns a url that a user can view to tail the logs
-    get_tail_url: -> bbobjects.get_bbserver().get_logs_url @environment.id, @groupname, @name
+    get_tail_url: ->
+        if not u.context().server
+            throw new Error 'no server in this context'
+        return u.context().server.get_logs_url @environment.id, @groupname, @name
 
     #Returns the most recent events
     get_events: (cb) ->

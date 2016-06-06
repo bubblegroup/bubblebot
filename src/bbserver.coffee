@@ -108,7 +108,7 @@ bbserver.Server = class Server
             catch err
                 setTimeout ->
                     process.exit(0)
-                , 5000
+                , 1000
 
                 #If we have an error during startup, we do NOT want to restart bubblebot
                 msg = 'Error starting bubblebot server, permanently quitting.  Error is:\n' + (err.stack ? err)
