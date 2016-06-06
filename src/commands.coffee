@@ -85,7 +85,7 @@ commands.publish = (access_key, secret_access_key) ->
 
             if failure
                 console.log 'Error starting supervisor, tailing logs:'
-                bbserver.run('tail -n 100 /tmp/bubblebot-stderr*')
+                bbserver.run('tail -n 100 /tmp/bubblebot*')
 
         process.exit()
 
