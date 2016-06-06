@@ -12,6 +12,8 @@ bbobjects.instance = (type, id) ->
 #Returns the bubblebot environment
 bbobjects.bubblebot_environment = ->
     environment = bbobjects.instance 'Environment', 'bubblebot'
+    if not environment.exists()
+        u.db().create_object environment.type, environment.id
     return environment
 
 
@@ -392,7 +394,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Gets the given property of this object
     get: (name) ->
-        if @hardcoded
+        if @hardcoded?[name]
             return @hardcoded[name]?() ? null
         u.db().get_property @type, @id, name
 
@@ -403,8 +405,8 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Sets the given property of this object
     set: (name, value) ->
-        if @hardcoded
-            throw new Error 'we do not support setting properties on this object'
+        if @hardcoded?[name]
+            throw new Error 'we do not support setting property ' + name + ' on this object'
         u.db().set_property @type, @id, name, value
 
     set_cmd:
@@ -414,12 +416,12 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #returns all the properties of this object
     properties: ->
+        res = u.db().get_properties @type, @id
         if @hardcoded
-            res = {}
             for k, v of @hardcoded
                 res[k] = v()
-            return res
-        u.db().get_properties @type, @id
+        return res
+
 
     properties_cmd:
         help: 'gets all the properties for this object'
@@ -427,9 +429,6 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Creates this object in the database
     create: (parent_type, parent_id, initial_properties) ->
-        if @hardcoded
-            throw new Error 'we do not support creating this object'
-
         user_id = u.context().user_id
         if user_id
             initial_properties.creator = user_id
@@ -446,8 +445,6 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Returns true if this object exists in the database
     exists: ->
-        if @hardcoded
-            return true
         return u.db().exists @type, @id
 
     #Gets the history type for this item
