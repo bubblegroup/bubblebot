@@ -2083,6 +2083,9 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #Double-dispatch for should_delete
     should_delete: (owner) -> owner.should_delete_rdsinstance(this)
 
+    #When this RDS instance was created
+    launch_time: -> new Date(@get_configuration().InstanceCreateTime)
+
     #returns true if any of the sizing options changes could cause downtime
     are_changes_unsafe: (sizing_options) ->
         {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
