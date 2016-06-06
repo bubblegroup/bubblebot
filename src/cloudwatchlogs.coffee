@@ -3,6 +3,19 @@ cloudwatchlogs = exports
 #Class for managing a log stream
 cloudwatchlogs.LogStream = class LogStream
     constructor: (@environment, @groupname, @name) ->
+        #See if the group exists and create it if it does not
+        found = false
+        response = @environment.CloudWatchLogs 'describeLogGroups', {logGroupNamePrefix: @groupname}
+        for group in response.logGroups
+            if group.logGroupName is @groupname
+                found = true
+                break
+
+        if not found
+            #create it...
+            @environment.CloudWatchLogs 'createLogGroup', {logGroupName: @groupname}
+
+
         #Retrieve the uploadSequenceToken
         response = @environment.CloudWatchLogs 'describeLogStreams', {logGroupName: @groupname, logStreamNamePrefix: @name}
         for stream in response.logStreams ? []
