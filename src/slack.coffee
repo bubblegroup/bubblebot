@@ -178,8 +178,8 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
                     @rate_limit_on = false
                 , 30 * 60 * 1000
 
-            admin_ids = (admin.id for admin in @server.get_admins())
             try
+                admin_ids = (admin.id for admin in @server.get_admins())
                 for id in admin_ids
                     u.retry =>
                         block = u.Block 'messaging admin'
