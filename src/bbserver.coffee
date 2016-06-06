@@ -106,13 +106,14 @@ bbserver.Server = class Server
                     @start_task_engine()
                 , 10 * 1000
             catch err
+                setTimeout ->
+                    process.exit(0)
+                , 5000
+
                 #If we have an error during startup, we do NOT want to restart bubblebot
                 msg = 'Error starting bubblebot server, permanently quitting.  Error is:\n' + (err.stack ? err)
-                try
-                    u.log msg
-                catch e2
-                    console.log msg
-                process.exit(0)
+                console.log '(DUPLICATE) ' + msg
+                u.log msg
 
             #Tell the various objects to start themselves up
             u.SyncRun =>
