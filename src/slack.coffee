@@ -200,7 +200,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             if user.is_primary_owner
                 return user.id
 
-        conssole.log JSON.stringify(users, null, 4)
+        console.log JSON.stringify(users, null, 4)
         throw new Error 'Could not find primary owner!  See above console log for users list'
 
     #Lists all the users

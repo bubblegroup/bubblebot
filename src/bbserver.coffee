@@ -144,7 +144,7 @@ bbserver.Server = class Server
         eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
         if eip.get_instance()?.id isnt bbobjects.get_bbserver().id
             eip.switch bbobjects.get_bbserver()
-        return eip.endpoint()
+        return 'http://' + eip.endpoint()
 
     #Gets the master server log stream
     get_server_log_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')

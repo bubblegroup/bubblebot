@@ -132,7 +132,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
                 return
 
             #Insert a new task
-            query "INSERT INTO scheduler (timestamp, task, properties) VALUES ($1, $2, $3::jsonb)"
+            query = "INSERT INTO scheduler (timestamp, task, properties) VALUES ($1, $2, $3::jsonb)"
             t.query query, Date.now(), task, JSON.stringify(properties)
 
             return null
