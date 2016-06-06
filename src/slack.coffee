@@ -90,7 +90,11 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         return null
 
     #Gets the slack data for a given user
-    get_user_info: (user_id) -> @api.dataStore.getUserById(user_id)
+    get_user_info: (user_id) ->
+        res = @api.dataStore.getUserById(user_id)
+        if not res?
+            throw new Error 'could not find info for user ' + user_id
+        return res
 
     #Sends an im to the given user
     send_im: (user_id, msg, cb) ->

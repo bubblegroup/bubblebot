@@ -530,7 +530,7 @@ bbobjects.User = class User extends BubblebotObject
 
     toString: -> 'User ' + @id + ' (' + @name() + ')'
 
-    name: -> @slack().get_user_info().name
+    name: -> @slack().get_user_info(@id).name
 
     name_cmd:
         help: 'shows the name of this user'
