@@ -7,7 +7,7 @@ ssh.run = (host, private_key, cmd, options) ->
     if no_log
         logger = ->
     else
-        logger = u.get_logger()
+        logger = u.get_logger('log')
 
     logger '\nSSH ' + host + ': ' + cmd
 
