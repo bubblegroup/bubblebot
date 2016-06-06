@@ -199,13 +199,18 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         for user in users
             if user.is_primary_owner
                 return user.id
-        throw new Error 'Could not find primary owner!: ' + JSON.stringify(users)
+
+        conssole.log JSON.stringify(users, null, 4)
+        throw new Error 'Could not find primary owner!  See above console log for users list'
 
     #Lists all the users
     get_all_users: ->
         block = u.Block 'listing users'
         @web_client.users.list block.make_cb()
-        return block.wait()
+        res = block.wait()
+        if not res.ok
+            throw new Error 'Error response from slack: ' + JSON.stringify res
+        return res.members
 
 
     #Returns the first channel that we are a member of
