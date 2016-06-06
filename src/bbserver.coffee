@@ -295,7 +295,7 @@ bbserver.Server = class Server
             #If the user cancels this task, or times out replying, reschedule it in 12 hours
             if err.reason in [u.CANCEL, u.USER_TIMEOUT]
                 u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
-                @schedule_once task_data.task, task_data.properties, 12 * 60 * 60 * 1000
+                @schedule_once 12 * 60 * 60 * 1000, task_data.task, task_data.properties
             #If the task was cancelled externally, just log it
             else if err.reason in u.EXTERNAL_CANCEL
                 u.uncancel_fiber()
@@ -305,7 +305,7 @@ bbserver.Server = class Server
         finally
             #We always want to make sure scheduled tasks get rescheduled
             if task_data.properties.is_recurring_task
-                @schedule_once task_data.task, task_data.properties, task_data.properties.interval
+                @schedule_once task_data.properties.interval, task_data.task, task_data.properties
 
             #Mark the task as complete.
             u.db().complete_task task_data.id
