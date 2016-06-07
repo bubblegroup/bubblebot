@@ -765,6 +765,7 @@ class Help extends Command
     constructor: (@tree) ->
 
     run: (commands) ->
+        u.log 'TEMP: commands: ' + JSON.stringify commands
         targ = @tree
         for command, idx in commands
             targ = targ.get(command)
