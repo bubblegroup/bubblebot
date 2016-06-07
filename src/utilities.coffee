@@ -245,7 +245,7 @@ class Lock
         #shift the first thing waiting on this lock off the stack and let it
         #try to acquire the lock again
         next = @waiting_on.shift()
-        next.success()
+        next?.success()
 
 
 #Some standard error codes
