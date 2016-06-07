@@ -832,7 +832,7 @@ get_fiber_user = (fiber) ->
 
 get_fiber_display = (fiber) -> fiber.current_context?.original_message ? fiber.current_context?.name
 
-get_full_fiber_display = (fiber) -> fiber._fiber_id + get_fiber_user(fiber) + ': ' + get_fiber_display(fiber)
+get_full_fiber_display = (fiber) -> String(fiber._fiber_id) + ' ' + get_fiber_user(fiber) + ': ' + get_fiber_display(fiber)
 
 #Command for listing all ongoing processes
 class PS extends Command
@@ -888,6 +888,7 @@ class Cancel extends Command
 
     run: (command) ->
         to_cancel = []
+        u.log 'DEBUG: cancel ' + command + ' -type ' + typeof(command)
         for fiber in u.active_fibers
             if command
                 if fiber._fiber_id is command
