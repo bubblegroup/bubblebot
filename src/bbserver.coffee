@@ -889,13 +889,16 @@ class Cancel extends Command
     ]
 
     run: (command) ->
+        #We don't want to cancel ourselves
+        this_id = u.fiber_id()
+
         to_cancel = []
         for fiber in u.active_fibers
             if command
-                if fiber._fiber_id is command
+                if fiber._fiber_id is command and (fiber._fiber_id isnt this_id)
                     to_cancel.push fiber
             else
-                if fiber.current_context?.user_id is u.current_user().id
+                if fiber.current_context?.user_id is u.current_user().id and (fiber._fiber_id isnt this_id)
                     to_cancel.push fiber
 
         res = (get_full_fiber_display fiber for fiber in to_cancel)
