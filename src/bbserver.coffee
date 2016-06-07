@@ -829,6 +829,8 @@ class New extends Command
 get_fiber_user = (fiber) ->
     if fiber.current_context.user_id
         return ' ' + bbobjects.instance('User', fiber.current_context.user_id).name()
+    relse
+        return ''
 
 get_fiber_display = (fiber) -> fiber.current_context?.original_message ? fiber.current_context?.name
 
@@ -858,7 +860,7 @@ class PS extends Command
         if all
             res.push anonymous + ' anonymous fibers'
 
-        u.reply res.join('\n')
+        u.reply 'Currently running:\n' + res.join('\n')
 
     groups: constants.BASIC
 
