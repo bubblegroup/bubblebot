@@ -612,9 +612,7 @@ bbserver.do_cast = do_cast = (param, val) ->
             result = do_cast param, u.ask feedback + "we're expecting no / false or yes / true, though.  " + prompt
     else if param.type is 'number'
         result = parseFloat val
-        u.log 'DEBUG: ' + JSON.stringify({result, val, tresult: typeof(result), tval: typeof(val)})
         if isNaN result
-            u.log 'DEBUG: NAN CASE'
             result = do_cast param, u.ask feedback + "we're expecting a number, though.  " + prompt
     else if param.type is 'list'
         options = param.options()
@@ -628,7 +626,6 @@ bbserver.do_cast = do_cast = (param, val) ->
 
     #If we have a validation function defined, run it
     if param.validate
-        u.log 'DEBUG: VALIDATING'
         result = param.validate result
 
     return result
@@ -651,7 +648,7 @@ bbserver.Command = class Command
 
         #If we take an array of additional parameters, add that in from the remainder of the command line
         if @additional_params?
-            processed_args.push args[@params?.length ? 0..]...
+            processed_args.push args[@params?.length ? 0..]
 
         #If we have non-command line questions defined, evaluate those and add those in
         if typeof(@questions) is 'function'
@@ -679,7 +676,7 @@ bbserver.Command = class Command
         if @sublogger
             u.context().create_sub_logger()
 
-        @run processed_args
+        @run processed_args...
 
     #Checks to see if you have the right to run this command.  Returns a message if you
     #aren't, or nll if you are
@@ -893,19 +890,13 @@ class Cancel extends Command
 
     run: (command) ->
         to_cancel = []
-        u.log 'DEBUG: cancel ' + command + ' -type ' + typeof(command)
-        u.log 'DEBUG: stringified: ' + JSON.stringify(command)
         for fiber in u.active_fibers
             if command
                 if fiber._fiber_id is command
                     to_cancel.push fiber
-                else
-                    u.log 'DEBUG: not cancelling ' + fiber._fiber_id + ' (does not match ' + command + ')'
             else
                 if fiber.current_context?.user_id is u.current_user().id
                     to_cancel.push fiber
-                else
-                    u.log 'DEBUG: not cancelling ' + fiber._fiber_id + ' user ' + fiber.current_context?.user_id + ' does not match ' + u.current_user().id
 
         res = (get_full_fiber_display fiber for fiber in to_cancel)
 
