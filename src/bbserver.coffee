@@ -371,7 +371,7 @@ bbserver.Server = class Server
                     u.reply 'Cancelled: ' + cmd
                 else if err.reason is u.USER_TIMEOUT
                     u.reply 'Timed out waiting for your reply: ' + cmd
-                else if err.reason in u.EXTERNAL_CANCEL
+                else if err.reason is u.EXTERNAL_CANCEL
                     u.uncancel_fiber()
                     u.reply 'Cancelled (via the cancel cmd): ' + cmd
                 else
