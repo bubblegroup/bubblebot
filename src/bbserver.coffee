@@ -76,6 +76,7 @@ bbserver.Server = class Server
                         res = fn args...
                         if res
                             u.log name + ' response: ' + String(res)
+                        return res
 
                 #Create the default log environment for the server
                 u.set_default_loggers {
