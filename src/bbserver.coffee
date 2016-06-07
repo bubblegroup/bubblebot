@@ -967,7 +967,7 @@ class Update extends Command
     run: ->
         u.reply 'Updating...'
         u.run_local('git pull')
-        u.run_local('npm update')
+        u.run_local('npm install')
         u.reply 'Doing a graceful shutdown...'
         @server.graceful_shutdown()
 
