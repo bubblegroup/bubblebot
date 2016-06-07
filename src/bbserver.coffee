@@ -336,7 +336,7 @@ bbserver.Server = class Server
             context = u.context()
             @build_context(msg)
             context.user_id = user_id
-            context.orginal_message = msg
+            context.original_message = msg
             context.current_user = -> bbobjects.instance 'User', user_id
 
             #If we are not in the basic group, we are not allowed to talk to the bot
@@ -364,7 +364,7 @@ bbserver.Server = class Server
                 u.context().parsed_message = args
                 @root_command.execute [], args
             catch err
-                cmd = context.parsed_message ? context.orginal_message
+                cmd = context.original_message
 
                 if err.reason is u.CANCEL
                     u.reply 'Cancelled: ' + cmd
@@ -736,7 +736,7 @@ bbserver.Command = class Command
     get_help: (prev) ->
         res = 'Usage:\n\n' + prev + ' ' + @display_args() + '\n\n' + (@help ? '')
         res += '\n'
-        for param in @params
+        for param in @params ? []
             if param.required
                 default_info = 'required'
             else if param.default?
@@ -821,7 +821,7 @@ get_fiber_user = (fiber) ->
     if fiber.current_context.user_id
         return ' ' + bbobjects.instance('User', fiber.current_context.user_id).name()
 
-get_fiber_display = (fiber) -> fiber.current_context?.parsed_message ? fiber.current_context?.name
+get_fiber_display = (fiber) -> fiber.current_context?.original_message ? fiber.current_context?.name
 
 get_full_fiber_display = (fiber) -> fiber._fiber_id + get_fiber_user(fiber) + ': ' + get_fiber_display(fiber)
 
