@@ -493,7 +493,7 @@ bbserver.CommandTree = class CommandTree
         u.reply "I'm sorry, I don't know what #{prev_args.concat(first).join(' ')} means.  To see available commands, say '#{help}'"
 
     #Since this is a tree, we don't show the args, we show a "see 'help ' for more info" message
-    display_args: (prev) -> "     (see 'help #{prev}' for more info)"
+    display_args: (prev) -> "                   _(see 'help #{prev}' for more info)_"
 
     get_help: (prev) ->
         res = []
@@ -504,7 +504,7 @@ bbserver.CommandTree = class CommandTree
 
         for name, command of @get_commands()
             full = prev + ' ' + name
-            res.push full + ' ' + command.display_args(full)
+            res.push '*' + full + '* ' + command.display_args(full)
 
         return res.join('\n')
 
