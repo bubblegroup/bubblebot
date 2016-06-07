@@ -108,10 +108,30 @@ cloudwatchlogs.LogStream = class LogStream
         older = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextBackwardToken) + '&startFromHead=' + String(startFromHead)
         newer = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextForwardToken) + '&startFromHead=' + String(startFromHead)
         reverse = @get_tail_url() + '?startFromHead=' + String(not startFromHead)
-        navigation = '<div class="navlink"><a href="' + older + '">Older events</a></div><div class="navlink"><a href="' + newer + '">Newer events</a></div><div class="navlink"><a href="' + reverse + '">Reverse order</a></div>'
+        navigation = '<div class="navsection"><div class="navlink"><a href="' + older + '">Older events</a></div><div class="navlink"><a href="' + newer + '">Newer events</a></div><div class="navlink"><a href="' + reverse + '">Reverse order</a></div></navsection>'
 
         #Write the body
-        res.write '<html><head><title>BubbleBot Log ' + @environment.id + ', ' + @groupname + ', ' + @name + '</title></head>'
+        res.write """
+        <html><head><title>BubbleBot Log ' + @environment.id + ', ' + @groupname + ', ' + @name + '</title>
+        <style>
+        pre.message {
+            margin-top: 5px;
+        }
+        .timestamp {
+            font-family: monospace;
+            color: gray;
+            margin-top: 20px;
+        }
+        .navsection {
+            font-family: monospace;
+            margin-bottom: 20px;
+        }
+        .navsection .navlink {
+            text-decoration: none;
+        }
+        </style>
+        </head>
+        """
         res.write '<body>'
         res.write navigation
 
