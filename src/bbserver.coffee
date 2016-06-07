@@ -612,7 +612,9 @@ bbserver.do_cast = do_cast = (param, val) ->
             result = do_cast param, u.ask feedback + "we're expecting no / false or yes / true, though.  " + prompt
     else if param.type is 'number'
         result = parseFloat val
+        u.log 'DEBUG: ' + JSON.stringify {result, val, tresult: typeof(result), tval: typeof(val)}
         if isNaN result
+            u.log 'DEBUG: NAN CASE'
             result = do_cast param, u.ask feedback + "we're expecting a number, though.  " + prompt
     else if param.type is 'list'
         options = param.options()
@@ -626,6 +628,7 @@ bbserver.do_cast = do_cast = (param, val) ->
 
     #If we have a validation function defined, run it
     if param.validate
+        u.log 'DEBUG: VALIDATING'
         result = param.validate result
 
     return result
@@ -891,6 +894,7 @@ class Cancel extends Command
     run: (command) ->
         to_cancel = []
         u.log 'DEBUG: cancel ' + command + ' -type ' + typeof(command)
+        u.log 'DEBUG: stringified: ' + JSON.stringify(command)
         for fiber in u.active_fibers
             if command
                 if fiber._fiber_id is command
