@@ -798,7 +798,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         u.reply 'Okay, your box is ready:\n' + box.describe()
 
-    create_box_cmd: ->
+    create_box_cmd:
         sublogger: true
         params: [
             {
