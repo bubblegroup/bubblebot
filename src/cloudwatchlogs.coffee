@@ -105,8 +105,8 @@ cloudwatchlogs.LogStream = class LogStream
         }
 
         #Generate the navigation links
-        older = @get_tail_url() + '?nextToken=' + response.nextBackwardToken + '&startFromHead=' + String(startFromHead)
-        newer = @get_tail_url() + '?nextToken=' + response.nextForwardToken + '&startFromHead=' + String(startFromHead)
+        older = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextBackwardToken) + '&startFromHead=' + String(startFromHead)
+        newer = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextForwardToken) + '&startFromHead=' + String(startFromHead)
         reverse = @get_tail_url() + '?startFromHead=' + String(not startFromHead)
         navigation = '<p><a href="' + older + '">Older events</a></p><p><a href="' + newer + '">Newer events</a></p><p><a href="' + reverse + '">Reverse order</a></p>'
 
@@ -115,7 +115,10 @@ cloudwatchlogs.LogStream = class LogStream
         res.write '<body>'
         res.write navigation
 
-        for {timestamp, message} in response.events ? []
+        response.events ?= []
+        if not startFromHead
+            response.events.reverse()
+        for {timestamp, message} in response.events
             res.write '<p><span>' + String(new Date(timestamp)) + ': </span><span>' + message + '</span></p>'
 
         res.write navigation
