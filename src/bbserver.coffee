@@ -352,7 +352,9 @@ bbserver.Server = class Server
                 u.log 'Ignoring command from unauthorized user ' + current_user
                 return
 
-            @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
+            #If the command is lengthy, it can create a sublogger...
+            context.create_sub_logger = =>
+                @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
 
             try
                 args = parse_command msg
@@ -659,6 +661,9 @@ bbserver.Command = class Command
         if msg
             u.reply msg
             return
+
+        if @sublogger
+            u.context().create_sub_logger()
 
         @run processed_args
 

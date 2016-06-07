@@ -798,6 +798,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         u.reply 'Okay, your box is ready:\n' + box.describe()
 
     create_box_cmd: ->
+        sublogger: true
         params: [
             {
                 name: 'build_id'
@@ -1537,6 +1538,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         @template().deploy this, version, rollback, deployment_message
 
     deploy_cmd:
+        sublogger: true
         params: [{name: 'version', required: true, help: 'The version to deploy'}, {name: 'rollback', type: 'boolean', help: 'If true, allows deploying versions that are not ahead of the current version'}]
         help: 'Deploys the given version to this service.  Ensures that the new version is tested and ahead of the current version'
         groups: constants.BASIC
@@ -1586,6 +1588,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     replace: -> @template().replace this
 
     replace_cmd:
+        sublogger: true
         help: 'Replaces the underlying boxes for this service'
         groups: constants.BASIC
 
@@ -1709,6 +1712,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         return
 
     replace_ami_cmd:
+        sublogger: true
         params: [{name: 'region', required: true, help: 'The region to replace the AMI for'}]
         help: 'Replaces the current AMI for this build in the given region'
         groups: constants.BASIC
@@ -1781,6 +1785,7 @@ bbobjects.Test = class Test extends BubblebotObject
         groups: constants.BASIC
 
     run_cmd:
+        sublogger: true
         params: [{name: 'version', required: true, help: 'The version of the codebase to run this test against'}]
         help: 'Runs this test against the given version'
         groups: constants.BASIC
