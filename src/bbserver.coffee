@@ -892,9 +892,13 @@ class Cancel extends Command
             if command
                 if fiber._fiber_id is command
                     to_cancel.push fiber
+                else
+                    u.log 'DEBUG: not cancelling ' + fiber._fiber_id + ' (does not match ' + command + ')'
             else
                 if fiber.current_context?.user_id is u.current_user().id
                     to_cancel.push fiber
+                else
+                    u.log 'DEBUG: not cancelling ' + fiber._fiber_id + ' user ' + fiber.current_context?.user_id + ' does not match ' + u.current_user().id
 
         res = (get_full_fiber_display fiber for fiber in to_cancel)
 
