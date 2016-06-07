@@ -1366,11 +1366,12 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
             if typeof(object.exists_in_aws) is 'function'
                 if not object.exists_in_aws()
-                    u.log 'Deleting ' + object
+                    u.reply 'Deleting ' + object
                     object.delete()
                 else
                     u.log 'Object still exists: ' + object
         clean this
+        u.reply 'Done looking for stale entries'
 
     remove_stale_entries_from_db_cmd:
         help: 'Recursively deletes children from the database that used to correspond to an AWS object that we can no longer find'
