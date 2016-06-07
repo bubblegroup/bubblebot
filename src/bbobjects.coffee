@@ -2206,7 +2206,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             @get_configuration(true)
             return true
         catch err
-            if String(err).indexOf('DBInstanceNotFound') is -1
+            if String(err).indexOf('DBInstanceNotFound') is -1 and String(err).indexOf('InvalidParameterValue: Invalid database identifier') is -1
                 throw err
             return false
 
