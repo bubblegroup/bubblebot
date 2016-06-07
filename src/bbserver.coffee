@@ -942,7 +942,7 @@ class Sudo extends Command
 class RootCommand extends CommandTree
     constructor: (@server) ->
         @commands = {}
-        @commands.help = new Help(@root_command)
+        @commands.help = new Help(this)
         @commands.hi = new Hi()
         @commands.env = new EnvTree()
         @commands.new = new New()
