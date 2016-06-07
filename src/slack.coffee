@@ -124,9 +124,9 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             block = u.Block 'waiting for reply'
             @talking_to[user_id] = block.make_cb()
 
-            reminder = setTimeout ->
+            reminder = setTimeout =>
                 @send_im 'Hey, still waiting for an answer...'
-                reminder = setTimeout ->
+                reminder = setTimeout =>
                     @send_im "Mmm? In 2 minutes I'm going to give up..."
                 , 6 * 60 * 1000
             , 2 * 60 * 1000
@@ -138,13 +138,13 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
                     err = new Error 'timed out waiting for user to reply'
                     err.reason = u.USER_TIMEOUT
                 throw err
+            finally
+                clearTimeout reminder
 
             if not dont_cancel and response.toLowerCase().trim() in ['cancel', 'abort']
                 err = new Error 'Got a request to cancel from the user'
                 err.reason = u.CANCEL
                 throw err
-
-            clearTimeout reminder
 
             return response
 

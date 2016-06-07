@@ -2295,6 +2295,15 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
         endpoint: @endpoint()
     }
 
+    exists_in_aws: ->
+        try
+            @get_data(true)
+            return true
+        catch err
+            if String(err).indexOf('InvalidAllocationID.NotFound') is -1
+                throw err
+            return false
+
     #Retrieves the amazon metadata for this address.  If force_refresh is true,
     #forces us not to use our cache
     get_data: (force_refresh) ->
