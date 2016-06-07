@@ -260,6 +260,7 @@ u.cancel_fiber = (fiber) ->
     setTimeout ->
         start_fiber_run fiber
     , 1
+    clearTimeout my_fiber._u_fiber_timeout_cb
 
 #Un-marks the current fiber as being cancelled... useful in error handling code
 #so that we can continue cleaning up
