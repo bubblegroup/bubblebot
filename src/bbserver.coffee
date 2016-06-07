@@ -631,7 +631,7 @@ bbserver.do_cast = do_cast = (param, val) ->
             result = do_cast param, u.ask feedback + "we're expecting a number, though.  " + prompt
     else if param.type is 'list'
         options = param.options()
-        if val in options()
+        if val in options
             result = val
         else
             result = do_cast param, feedback + "we're expecting one of: #{options.join(', ')}  " + prompt
