@@ -55,9 +55,10 @@ bbserver.Server = class Server
 
                 server2 = http.createServer (req, res) =>
                     if req.url is '/shutdown'
-                        u.log 'Shutting down!'
                         res.end bbserver.SHUTDOWN_ACK
-                        process.exit(1)
+                        u.SyncRun =>
+                            @build_context()
+                            @graceful_shutdown()
                     else
                         res.end 'unrecognized command'
 
@@ -256,6 +257,10 @@ bbserver.Server = class Server
             #exponential backoff if we are having trouble retrieving tasks
             task_engine_backoff = 5000
             while true
+                #We don't want to run tasks if we are trying to shut down the server
+                if @shutting_down
+                    return
+
                 try
                     {@owner_id, task_data} = u.db().get_next_task @owner_id
 
@@ -370,6 +375,26 @@ bbserver.Server = class Server
                     if not current_user?.is_in_group(constants.ADMIN)
                         name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
                         u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
+
+    graceful_shutdown: ->
+        u.announce 'A request to restart bubblebot has been received.  Will restart once everything else is stopped...'
+
+        my_id = u.fiber_id()
+
+        @shutting_down = true
+
+        #wait til there are no more named active fibers
+        while true
+            can_shutdown = true
+            for fiber in u.active_fibers ? []
+                if get_fiber_display(fiber) and fiber._fiber_id isnt my_id
+                    can_shutdown = false
+                    break
+            if can_shutdown
+                u.announce 'Restarting bubblebot now!'
+                process.exit(1)
+            else
+                u.pause(2000)
 
 
 
