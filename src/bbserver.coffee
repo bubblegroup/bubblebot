@@ -946,11 +946,14 @@ class Shutdown extends Command
     run: (immediate, no_restart) ->
         if immediate
             exit_code = if no_restart then 0 else 1
-            u.announce 'Doing an immediate shutdown with exit code ' + exit_code + ' in one second'
+            msg = 'Doing an immediate shutdown with exit code ' + exit_code + ' in one second'
+            u.reply msg
+            u.announce msg
             setTimeout ->
                 process.exit(exit_code)
             , 1000
         else
+            u.reply 'Beginning a graceful shutdown...'
             @server.graceful_shutdown no_restart
 
     groups: constants.ADMIN
