@@ -458,7 +458,7 @@ u.gen_password = (size = 13) -> crypto.randomBytes(size).toString('hex')
 
 #Pretty-prints a date in the default timezone
 u.print_date = (date) ->
-    moment(date).tz(config.get('default_timezone')).format('M/D/YY h:m:s a z')
+    moment(date).tz(config.get('default_timezone')).format('MM/DD/YY hh:mm:ss a z')
 
 
 child_process = require 'child_process'
