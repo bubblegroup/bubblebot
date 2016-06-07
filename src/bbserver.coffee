@@ -72,11 +72,8 @@ bbserver.Server = class Server
                 #Also make this function write to the logger
                 wrap_in_log = (name, fn) ->
                     return (args...) ->
-                        console.log 'IN WRAP IN LOG ' + name + ' ' + String(args)
                         u.log name + ': ' + String(args)
-                        console.log 'DID LOG'
                         res = fn args...
-                        console.log 'DID CALL TO ' + name
                         if res
                             u.log name + ' response: ' + String(res)
 
@@ -480,7 +477,6 @@ bbserver.CommandTree = class CommandTree
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
     execute: (prev_args, args) ->
         if args.length is 0
-            console.log 'ABOUT TO DO ASK IN TREE'
             msg = u.ask 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are: ' + (k for k, v of @get_commands()).join ', '
             args = parse_command msg
 

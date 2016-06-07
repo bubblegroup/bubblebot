@@ -104,30 +104,21 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Asks the given user a question, and returns their reply
     ask: (user_id, msg, dont_cancel) ->
-        console.log 'IN SLACK ASK ' + user_id + ' / ' + msg
         if not user_id
             throw new Error 'no user id!'
         if not msg
             throw new Error 'no message!  user id: ' + user_id
-
-        console.log 'creating lock'
 
         #Only one thread can be trying to talk to a single user at a time...
         #We set a long timeout because we'd rather not timeout from multiple
         #threads waiting on the same user
         @talking_to_lock[user_id] ?= u.Lock(60 * 60 * 1000)
 
-        console.log 'acquiring lock lock'
-
         return @talking_to_lock[user_id].run =>
-
-            console.log 'lock aquired'
 
             block = u.Block 'sending message'
             @send_im user_id, msg, block.make_cb()
             block.wait()
-
-            console.log 'sent message'
 
             block = u.Block 'waiting for reply'
             @talking_to[user_id] = block.make_cb()
@@ -140,9 +131,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             , 2 * 60 * 1000
 
             try
-                console.log 'waiting for response'
                 response = block.wait(10 * 60 * 1000)
-                console.log 'got response'
             catch err
                 if err.reason is u.TIMEOUT
                     err = new Error 'timed out waiting for user to reply'
