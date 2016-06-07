@@ -119,7 +119,7 @@ cloudwatchlogs.LogStream = class LogStream
         if not startFromHead
             response.events.reverse()
         for {timestamp, message} in response.events
-            res.write '<p><span>' + String(new Date(timestamp)) + ': </span><span>' + message + '</span></p>'
+            res.write '<p><span>' + u.print_date(new Date(timestamp)) + ': </span><span>' + message + '</span></p>'
 
         res.write navigation
         res.write '</body></html>'

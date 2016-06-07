@@ -27,6 +27,8 @@
         "Arn": "ENTER ARN"
     },
     
+    "default_timezone": "America/New_York"
+    
     //The slack token we use
     "slack_token": "MY_TOKEN",
     

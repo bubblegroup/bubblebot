@@ -456,8 +456,14 @@ check_fiber_timeout = (name) ->
 #Generates a random password
 u.gen_password = (size = 13) -> crypto.randomBytes(size).toString('hex')
 
+#Pretty-prints a date in the default timezone
+u.print_date = (date) ->
+    moment(date).tz(config.get('default_timezone')).format('M/D/YY h:m:s a z')
+
 
 child_process = require 'child_process'
 tmp = require 'tmp'
 Fiber = require 'fibers'
 crypto = require 'crypto'
+moment = require 'moment'
+config = require 'config'
