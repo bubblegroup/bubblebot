@@ -108,7 +108,7 @@ cloudwatchlogs.LogStream = class LogStream
         older = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextBackwardToken) + '&startFromHead=' + String(startFromHead)
         newer = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextForwardToken) + '&startFromHead=' + String(startFromHead)
         reverse = @get_tail_url() + '?startFromHead=' + String(not startFromHead)
-        navigation = '<p><a href="' + older + '">Older events</a></p><p><a href="' + newer + '">Newer events</a></p><p><a href="' + reverse + '">Reverse order</a></p>'
+        navigation = '<div class="navlink"><a href="' + older + '">Older events</a></div><div class="navlink"><a href="' + newer + '">Newer events</a></div><div class="navlink"><a href="' + reverse + '">Reverse order</a></div>'
 
         #Write the body
         res.write '<html><head><title>BubbleBot Log ' + @environment.id + ', ' + @groupname + ', ' + @name + '</title></head>'
