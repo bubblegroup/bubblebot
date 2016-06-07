@@ -179,6 +179,7 @@ bbserver.Server = class Server
 
         #Record that we created a new log stream in our list
         @get_sublogger_stream().log JSON.stringify {id, description}
+        u.log 'Logs: ' + log_stream.get_tail_url()
 
     #Returns an array of {id, description, timestamp} of recently created subloggers
     list_sub_loggers: ->
@@ -355,6 +356,8 @@ bbserver.Server = class Server
             #If the command is lengthy, it can create a sublogger...
             context.create_sub_logger = =>
                 @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
+
+            u.log current_user.name() + ': ' + msg
 
             try
                 args = parse_command msg
