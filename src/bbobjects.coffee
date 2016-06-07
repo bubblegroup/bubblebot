@@ -1356,8 +1356,19 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         return subnet_groupname
 
+    #Recursively removes stale entries from this environment
+    remove_stale_entries_from_db: ->
+        clean = (object) ->
+            if typeof(object.children) is 'function'
+                clean child for child in object.children()
 
+            if typeof(object.exists_in_aws) is 'function'
+                if not object.exists_in_aws()
+                    object.delete()
+        clean this
 
+    remove_stale_entries_from_db_cmd:
+        help: 'Recursively deletes children from the database that used to correspond to an AWS object that we can no longer find'
 
 
 #Represents a collection of (possibly secure) credentials
@@ -2186,6 +2197,18 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     get_configuration_cmd:
         help: 'Fetches the configuration information about this database from RDS'
         reply: true
+
+        groups: constants.BASIC
+
+    #Returns true if this instance exists in AWS
+    exists_in_aws: ->
+        try
+            @get_configuration(true)
+            return true
+        catch err
+            if String(err).indexOf('DBInstanceNotFound') is -1
+                throw err
+            return false
 
     #Store credentials for accessing this database... override checking the database for them
     override_credentials: (username, password) ->
