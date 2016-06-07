@@ -101,6 +101,11 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
     send_im: (user_id, msg, cb) ->
         user = @api.dataStore.getUserById(user_id)
         dm = @api.dataStore.getDMByName(user.name)
+
+        #We cut off super-long messages to avoid issues...
+        if msg.length > 10000
+            message = message[...10000] + '\n[Truncated: too big for Slack]'
+
         @api.sendMessage(msg, dm.id, cb)
 
     #Asks the given user a question, and returns their reply
