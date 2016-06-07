@@ -104,6 +104,11 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Asks the given user a question, and returns their reply
     ask: (user_id, msg, dont_cancel) ->
+        if not user_id
+            throw new Error 'no user id!'
+        if not msg
+            throw new Error 'no message!  user id: ' + user_id
+
         #Only one thread can be trying to talk to a single user at a time...
         #We set a long timeout because we'd rather not timeout from multiple
         #threads waiting on the same user
