@@ -469,11 +469,8 @@ bbserver.CommandTree = class CommandTree
     list: -> (k for k, v of @get_commands())
 
     #Gets the subcommand, returning null if not found
-    get: (command) ->
-        u.log 'GETTING: ' + command
-        u.log 'ALL: ' + (k for k, v of @get_commands()).join(', ')
+    get_command: (command) ->
         res = @get_commands()[command] ? null
-        u.log 'RES: ' + res
         return res
 
     #Executes a command.  Previous args is the path through the outer tree to this tree,
@@ -774,11 +771,8 @@ class Help extends Command
 
     run: (commands) ->
         targ = @tree
-        u.log 'HELP ON ' + commands.join(',')
         for command, idx in commands
-            u.log 'EVALUATING ' + command
-            targ = targ.get(command)
-            u.log 'DID GET, RES: ' + targ
+            targ = targ.get_command(command)
             if not targ?
                 parent = commands[0...idx].join(' ')
                 u.reply "We could not find the command *#{command}* under *#{parent}*.  Try *help #{parent}* to see what commands are available"
