@@ -612,7 +612,7 @@ bbserver.do_cast = do_cast = (param, val) ->
             result = do_cast param, u.ask feedback + "we're expecting no / false or yes / true, though.  " + prompt
     else if param.type is 'number'
         result = parseFloat val
-        u.log 'DEBUG: ' + JSON.stringify {result, val, tresult: typeof(result), tval: typeof(val)}
+        u.log 'DEBUG: ' + JSON.stringify({result, val, tresult: typeof(result), tval: typeof(val)})
         if isNaN result
             u.log 'DEBUG: NAN CASE'
             result = do_cast param, u.ask feedback + "we're expecting a number, though.  " + prompt
@@ -832,7 +832,7 @@ class New extends Command
 get_fiber_user = (fiber) ->
     if fiber.current_context.user_id
         return ' ' + bbobjects.instance('User', fiber.current_context.user_id).name()
-    relse
+    else
         return ''
 
 get_fiber_display = (fiber) -> fiber.current_context?.original_message ? fiber.current_context?.name
