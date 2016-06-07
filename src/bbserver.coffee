@@ -854,9 +854,9 @@ class Loggers extends Command
         server = u.context().server
         u.reply 'Master server logs: ' + server.get_server_log_stream().get_tail_url()
         res = ['Recent logs:']
-        for {id, description, timestamp} in server.list_sub_loggers()[...number]
+        for {id, description, timestamp} in server.list_sub_loggers().reverse()[...number]
             logger = server.get_sub_logger(id)
-            res.push String(new Date(timestamp)) + ' ' + description + ' ' + logger.get_tail_url()
+            res.push u.print_date(new Date(timestamp)) + ' ' + description + ' ' + logger.get_tail_url()
         u.reply res.join('\n')
 
     groups: constants.BASIC
