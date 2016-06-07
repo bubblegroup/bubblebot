@@ -2091,6 +2091,18 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #When this RDS instance was created
     launch_time: -> new Date(@get_configuration().InstanceCreateTime)
 
+    #If this is a special bubblebot instance, return a flag that indicates that
+    bubblebot_role: ->
+        if @id.indexOf('bubblebot-bbdbservice-') is 0
+            return 'BBDB'
+        else
+            return null
+
+    describe_keys: -> u.extend super(), {
+        launch_time: @launch_time()
+        bubblebot_role: @bubblebot_role()
+    }
+
     #returns true if any of the sizing options changes could cause downtime
     are_changes_unsafe: (sizing_options) ->
         {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
