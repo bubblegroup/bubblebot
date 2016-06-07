@@ -2231,6 +2231,9 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         @environment().rds 'deleteDBInstance', params
         u.log 'Deleted rds instance ' + @id
 
+        #then delete the data if it exists
+        if @exists()
+            @delete()
 
 
 
