@@ -735,7 +735,10 @@ bbserver.Command = class Command
 
     get_help: (prev) ->
         res = '\nUsage:\n\n*' + prev + '* ' + @display_args() + '\n\n' + (@help ? '')
-        res += '\n'
+
+        if @params?.length > 0 or @additional_params?
+            res += '\nParameters:'
+
         for param in @params ? []
             if param.required
                 default_info = 'required'
@@ -744,12 +747,12 @@ bbserver.Command = class Command
             else
                 default_info = 'optional'
 
-            res += "\n    #{param.name} (#{param.type}, #{default_info})"
+            res += "\n#{param.name} (#{param.type}, #{default_info})"
             if param.help
                 res += ': ' + param.help
 
         if @additional_params?
-            res += "\n    #{@additional_params.name} (list of strings)"
+            res += "\n#{@additional_params.name} (list of strings)"
             if @additional_params.help
                 res += ': ' + @additional_params.help
         return res
@@ -779,6 +782,8 @@ class Help extends Command
     groups: constants.BASIC
 
 class Hi extends Command
+    help: 'Friendly salutation'
+
     run: ->
         u.reply 'Hi ' + u.current_user().name() + "!  I'm bubblebot.  Say *help* to me to learn more about what I can do!"
 
