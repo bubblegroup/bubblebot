@@ -115,22 +115,14 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         #threads waiting on the same user
         @talking_to_lock[user_id] ?= u.Lock(60 * 60 * 1000)
 
-        u.log 'DEBUG: Acquiring talking to ' + user_id
-
         return @talking_to_lock[user_id].run =>
-
-            u.log 'DEBUG: Acquired talking to ' + user_id
 
             block = u.Block 'sending message'
             @send_im user_id, msg, block.make_cb()
             block.wait()
 
-            u.log 'DEBUG: Sent message'
-
             block = u.Block 'waiting for reply'
             @talking_to[user_id] = block.make_cb()
-
-            u.log 'DEBUG: got reply'
 
             reminder = setTimeout ->
                 @send_im 'Hey, still waiting for an answer...'

@@ -226,7 +226,7 @@ class Lock
 
     acquire: ->
         #while someone else owns this lock, wait...
-        while @owner? and @owner isnt Fiber.current?
+        while @owner? and @owner isnt Fiber.current
             block = u.Block 'waiting on lock'
             @waiting_on.push block
             block.wait(@acquire_timeout)
@@ -236,8 +236,8 @@ class Lock
 
     release: ->
         #Only the holding thread can release
-        if @owner isnt Fiber.current?
-            return
+        if @owner isnt Fiber.current
+            throw new Error 'cannot release lock, you do not own it'
 
         #Release the lock
         @owner = null
