@@ -734,7 +734,7 @@ bbserver.Command = class Command
         return res
 
     get_help: (prev) ->
-        res = 'Usage:\n\n' + prev + ' ' + @display_args() + '\n\n' + (@help ? '')
+        res = 'Usage:\n\n*' + prev + '* ' + @display_args() + '\n\n' + (@help ? '')
         res += '\n'
         for param in @params ? []
             if param.required
@@ -749,7 +749,7 @@ bbserver.Command = class Command
                 res += ': ' + param.help
 
         if @additional_params?
-            res += '\n    #{additional_params.name} (list of strings)'
+            res += "\n    #{additional_params.name} (list of strings)"
             if @additional_params.help
                 res += ': ' + @additional_params.help
         return res
@@ -760,9 +760,7 @@ bbserver.Command = class Command
 class Help extends Command
     additional_params: {name: 'commands'}
 
-    help: "Displays help for the given command.  'help' by itself will display the
-    list of top-level commands, 'help my_command my_subcommand' will display more information
-    about that particular subcommand"
+    help: "Displays help for the given command. 'help' by itself will display the list of top-level commands, 'help my_command my_subcommand' will display more information about that particular subcommand"
 
     constructor: (@tree) ->
 
