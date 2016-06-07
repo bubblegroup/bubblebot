@@ -283,6 +283,7 @@ bbserver.Server = class Server
     run_task: (task_data) ->
         external_cancel = false
         try
+            @build_context('running task ' + JSON.stringify(task_data))
             u.log 'Beginning task run: ' + JSON.stringify(task_data)
             @create_sub_logger u.fiber_id() + ' task ' + JSON.stringify(task_data)
 
@@ -298,7 +299,6 @@ bbserver.Server = class Server
             if not @_registered_tasks[task_fn]
                 throw new Error 'no task named ' + task_fn
 
-            @build_context('running task ' + JSON.stringify(task_data))
             @_registered_tasks[task_fn] data
             u.log 'Task completed successfully: ' + JSON.stringify(task_data)
 
