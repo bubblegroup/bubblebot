@@ -474,6 +474,7 @@ bbserver.CommandTree = class CommandTree
     #Executes a command.  Previous args is the path through the outer tree to this tree,
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
     execute: (prev_args, args) ->
+        u.log 'EXECUTE: ' + JSON.stringify(prev_args) + ' AND ' + JSON.stringify(args)
         if args.length is 0
             msg = u.ask 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are: ' + (k for k, v of @get_commands()).join ', '
             args = parse_command msg
@@ -482,7 +483,10 @@ bbserver.CommandTree = class CommandTree
         subcommand = @get_commands()[first.toLowerCase()]
 
         if subcommand
-            return subcommand.execute prev_args.concat(first), args[1..]
+            new_prev_args = prev_args.concat(first)
+            new_args = args[1..]
+            u.log 'SUBCOMMAND: ' + JSON.stringify(new_prev_args) + ' AND ' + JSON.stringify(new_args)
+            return subcommand.execute new_prev_args, new_args
 
         if prev_args.length is 0
             help = 'help'
