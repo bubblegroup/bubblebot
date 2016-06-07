@@ -469,7 +469,12 @@ bbserver.CommandTree = class CommandTree
     list: -> (k for k, v of @get_commands())
 
     #Gets the subcommand, returning null if not found
-    get: (command) -> @get_commands()[command] ? null
+    get: (command) ->
+        u.log 'GETTING: ' + command
+        u.log 'ALL: ' + (k for k, v of @get_commands()).join(', ')
+        res = @get_commands()[command] ? null
+        u.log 'RES: ' + res
+        return res
 
     #Executes a command.  Previous args is the path through the outer tree to this tree,
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
