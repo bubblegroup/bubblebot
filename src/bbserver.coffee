@@ -634,7 +634,7 @@ bbserver.do_cast = do_cast = (param, val) ->
         if val in options
             result = val
         else
-            result = do_cast param, feedback + "we're expecting one of: #{options.join(', ')}  " + prompt
+            result = do_cast param, u.ask feedback + "we're expecting one of: #{options.join(', ')}  " + prompt
 
     else
         throw new Error "unrecognized parameter type for #{param.name}: #{param.type}"
