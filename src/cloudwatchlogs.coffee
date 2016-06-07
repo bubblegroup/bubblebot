@@ -112,7 +112,7 @@ cloudwatchlogs.LogStream = class LogStream
 
         #Write the body
         res.write """
-        <html><head><title>BubbleBot Log ' + @environment.id + ', ' + @groupname + ', ' + @name + '</title>
+        <html><head><title>BubbleBot Log #{@environment.id}, #{@groupname},#{@name}</title>
         <style>
         pre.message {
             margin-top: 5px;
