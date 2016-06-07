@@ -408,9 +408,12 @@ bbserver.Server = class Server
 parse_command = (msg) ->
     args = []
 
+    #Remove *s since they can show up in copy-pastes
+    msg = msg.replace(/\*/g, '')
+
     #Go through and chunk based on whitespace or on quotes
     while msg.length > 0
-        while msg[0] in [' ', '*']
+        while msg[0] is ' '
             msg = msg[1..]
 
         if msg[0] is '"'
