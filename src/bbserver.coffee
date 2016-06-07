@@ -492,7 +492,7 @@ bbserver.CommandTree = class CommandTree
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
     execute: (prev_args, args) ->
         if args.length is 0
-            msg = u.ask 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are: ' + (k for k, v of @get_commands()).join ', '
+            msg = u.ask 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are:\n' + (k for k, v of @get_commands()).join '\n'
             args = parse_command msg
 
         first = args[0]
