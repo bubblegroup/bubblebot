@@ -445,6 +445,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Deletes this object from the database
     delete: ->
+        u.log 'Deleting from database: ' + @type + ' ' + @id
         u.db().delete_object @type, @id
 
     #Returns true if this object exists in the database
@@ -1359,12 +1360,16 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Recursively removes stale entries from this environment
     remove_stale_entries_from_db: ->
         clean = (object) ->
+            u.log 'Checking ' + object
             if typeof(object.children) is 'function'
                 clean child for child in object.children()
 
             if typeof(object.exists_in_aws) is 'function'
                 if not object.exists_in_aws()
+                    u.log 'Deleting ' + object
                     object.delete()
+                else
+                    u.log 'Object still exists: ' + object
         clean this
 
     remove_stale_entries_from_db_cmd:
