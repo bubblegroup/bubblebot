@@ -126,8 +126,9 @@ cloudwatchlogs.LogStream = class LogStream
             font-family: monospace;
             margin-bottom: 20px;
         }
-        .navsection .navlink {
+        .navsection .navlink a {
             text-decoration: none;
+            color: blue;
         }
         </style>
         </head>
@@ -138,10 +139,14 @@ cloudwatchlogs.LogStream = class LogStream
         response.events ?= []
         if not startFromHead
             response.events.reverse()
-        for {timestamp, message} in response.events
-            res.write '<div class="log_entry"><div class="timestamp">' + u.print_date(new Date(timestamp)) + '</div><pre class="message">' + message + '</pre></div>'
 
-        res.write navigation
+        if response.events.length > 0
+            for {timestamp, message} in response.events
+                res.write '<div class="log_entry"><div class="timestamp">' + u.print_date(new Date(timestamp)) + '</div><pre class="message">' + message + '</pre></div>'
+            res.write navigation
+        else
+            res.write '<div class="log_entry">No more events</div>'
+
         res.write '</body></html>'
         res.end()
 
