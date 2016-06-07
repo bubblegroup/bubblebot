@@ -844,7 +844,7 @@ class PS extends Command
     groups: constants.BASIC
 
 #Command for listing recent loggers
-class Loggers extends Command
+class Logs extends Command
     help: 'Show recent logging streams'
     params: [
         {name: 'number', type: 'number', default: 10, help: 'The number of recent streams to show'}
@@ -952,7 +952,7 @@ class RootCommand extends CommandTree
         @commands.monitor = new Monitor(@server)
         @commands.users = new UsersTree()
         @commands.security_groups = new SecurityGroupsTree()
-        @commands.loggers = new Loggers()
+        @commands.logs = new Logs()
 
 
     get_commands: ->
