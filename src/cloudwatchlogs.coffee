@@ -36,6 +36,9 @@ cloudwatchlogs.LogStream = class LogStream
     #logs a message to this stream
     log: (message) ->
         timestamp = Date.now()
+        if message.length > 100000
+            message = message[...100000] + '\n[Truncated: too big for CloudWatch]'
+
         @queue.push {timestamp, message}
 
         @ensure_put_scheduled()
