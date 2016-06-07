@@ -113,7 +113,7 @@ u.message = (user_id, msg) -> u.get_logger('message') user_id, msg
 u.reply = (msg) -> u.get_logger('reply') msg
 
 #Asks the current user a question and returns their response
-u.ask = (msg) -> return u.get_logger('ask') msg
+u.ask = (msg, user_id) -> return u.get_logger('ask') msg, user_id
 
 #Confirms the user wants to do something, returning a boolean
 u.confirm = (msg) -> return u.get_logger('confirm') msg
