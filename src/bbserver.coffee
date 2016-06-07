@@ -770,6 +770,12 @@ class Help extends Command
 
     groups: constants.BASIC
 
+class Hi extends Command
+    run: ->
+        u.reply 'Hi ' + u.current_user().name() + "!  I'm bubblebot.  Say 'help' to me to learn more about what I can do!"
+
+    groups: constants.BASIC
+
 class New extends Command
     help: 'Creates a new environment'
     params: [
@@ -937,6 +943,7 @@ class RootCommand extends CommandTree
     constructor: (@server) ->
         @commands = {}
         @commands.help = new Help(@root_command)
+        @commands.hi = new Hi()
         @commands.env = new EnvTree()
         @commands.new = new New()
         @commands.servers = new ServersTree()
