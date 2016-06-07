@@ -7,6 +7,8 @@ bbserver = require './bbserver'
 bbobjects.instance = (type, id) ->
     if not bbobjects[type]
         throw new Error 'missing type: ' + type
+    if not id
+        throw new Error 'missing id: ' + id
     return new bbobjects[type] type, id
 
 #Returns the bubblebot environment
