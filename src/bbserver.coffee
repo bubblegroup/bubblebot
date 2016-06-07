@@ -774,8 +774,11 @@ class Help extends Command
 
     run: (commands) ->
         targ = @tree
+        u.log 'HELP ON ' + commands.join(',')
         for command, idx in commands
+            u.log 'EVALUATING ' + command
             targ = targ.get(command)
+            u.log 'DID GET, RES: ' + targ
             if not targ?
                 parent = commands[0...idx].join(' ')
                 u.reply "We could not find the command *#{command}* under *#{parent}*.  Try *help #{parent}* to see what commands are available"
