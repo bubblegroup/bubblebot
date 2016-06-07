@@ -474,7 +474,6 @@ bbserver.CommandTree = class CommandTree
     #Executes a command.  Previous args is the path through the outer tree to this tree,
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
     execute: (prev_args, args) ->
-        u.log 'EXECUTE: ' + JSON.stringify(prev_args) + ' AND ' + JSON.stringify(args)
         if args.length is 0
             msg = u.ask 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are: ' + (k for k, v of @get_commands()).join ', '
             args = parse_command msg
@@ -485,7 +484,6 @@ bbserver.CommandTree = class CommandTree
         if subcommand
             new_prev_args = prev_args.concat(first)
             new_args = args[1..]
-            u.log 'SUBCOMMAND: ' + JSON.stringify(new_prev_args) + ' AND ' + JSON.stringify(new_args)
             return subcommand.execute new_prev_args, new_args
 
         if prev_args.length is 0
@@ -644,7 +642,7 @@ bbserver.Command = class Command
 
         #If we take an array of additional parameters, add that in from the remainder of the command line
         if @additional_params?
-            processed_args.push args[@params?.length ? 0..]
+            processed_args.push args[@params?.length ? 0..]...
 
         #If we have non-command line questions defined, evaluate those and add those in
         if typeof(@questions) is 'function'
@@ -774,7 +772,7 @@ class Help extends Command
             targ = targ.get(command)
             if not targ?
                 parent = commands[0...idx].join(' ')
-                u.reply "We could not find the command '#{command}' under '#{parent}'.  Try 'help #{parent} to see what commands are available"
+                u.reply "We could not find the command '#{command}' under '#{parent}'.  Try 'help #{parent}' to see what commands are available"
                 return
 
         u.reply targ.get_help(commands.join(' '))
