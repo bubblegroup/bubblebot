@@ -412,7 +412,7 @@ parse_command = (msg) ->
 
     #Go through and chunk based on whitespace or on quotes
     while msg.length > 0
-        while msg[0] in ' ' or '*'
+        while msg[0] in [' ', '*']
             msg = msg[1..]
 
         if msg[0] is '"'
