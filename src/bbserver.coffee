@@ -857,8 +857,8 @@ class PS extends Command
 
         res = (get_full_fiber_display fiber for fiber in to_display)
 
-        if all
-            res.push anonymous + ' anonymous fibers'
+        if all and anonymous > 0
+            res.push 'in addition, there are ' + anonymous + ' anonymous fibers running'
 
         u.reply 'Currently running:\n' + res.join('\n')
 
