@@ -382,8 +382,11 @@ bbserver.Server = class Server
                         name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
                         u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
 
-    graceful_shutdown: ->
-        u.announce 'A request to restart bubblebot has been received.  Will restart once everything else is stopped...'
+    graceful_shutdown: (no_restart) ->
+        if no_restart
+            u.announce 'A request to shut down bubblebot has been received.  Will shut down once everything else is stopped.  Will NOT automatically restart!'
+        else
+            u.announce 'A request to restart bubblebot has been received.  Will restart once everything else is stopped...'
 
         my_id = u.fiber_id()
 
@@ -397,8 +400,16 @@ bbserver.Server = class Server
                     can_shutdown = false
                     break
             if can_shutdown
-                u.announce 'Restarting bubblebot now!'
-                process.exit(1)
+                if no_restart
+                    msg = 'Shutting down bubblebot now!'
+                    code = 0
+                else
+                    msg = 'Restarting bubblebot now!'
+                    code = 1
+                if u.current_user()
+                    u.reply msg
+                u.announce msg
+                process.exit(code)
             else
                 u.pause(2000)
 
@@ -923,6 +934,47 @@ class Cancel extends Command
 
 
 
+class Shutdown extends Command
+    constructor: (@server) ->
+
+    help: 'Shuts bubblebot down.  Default is to do a graceful shutdown then restart it.'
+    params: [
+        {name: 'immediate', type: 'boolean', help: 'Does an immediate shutdown instead of a graceful shutdown'}
+        {name: 'no restart', type: 'boolean', help: 'Tells supervisor not to restart bubblebot after exiting'}
+    ]
+
+    run: (immediate, no_restart) ->
+        if immediate
+            exit_code = if no_restart then 0 else 1
+            u.announce 'Doing an immediate shutdown with exit code ' + exit_code + ' in one second'
+            setTimeout ->
+                process.exit(exit_code)
+            , 1000
+        else
+            @server.graceful_shutdown no_restart
+
+    groups: constants.ADMIN
+
+    dangerous: (immediate, no_restart) -> return immediate or no_restart
+
+
+
+class Update extends Command
+    constructor: (@server) ->
+
+    help: 'Updates Bubblebot then restarts it'
+
+    run: ->
+        u.reply 'Updating...'
+        u.run_local('git pull')
+        u.run_local('npm update')
+        u.reply 'Doing a graceful shutdown...'
+        @server.graceful_shutdown()
+
+    groups: constants.ADMIN
+
+
+
 
 class Monitor extends Command
     constructor: (@server) ->
@@ -977,6 +1029,8 @@ class RootCommand extends CommandTree
         @commands.users = new UsersTree()
         @commands.security_groups = new SecurityGroupsTree()
         @commands.logs = new Logs()
+        @commands.update = new Update @server
+        @commands.shutdown = new Shutdown @server
 
 
     get_commands: ->
