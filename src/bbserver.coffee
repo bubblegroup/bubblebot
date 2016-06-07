@@ -91,7 +91,7 @@ bbserver.Server = class Server
 
                 @build_context('initial_announcement')
 
-                u.announce 'Bubblebot is running!  Send me a PM for more info (say "hi" or "help")!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
+                u.announce 'Bubblebot is running!  Send me a PM for more info (say *hi* or *help*)!  My system logs are here: ' + log_stream.get_tail_url() + '.  And my web interface is here: ' + @get_server_url()
 
                 #Handle uncaught exceptions.
                 #We want to report them, with a rate limit of 10 per 30 minutes
@@ -490,7 +490,7 @@ bbserver.CommandTree = class CommandTree
             help = 'help'
         else
             help = 'help ' + prev_args.join(' ')
-        u.reply "I'm sorry, I don't know what #{prev_args.concat(first).join(' ')} means.  To see available commands, say '#{help}'"
+        u.reply "I'm sorry, I don't know what #{prev_args.concat(first).join(' ')} means.  To see available commands, say *#{help}*"
 
     #Since this is a tree, we don't show the args, we show a "see 'help ' for more info" message
     display_args: (prev) -> "                   _(see 'help #{prev}' for more info)_"
@@ -760,7 +760,7 @@ bbserver.Command = class Command
 class Help extends Command
     additional_params: {name: 'commands'}
 
-    help: "Displays help for the given command. 'help' by itself will display the list of top-level commands, 'help my_command my_subcommand' will display more information about that particular subcommand"
+    help: "Displays help for the given command. *help* by itself will display the list of top-level commands, *help my_command my_subcommand* will display more information about that particular subcommand"
 
     constructor: (@tree) ->
 
@@ -770,7 +770,7 @@ class Help extends Command
             targ = targ.get(command)
             if not targ?
                 parent = commands[0...idx].join(' ')
-                u.reply "We could not find the command '#{command}' under '#{parent}'.  Try 'help #{parent}' to see what commands are available"
+                u.reply "We could not find the command *#{command}* under *#{parent}*.  Try *help #{parent}* to see what commands are available"
                 return
 
         u.reply targ.get_help(commands.join(' '))
@@ -780,7 +780,7 @@ class Help extends Command
 
 class Hi extends Command
     run: ->
-        u.reply 'Hi ' + u.current_user().name() + "!  I'm bubblebot.  Say 'help' to me to learn more about what I can do!"
+        u.reply 'Hi ' + u.current_user().name() + "!  I'm bubblebot.  Say *help* to me to learn more about what I can do!"
 
     groups: constants.BASIC
 
