@@ -33,7 +33,7 @@ bbserver.Server = class Server
                     u.SyncRun =>
                         try
                             @build_context('http_request')
-                            path = (req.url ? '').split('/')[1..]
+                            path = url.parse(req.url ? '').pathname.split('/')[1..]
                             if path[0] is 'logs'
                                 @show_logs req, res, path[1...]
 
@@ -1006,3 +1006,4 @@ bbdb = require './bbdb'
 bbobjects = require './bbobjects'
 tasks = require './tasks'
 monitoring = require './monitoring'
+url = require 'url'
