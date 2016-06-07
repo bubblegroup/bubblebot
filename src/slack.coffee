@@ -142,6 +142,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             if not dont_cancel and response.toLowerCase().trim() in ['cancel', 'abort']
                 err = new Error 'Got a request to cancel from the user'
                 err.reason = u.CANCEL
+                throw err
 
             clearTimeout reminder
 
