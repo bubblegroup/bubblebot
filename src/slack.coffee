@@ -68,6 +68,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         if talk_cb?
             talk_cb null, text
             delete @talking_to[message.user]
+            return
 
         #otherwise, interpet this as a new conversation
         @emit 'new_conversation', message.user, text
