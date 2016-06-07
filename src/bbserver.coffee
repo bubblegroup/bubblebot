@@ -680,7 +680,7 @@ bbserver.Command = class Command
 
         #If groups is a function, call it
         if typeof(groups) is 'function'
-            groups.apply @target, processed_args
+            groups = groups.apply @target, processed_args
 
         #if groups is as string, turn it into an array
         if typeof(groups) is 'string'
