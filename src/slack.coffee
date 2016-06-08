@@ -241,6 +241,20 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
         throw new Error 'Not a member of any channels: ' + JSON.stringify(res)
 
+    #Given a channel id, returns the history.  Results are in messages, and has_more and latest
+    #indicates paging
+    get_history: (channel, latest, oldest) ->
+        block = u.Block 'getting history'
+        @web_client.channels.history channel, {latest, oldest}, block.make_cb()
+        return block.wait()
+
+    #Deletes the given message
+    delete_message: (channel, ts, as_user) ->
+        block = u.Block 'deleting mssage'
+        @web_client.chat.delete ts, channel, {as_user}, block.make_cb()
+        return block.wait()
+
+
 
 
 
