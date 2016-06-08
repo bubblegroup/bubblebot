@@ -104,7 +104,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
         #We cut off super-long messages to avoid issues...
         if msg.length > 10000
-            message = message[...10000] + '\n[Truncated: too big for Slack]'
+            msg = msg[...10000] + '\n[Truncated: too big for Slack]'
 
         @api.sendMessage(msg, dm.id, cb)
 
