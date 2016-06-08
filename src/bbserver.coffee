@@ -1021,6 +1021,22 @@ class Sudo extends Command
 
     groups: constants.TRUSTED
 
+
+class Console extends Command
+    help: 'Opens up an interactive console.'
+
+    run: ->
+        result = 'Console started, say "cancel" or "abort" to exit'
+        while true
+            input = u.ask bbserver.pretty_print result
+            try
+                result = eval(input)
+            catch err
+                result = err.stack
+
+
+    groups: constants.ADMIN
+
 #The initial command structure for the bot
 class RootCommand extends CommandTree
     constructor: (@server) ->
@@ -1038,6 +1054,7 @@ class RootCommand extends CommandTree
         @commands.logs = new Logs()
         @commands.update = new Update @server
         @commands.shutdown = new Shutdown @server
+        @commands.console = new Console @server
 
 
     get_commands: ->
