@@ -529,6 +529,7 @@ bbserver.CommandTree = class CommandTree
 
         return res.join('\n')
 
+MAX_DEPTH = 4
 
 #Renders JSON in a format designed to be viewed by a human over slack
 bbserver.pretty_print = (obj, indent = 0) ->
@@ -542,7 +543,10 @@ bbserver.pretty_print = (obj, indent = 0) ->
 
     #If we've defined a pretty print function on the object, use that
     if typeof(obj.pretty_print) is 'function'
-        return obj.pretty_print()
+        return indent_string + obj.pretty_print(indent)
+
+    if indent is MAX_DEPTH
+        return indent_string + '{..}'
 
     if Array.isArray obj
         #if everything in the array is simple, just list it
