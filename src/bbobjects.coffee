@@ -1646,7 +1646,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     build: (parent, size, name) ->
         ami = @get_ami parent.environment().get_region()
         software = @template().software()
-        @_build parent, size, name, ami, software
+        @_build parent, size, name, ami, software, true
 
     #Gets the current AMI for this build in the given region.  If there isn't one, creates it.
     get_ami: (region) ->
