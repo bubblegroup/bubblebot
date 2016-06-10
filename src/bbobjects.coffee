@@ -519,14 +519,14 @@ bbobjects.User = class User extends BubblebotObject
         reply: true
         groups: constants.BASIC
 
-    profile: -> @slack().get_user_info().profile
+    profile: -> @slack().get_user_info(@id).profile
 
     profile_cmd:
         help: 'shows the slack profile for this user'
         reply: true
         groups: constants.BASIC
 
-    slack_info: -> @slack().get_user_info()
+    slack_info: -> @slack().get_user_info(@id)
 
     slack_info_cmd:
         help: 'shows all the slack data for this user'
