@@ -1834,6 +1834,8 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Double-dispatch for should_delete
     should_delete: (owner) -> owner.should_delete_ec2instance(this)
 
+    toString: -> 'EC2Instance i-0bf6ac243a1672d0f (' + @get('name') + ')'
+
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
         u.log 'setting status of ' + this + ' to ' + status
