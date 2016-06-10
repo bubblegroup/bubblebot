@@ -581,11 +581,11 @@ pretty_print = (obj, indent) ->
     if not obj?
         return 'null'
     if typeof(obj) in ['string', 'number']
-        return  obj
+        return String(obj)
 
     #If we've defined a pretty print function on the object, use that
     if typeof(obj.pretty_print) is 'function'
-        return obj.pretty_print(indent)
+        return obj.pretty_print(indent) ? 'null'
 
     if indent is MAX_DEPTH
         return '{..}'
