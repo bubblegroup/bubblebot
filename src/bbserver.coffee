@@ -1136,6 +1136,7 @@ class RootCommand extends CommandTree
         @commands.update = new Update @server
         @commands.shutdown = new Shutdown @server
         @commands.console = new Console @server
+        @commands.sudo = new Sudo()
 
 
     get_commands: ->
