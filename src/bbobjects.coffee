@@ -356,7 +356,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     parent_cmd:
         params: [{name: 'type', help: 'If specified, searches up the parent tree til it finds this type'}]
-        help: 'finds either the immediate parent, or an ancestor of a given type'
+        help: 'Finds either the immediate parent, or an ancestor of a given type'
         reply: true
         groups: constants.BASIC
 
@@ -367,7 +367,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     children_cmd:
         params: [{name: 'child_type', help: 'If specified, filters to the given type'}]
-        help: 'lists all the children of this object.  to access a specific child, use the "child" command'
+        help: 'Lists all the children of this object.  to access a specific child, use the "child" command'
         reply: true
         groups: constants.BASIC
 
@@ -384,7 +384,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     is_production: -> @environment().is_production()
 
     environment_cmd:
-        help: 'returns the environment that this is in'
+        help: 'Returns the environment that this is in'
         groups: constants.BASIC
 
     #Gets the given property of this object
