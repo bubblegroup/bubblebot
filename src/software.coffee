@@ -31,17 +31,26 @@ software.Software = class Software
     #Installs this stack of software on the given instance
     install: (instance) ->
         for command in @get_commands()
-            instance.run(command, {timeout: 300000})
+            instance.run(command.cmd, {timeout: 300000, no_log: command.no_log})
 
     #Adds the given software to this stack.  Returns itself to ease chaining.
     add: (pkg) ->
+        if @locked
+            throw new Error 'locked!'
         @dependencies.push pkg
         return this
 
     #Runs the given command as part of this package.  Returns itself to ease chaining
     run: (cmd) ->
+        if @locked
+            throw new Error 'locked!'
+        if typeof(cmd) is 'string'
+            cmd = {cmd}
         @commands.push cmd
         return this
+
+    #indicates that we are complete.  this is to avoid accidentally modifying built-in software
+    lock: -> @locked = true
 
 
 #Manages instances
@@ -50,6 +59,7 @@ software.create = create = (fn) ->
     return (args...) ->
         key = args.join(',')
         _instances[key] ?= fn args...
+        _instances[key].lock()
         return _instances[key]
 
 
@@ -118,6 +128,20 @@ software.pg_dump95 = create ->
 
     return pkg
 
+#Given a local path to a private key, installs that as the main key on this box
+software.private_key = create (path) ->
+    pkg = new Software()
+
+    #Write the key
+    key_data = fs.readFileSync path, 'utf8'
+    pkg.run {cmd: 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', no_log: true}
+    pkg.run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
+
+    #turn off strict host checking so that we don't get interrupted by prompts
+    pkg.run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
+    pkg.run 'chmod 600 /home/ec2-user/.ssh/config'
+
+    return pkg
 
 u = require './utilities'
 config = require './config'

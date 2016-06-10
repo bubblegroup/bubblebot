@@ -27,5 +27,10 @@ bubblebot.initialize_configuration = (options, cb) ->
 #Export the Server class
 bubblebot.Server = bbserver.Server
 
-#Export Utilities
+#Export various files...
 bubblebot.utilities = u
+bubblebot.templates = require './templates'
+bubblebot.github = require './github'
+bubblebot.config = require './config'
+bubblebot.software = require './software'
+bubblebot.bbobjects = require './bbobjects'

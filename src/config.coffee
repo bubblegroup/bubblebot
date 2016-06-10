@@ -68,6 +68,33 @@ config.init_account_specific = ->
     for k, v of specific_config
         config.set k, v
 
+
+#We cache values from get_secure to avoid having to hit S3 each time
+_secure_cache = {}
+
+#Gets a configuration option that we want to store in S3 instead of in code.
+#
+#This is not used in the bubblebot codebase, but can be useful for specific
+#instances of bubblebot to save credentials
+config.get_secure = (name) ->
+    if not _secure_cache[name]?
+        res = bbobjects.get_s3_config 'bubblebot_config_get_secure_' + name
+        if not res?
+            throw new Error 'missing secure config ' + name + ': use bubblebot set_config [name] [value]'
+        _secure_cache[name] = res
+    return _secure_cache[name]
+
+#See get_secure above.  Should be called from the bubblebot command line tool via:
+#
+#bubblebot set_config [name] [value]
+config.set_secure = (name, value) ->
+    bbobjects.put_s3_config 'bubblebot_config_get_secure_' + name, value
+    _secure_cache[name] = value
+
+
+
+
+
 #Retrieves an individual key, throwing an error if undefined
 #
 #Can pass a value for default (including null) to avoid throwing an error

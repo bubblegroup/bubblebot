@@ -80,7 +80,8 @@ bbobjects.get_bbserver = ->
     #Install node and supervisor
     command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
 
-    to_install = software.supervisor('bubblebot', command, config.get('install_directory'))
+    to_install = new software.Software()
+    to_install.add software.supervisor('bubblebot', command, config.get('install_directory'))
     to_install.add(software.node('4.4.5')).add(software.metrics())
     to_install.add(software.pg_dump95())
     to_install.install(instance)
@@ -1969,14 +1970,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     #Writes the given private key to the default location on the box
     install_private_key: (path) ->
-        key_data = fs.readFileSync path, 'utf8'
-        u.log 'installing private key'
-        @run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
-        @run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
-
-        #turn off strict host checking so that we don't get interrupted by prompts
-        @run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
-        @run 'chmod 600 /home/ec2-user/.ssh/config'
+        software.private_key(path).install(this)
 
     #Returns the address bubblebot can use for ssh / http requests to this instance
     get_address: ->

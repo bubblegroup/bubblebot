@@ -126,6 +126,12 @@ commands.dev = ->
         u.log u.run_local 'coffee -o node_modules/bubblebot/lib -c node_modules/bubblebot/src/*.coffee && node node_modules/bubblebot/node_modules/eslint/bin/eslint.js node_modules/bubblebot/lib'
         process.exit()
 
+commands.set_config = (name, value) ->
+    u.SyncRun ->
+        config.set_secure name, value
+        u.log 'config set successfully'
+        process.exit()
+
 #Prints the help for the bubblebot command line tool
 commands.print_help = ->
     u.log 'Available commands:'
@@ -134,6 +140,7 @@ commands.print_help = ->
     u.log '  publish -- deploys bubblebot to a remote repository'
     u.log '  update  -- updates the bubblebot code (npm update bubblebot)'
     u.log '  dev -- builds bubblebot assuming a development symlink'
+    u.log '  set_config [name] [value] -- stores a secure config option in s3'
     process.exit()
 
 

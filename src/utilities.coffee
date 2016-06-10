@@ -368,6 +368,24 @@ u.ensure_fiber = (fn) ->
     else
         u.SyncRun fn
 
+#Runs a function in a fiber that shares a context with the parent fiber.
+#This allows running things in parallel from the same process.
+#
+#Returns a wait() function that waits for the sub-fiber to finish and returns the result or throws the error
+#
+#We set a very long timeout on the sub-fiber... the sub-fiber is responsible for having sensible
+#internal timeouts
+u.sub_fiber = (fn) ->
+    shared_context = u.context()
+    block = u.Block 'running sub-fiber'
+    u.SyncRun ->
+        try
+            Fiber.current.current_context = shared_context
+            block.success fn()
+        catch err
+            block.fail err
+    return block.wait.bind(block, 24 * 60 * 60 * 1000)
+
 #A list of all ongoing fibers
 u.active_fibers = []
 

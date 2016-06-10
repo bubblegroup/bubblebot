@@ -115,6 +115,11 @@ github.Repo = class Repo
     #hits the url and returns the body, throwing an error if it's not a 200 response
     request: (url, method, body) -> @extract @_request(url, method, body), url
 
+    #Generates a software package for cloning this repo to the given folder
+    clone_software: (ref, destination) ->
+        pkg = new software.Software()
+        pkg.run "git clone git@github.com:#{org}/#{project}.git#{ref} #{destination}"
+        return pkg
 
 
 
@@ -141,8 +146,7 @@ github_get = (url, msg404) ->
 
 
 
-github_get
-
 request = require 'request'
 config = require './config'
 u = require './utilities'
+software = require './software'
