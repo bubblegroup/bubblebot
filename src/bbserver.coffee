@@ -515,16 +515,20 @@ bbserver.CommandTree = class CommandTree
 
     #Lists all available subcommands
     #
-    #We return commands first and trees second
+    #We return commands first and trees second.  We return commands that anyone
+    #can run first.
     list: ->
         trees = []
+        open_cmds = []
         cmds = []
         for k, v of @get_commands()
             if v instanceof CommandTree
                 trees.push k
+            else if v.groups is constants.BASIC
+                open_cmds.push k
             else
                 cmds.push k
-        return [].concat cmds, trees
+        return [].concat open_cmds, cmds, trees
 
     #Gets the subcommand, returning null if not found
     get_command: (command) ->
