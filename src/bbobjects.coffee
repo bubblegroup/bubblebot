@@ -275,6 +275,8 @@ HARDCODED =
 
 #Implementation of the Child command tree which lists all the children of a bubble object
 class ChildCommand extends bbserver.CommandTree
+    help: -> 'Shows all children of ' + @bbobject
+
     constructor: (@bbobject) ->
 
     get_commands: ->
@@ -289,6 +291,8 @@ class ChildCommand extends bbserver.CommandTree
 
 #generic class for objects tracked in the bubblebot database
 bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
+    help: -> 'Run commands on ' + this
+
     constructor: (@type, @id) ->
         super()
         if HARDCODED[@type]?[@id]
@@ -1427,6 +1431,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             for test in @template().get_tests()
                 res[test.id] = test
             return res
+        tree.help = 'Show tests this service runs before deploying'
         return tree
 
     tests_cmd: 'raw'

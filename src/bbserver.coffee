@@ -449,6 +449,25 @@ parse_command = (msg) ->
 
     return args
 
+#Pads text with extra spaces up to num
+pad_text = (text, num) ->
+    return text + [0...num - text.length].join(' ')
+
+#Given a [Rows...] array where each row is a [columns...] array, prints out a padded table
+make_table = (rows) ->
+    #compute the max size of each column
+    maxes = []
+    for row in rows
+        for column, c_idx in row
+            if not maxes[c_idx]? or column.length > maxes[c_idx]
+                maxes[c_idx] = column.length
+
+
+    print_row = (row) -> (pad_text column, maxes[c_idx] for column, c_idx in row).join('  ')
+
+    return (print_row row for row in rows).join('\n')
+
+
 
 #Base class for building a command tree: ie, a command that isn't directly
 #executable but has a bunch of subcommands.
@@ -526,22 +545,25 @@ bbserver.CommandTree = class CommandTree
             help = 'help ' + prev_args.join(' ')
         u.reply "I'm sorry, I don't know what #{prev_args.concat(first).join(' ')} means.  To see available commands, say *#{help}*"
 
-    #Since this is a tree, we don't show the args, we show a "see 'help ' for more info" message
-    display_args: (prev) -> "                   _(see 'help #{prev}' for more info)_"
+    help_string: (short) ->
+        help = @help ? ''
+        if typeof(help) is 'function'
+            help = help()
+        return help
 
     get_help: (prev) ->
-        res = []
         if prev is ''
-            res.push 'The following commands are available:'
+            header = 'The following commands are available:\n\n'
         else
-            res.push "The command '#{prev}' has the following sub-commands:\n"
+            header = "\n*#{prev}*\n\n#{@help_string()}\n\n*#{prev}* has the following sub-commands:\n\n"
 
+        table = []
         for name in @list()
             command = @get_command(name)
             full = prev + ' ' + name
-            res.push '*' + full + '* ' + command.display_args(full)
+            table.push ['*' + full + '*', command.help_string(true)]
 
-        return res.join('\n')
+        return header + make_table(table)
 
 MAX_DEPTH = 4
 
@@ -772,8 +794,16 @@ bbserver.Command = class Command
 
         return res
 
+    help_string: (short) ->
+        help = @help ? ''
+        if typeof(help) is 'function'
+            help = help()
+        if short
+            help = help.split('\n')[0]
+        return help
+
     get_help: (prev) ->
-        res = '\nUsage:\n\n*' + prev + '* ' + @display_args() + '\n\n' + (@help ? '')
+        res = '\nUsage:\n\n*' + prev + '* ' + @display_args() + '\n\n' + @help_string()
 
         if @params?.length > 0 or @additional_params?
             res += '\n\nParameters:'
@@ -802,7 +832,7 @@ bbserver.Command = class Command
 class Help extends Command
     additional_params: {name: 'commands'}
 
-    help: "Displays help for the given command. *help* by itself will display the list of top-level commands, *help my_command my_subcommand* will display more information about that particular subcommand"
+    help: "Displays help for the given command\n*help* by itself will display the list of top-level commands, *help my_command my_subcommand* will display more information about that particular subcommand"
 
     constructor: (@tree) ->
 
@@ -1088,6 +1118,8 @@ class RootCommand extends CommandTree
 
 #A command tree that lets you navigate environments
 class EnvTree extends CommandTree
+    help: 'Shows all environments'
+
     get_commands: ->
         commands = {}
         for environment in bbobjects.list_environments()
@@ -1096,6 +1128,8 @@ class EnvTree extends CommandTree
 
 #A command tree that lets you navigate servers
 class ServersTree extends CommandTree
+    help: 'Shows all servers'
+
     get_commands: ->
         commands = {}
         for instance in bbobjects.get_all_instances()
@@ -1104,6 +1138,8 @@ class ServersTree extends CommandTree
 
 #A command tree that lets you navigate users
 class UsersTree extends CommandTree
+    help: 'Shows all users'
+
     get_commands: ->
         commands = {}
         for user in bbobjects.list_users()
@@ -1111,6 +1147,8 @@ class UsersTree extends CommandTree
         return commands
 
 class SecurityGroupsTree extends CommandTree
+    help: 'Shows all user groups'
+
     get_commands: ->
         commands = {}
 
