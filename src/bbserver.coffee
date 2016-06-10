@@ -1139,7 +1139,7 @@ class UsersTree extends CommandTree
     get_commands: ->
         commands = {}
         for user in bbobjects.list_users()
-            commands[user.id] = user
+            commands[user.name()] = user
         return commands
 
 class SecurityGroupsTree extends CommandTree
