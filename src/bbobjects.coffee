@@ -2007,7 +2007,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         reply: true
         groups: constants.BASIC
 
-    bubblebot_role: -> @get_tags[config.get('bubblebot_role_tag')]
+    bubblebot_role: -> @get_tags()[config.get('bubblebot_role_tag')]
 
     bubblebot_role_cmd:
         help: 'Returns whether this server has a special bubblebot-related purpose'
