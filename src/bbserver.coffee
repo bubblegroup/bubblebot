@@ -828,7 +828,7 @@ bbserver.Command = class Command
             else
                 default_info = 'optional'
 
-            param_description = "(#{param.type}, #{default_info})"
+            param_description = "(#{param.type ? 'string'}, #{default_info})"
             if param.help
                 param_description += ': ' + param.help
 
