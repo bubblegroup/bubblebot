@@ -843,7 +843,7 @@ bbserver.Command = class Command
 class Help extends Command
     additional_params: {name: 'commands'}
 
-    help: "Displays help for the given commands.\nWithout arguments, *help* will display the list of top-level commands.\n *help my_command my_subcommand* will display more information about that particular subcommand."
+    help: "Displays help for the given commands.\nWithout arguments, *help* will display the list of top-level commands.\n *help [my_command] [my_subcommand]...* will display more information about that particular subcommand."
 
     constructor: (@tree) ->
 
