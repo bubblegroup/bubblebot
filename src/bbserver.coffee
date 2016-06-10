@@ -1090,7 +1090,7 @@ class Sudo extends Command
         if not confirm
             u.reply 'Okay, aborting'
             return
-        u.report 'Warning!  User ' + u.current_user() + ' just ran "sudo"'
+        u.report 'Warning! ' + u.current_user() + ' just ran "sudo"'
         u.current_user().set 'sudo', Date.now()
         u.reply 'Okay, you now have temporary administrator privileges'
 
