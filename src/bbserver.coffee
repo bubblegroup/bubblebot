@@ -423,6 +423,9 @@ parse_command = (msg) ->
     #Remove *s since they can show up in copy-pastes
     msg = msg.replace(/\*/g, '')
 
+    #Removes `s since they can show up in copy-pastes
+    msg = msg.replace(/`/g, '')
+
     #Replace educated quotes with straight quotes
     msg = msg.replace(/“/g, '"').replace(/”/g, '"').replace(/‘/g, "'").replace(/’/g, "'")
 
@@ -559,21 +562,33 @@ bbserver.CommandTree = class CommandTree
 MAX_DEPTH = 4
 
 #Renders JSON in a format designed to be viewed by a human over slack
-bbserver.pretty_print = (obj, indent = 0) ->
+bbserver.pretty_print = (obj) ->
+    res = pretty_print(obj, 0)
+    #if it has new lines, wrap it in a quote block, otherwise just return it
+    if res.indexOf('\n') is -1
+        return res
+    else
+        return '```' + res + '```'
+
+#Recursive helper function for bbserver.pretty_print
+#
+#If the response is multi-line, returns it indented to the specified level.
+#If one line, just returns it.
+pretty_print = (obj, indent) ->
     indent_string = (new Array(indent * 4)).join ' '
 
     #Handle the simple cases of things we can just display as is
     if not obj?
-        return indent_string + 'null'
+        return 'null'
     if typeof(obj) in ['string', 'number']
-        return indent_string + obj
+        return  obj
 
     #If we've defined a pretty print function on the object, use that
     if typeof(obj.pretty_print) is 'function'
-        return indent_string + obj.pretty_print(indent)
+        return obj.pretty_print(indent)
 
     if indent is MAX_DEPTH
-        return indent_string + '{..}'
+        return '{..}'
 
     if Array.isArray obj
         #if everything in the array is simple, just list it
@@ -584,7 +599,7 @@ bbserver.pretty_print = (obj, indent = 0) ->
                 break
 
         if all_simple
-            return indent_string + obj.join(', ')
+            return obj.join(', ')
 
         #otherwise, we're going to treat it as an object with numeric keys
         keys = [0...obj.length]
@@ -594,8 +609,13 @@ bbserver.pretty_print = (obj, indent = 0) ->
 
     res = []
     for key in keys
-        res.push indent_string + key + ':\n'
-        res.push bbserver.pretty_print(obj[key], indent + 1)
+        value = pretty_print(obj[key], indent + 1)
+        #if it's one line, print it key: value
+        if value.indexOf('\n') is -1
+            res.push indent_string + key + ': ' + value
+        #otherwise, print it key: on one line, and value on the next
+        else
+            res.push indent_string + key + ':\n' + value
     return res.join '\n'
 
 
