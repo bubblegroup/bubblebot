@@ -395,7 +395,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     get_cmd:
         params: [{name: 'name', required: true}]
-        help: 'gets the given property of this object'
+        help: 'Gets the given property of this object (low-level for admin use only)'
         reply: true
 
     #Sets the given property of this object
@@ -411,7 +411,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     set_cmd:
         params: [{name: 'name', required: true}, {name: 'value', required: true}]
-        help: 'sets the given property of this object'
+        help: 'Sets the given property of this object (low-level for admin use only)'
         reply: 'Property successfully set'
 
     #returns all the properties of this object
@@ -424,7 +424,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
 
     properties_cmd:
-        help: 'gets all the properties for this object'
+        help: 'Gets all the properties for this object (low-level for admin use only)'
         reply: true
 
     #Creates this object in the database
