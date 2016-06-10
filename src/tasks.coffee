@@ -84,13 +84,14 @@ tasks.builtin.audit_instances = (data) ->
     #If autodelete is set, actually do the delete, otherwise just announce.
     msg = (String(instance) + ': ' + reason for {instance, reason} in to_delete).join('\n')
 
-    if autodelete
-        u.announce 'Automatically cleaning up unused instances:\n\n' + msg
-        for {instance, reason} in to_delete
-            instance.terminate()
-    else
-        u.report "There are some instances that look like they should be deleted.
-        To autodelete them, set bubblebot configuration setting audit_instances_autodelete to true.  They are:\n\n" + msg
+    if to_delete.length > 0
+        if autodelete
+            u.announce 'Automatically cleaning up unused instances:\n\n' + msg
+            for {instance, reason} in to_delete
+                instance.terminate()
+        else
+            u.report "There are some instances that look like they should be deleted.
+            To autodelete them, set bubblebot configuration setting audit_instances_autodelete to true.  They are:\n\n" + msg
 
 #Generic task for calling a method on an object
 tasks.builtin.call_object_method = ({object_type, object_id, method, properties}) ->
