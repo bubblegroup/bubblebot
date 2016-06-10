@@ -1643,10 +1643,11 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
             ec2instance.set_status BUILD_FAILED
             throw err
 
-    #Creates a server with the given size owned by the given parent
-    build: (parent, size, name) ->
+    #Creates a server with the given size owned by the given parent, and with the
+    #given version of the software installed
+    build: (parent, size, name, version) ->
         ami = @get_ami parent.environment().get_region()
-        software = @template().software()
+        software = @template().software(version)
         @_build parent, size, name, ami, software, true
 
     #Gets the current AMI for this build in the given region.  If there isn't one, creates it.

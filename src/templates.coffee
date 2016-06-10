@@ -335,7 +335,7 @@ templates.SingleBoxService = class SingleBoxService
 
         #Create the new server
         u.announce 'Building a replacement server for ' + instance
-        new_ec2instance = build.build instance, size, String(instance)
+        new_ec2instance = build.build instance, size, String(instance), instance.version()
 
         #See if there is an old server
         old_ec2instance = switcher.get_instance()
@@ -909,7 +909,7 @@ templates.Test = class Test
 #
 #codebase: -> returns the codebase object for this build
 #verify: (ec2instance) -> verifies that the build is complete (ie, if stuff should be running, that it's running)
-#software: -> returns the software that gets run on top of the AMI
+#software: (version) -> returns the software that gets run on top of the AMI.
 #ami_software: -> returns the software that gets run to create the AMI
 #termination_delay: -> how long to wait before terminating an instance after a graceful shutdown
 #default_size: (instance) -> see function of same name on bbobjects.EC2Build
@@ -988,7 +988,7 @@ class BlankBuild extends templates.EC2Build
 
     verify: (ec2instance) ->
 
-    software: -> new software.Software()
+    software: (version) -> new software.Software()
 
     ami_software: -> null
 
