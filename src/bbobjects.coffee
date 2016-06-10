@@ -380,18 +380,8 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     #credentials.
     is_development: -> @environment().is_development()
 
-    is_development_cmd:
-        help: 'Displays whether this is a development environment'
-        reply: true
-        groups: constants.BASIC
-
     #Returns true if this object is production.  See comment on is_development
     is_production: -> @environment().is_production()
-
-    is_production_cmd:
-        help: 'Displays whether this is a production environment'
-        reply: true
-        groups: constants.BASIC
 
     environment_cmd:
         help: 'returns the environment that this is in'
@@ -762,7 +752,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         @template().initialize this
 
     describe_keys: -> u.extend super(), {
-        template: @template()
+        template: @get('template')
         type: @get 'type'
         region: @get_region()
         vpc: @get_vpc()
