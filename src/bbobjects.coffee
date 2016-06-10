@@ -365,12 +365,6 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         list = u.db().children @type, @id, child_type
         return (bbobjects.instance child_type, child_id for [child_type, child_id] in list)
 
-    children_cmd:
-        params: [{name: 'child_type', help: 'If specified, filters to the given type'}]
-        help: 'Lists all the children of this object.  to access a specific child, use the "child" command'
-        reply: true
-        groups: constants.BASIC
-
     #Retrieves the environment that this is in
     environment: -> @parent 'Environment'
 
