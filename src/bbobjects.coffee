@@ -1834,7 +1834,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Double-dispatch for should_delete
     should_delete: (owner) -> owner.should_delete_ec2instance(this)
 
-    toString: -> 'EC2Instance i-0bf6ac243a1672d0f (' + @get('name') + ')'
+    toString: -> 'EC2Instance i-0bf6ac243a1672d0f (' + @name() + ')'
 
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
@@ -1844,13 +1844,15 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         new_name = @get('name') + ' (' + status + ')'
         @environment().tag_resource @id, 'Name', new_name
 
+    name: -> @get('name') ? @bubblebot_role()
+
     describe_keys: ->
         expiration = @get('expiration_time')
         if expiration
             expires_in = u.format_time(expiration - Date.now())
 
         return u.extend super(), {
-            name: @get 'name'
+            name: @name()
             status: @get 'status'
             aws_status: @get_state()
             template: @get 'build_template_id'
