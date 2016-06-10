@@ -576,7 +576,7 @@ pp_simple = (obj) ->
         return 'null'
     if typeof(obj) in ['string', 'number', 'boolean']
         return String(obj)
-    if obj instanceOf Date
+    if obj instanceof Date
         return u.print_date obj
 
     return null
