@@ -467,9 +467,9 @@ make_table = (rows) ->
         if idx is maxes.length - 1
             return column
         else
-            return pad_text(column, maxes[idx])
+            return pad_text(column, maxes[idx] + 1)
 
-    print_row = (row) -> (print_column column, c_idx for column, c_idx in row).join('  ')
+    print_row = (row) -> (print_column column, c_idx for column, c_idx in row).join('    ')
 
     return (print_row row for row in rows).join('\n')
 
@@ -952,7 +952,7 @@ class Logs extends Command
     groups: constants.BASIC
 
 class Cancel extends Command
-    help: 'Cancels running commands.  By default, cancels all commands that you started'
+    help: 'Cancels running commands.\nBy default, cancels all commands that you started'
     params: [
         {name: 'command', type: 'number', help: 'The number of the specific command to cancel'}
     ]
@@ -995,7 +995,7 @@ class Cancel extends Command
 class Shutdown extends Command
     constructor: (@server) ->
 
-    help: 'Shuts bubblebot down.  Default is to do a graceful shutdown then restart it.'
+    help: 'Shuts bubblebot down.\nDefault is to do a graceful shutdown then restart it.'
     params: [
         {name: 'immediate', type: 'boolean', help: 'Does an immediate shutdown instead of a graceful shutdown'}
         {name: 'no restart', type: 'boolean', help: 'Tells supervisor not to restart bubblebot after exiting'}
