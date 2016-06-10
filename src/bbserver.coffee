@@ -488,7 +488,17 @@ bbserver.CommandTree = class CommandTree
         @subcommands[name] = command
 
     #Lists all available subcommands
-    list: -> (k for k, v of @get_commands())
+    #
+    #We return commands first and trees second
+    list: ->
+        trees = []
+        cmds = []
+        for k, v of @get_commands()
+            if v instanceof CommandTree
+                trees.push k
+            else
+                cmds.push k
+        return [].concat cmds, trees
 
     #Gets the subcommand, returning null if not found
     get_command: (command) ->
@@ -499,7 +509,7 @@ bbserver.CommandTree = class CommandTree
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
     execute: (prev_args, args) ->
         if args.length is 0
-            msg = u.ask 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are:\n' + (k for k, v of @get_commands()).join '\n'
+            msg = u.ask 'You entered ' + prev_args.join(' ') + ', which is a partial command... please enter remaining arguments (or "cancel" to abort). Options are:\n' + @list().join '\n'
             args = parse_command msg
 
         first = args[0]
@@ -526,7 +536,8 @@ bbserver.CommandTree = class CommandTree
         else
             res.push "The command '#{prev}' has the following sub-commands:\n"
 
-        for name, command of @get_commands()
+        for name in @list()
+            command = @get_command(name)
             full = prev + ' ' + name
             res.push '*' + full + '* ' + command.display_args(full)
 
