@@ -1179,7 +1179,7 @@ class SecurityGroupsTree extends CommandTree
         commands = {}
 
         #Make sure all the builtin ones exists in the database
-        for groupname, description of bbobjects.BUILTIN_GROUP_DESCRIPTION[groupname]
+        for groupname, description of bbobjects.BUILTIN_GROUP_DESCRIPTION
             group = bbobjects.instance('SecurityGroup', groupname)
             if not group.exists()
                 group.create()
