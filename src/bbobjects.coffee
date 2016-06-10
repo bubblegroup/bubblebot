@@ -485,21 +485,11 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         if user_id
             return bbobjects.instance 'User', user_id
 
-    creator_cmd:
-        help: 'Gets the user who created this'
-        reply: true
-        groups: constants.BASIC
-
     #Returns the user who owns this
     owner: ->
         user_id = @get 'owner'
         if user_id
             return bbobjects.instance 'User', user_id
-
-    owner_cmd:
-        help: 'Gets the user who owns this'
-        reply: true
-        groups: constants.BASIC
 
     #Prints out a multi line human readable description
     describe: ->
@@ -515,6 +505,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     describe_keys: -> {
         Parent: @parent()
         Owner: @owner()
+        Creator: @creator()
         Environment: @environment()
     }
 
@@ -775,6 +766,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
         type: @get 'type'
         region: @get_region()
         vpc: @get_vpc()
+        is_development: @is_development()
+        is_production: @is_production()
     }
 
     #Need to overwrite the default implementation since it by default checks the environment
