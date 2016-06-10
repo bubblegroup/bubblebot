@@ -451,7 +451,7 @@ parse_command = (msg) ->
 
 #Pads text with extra spaces up to num
 pad_text = (text, num) ->
-    return text + [0...num - text.length].join(' ')
+    return text + (new Array(num - text.length)).join ' '
 
 #Given a [Rows...] array where each row is a [columns...] array, prints out a padded table
 make_table = (rows) ->
