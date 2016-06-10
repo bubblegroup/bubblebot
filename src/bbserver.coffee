@@ -411,7 +411,7 @@ bbserver.Server = class Server
                 u.announce msg
                 process.exit(code)
             else
-                u.pause(2000)
+                u.pause(500)
 
 
 
