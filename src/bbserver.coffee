@@ -570,6 +570,17 @@ bbserver.pretty_print = (obj) ->
     else
         return '```' + res + '```'
 
+#Tests if the object is simple; if so, returns a string, if not, returns null
+pp_simple = (obj) ->
+    if not obj?
+        return 'null'
+    if typeof(obj) in ['string', 'number', 'boolean']
+        return String(obj)
+    if obj instanceOf Date
+        return u.print_date obj
+
+    return null
+
 #Recursive helper function for bbserver.pretty_print
 #
 #If the response is multi-line, returns it indented to the specified level.
@@ -578,10 +589,9 @@ pretty_print = (obj, indent) ->
     indent_string = (new Array(indent * 4)).join ' '
 
     #Handle the simple cases of things we can just display as is
-    if not obj?
-        return 'null'
-    if typeof(obj) in ['string', 'number']
-        return String(obj)
+    simple = pp_simple obj
+    if simple?
+        return simple
 
     #If we've defined a pretty print function on the object, use that
     if typeof(obj.pretty_print) is 'function'
@@ -594,12 +604,12 @@ pretty_print = (obj, indent) ->
         #if everything in the array is simple, just list it
         all_simple = true
         for entry in obj
-            if entry? and typeof(entry) not in ['string', 'number']
+            if not pp_simple(entry)?
                 all_simple = false
                 break
 
         if all_simple
-            return obj.join(', ')
+            return (pp_simple(entry) for entry in obj).join(', ')
 
         #otherwise, we're going to treat it as an object with numeric keys
         keys = [0...obj.length]
