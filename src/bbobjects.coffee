@@ -2002,6 +2002,10 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             tags[tag.Key] = tag.Value
         return tags
 
+    get_tags_cmd: ->
+        help: 'Lists all the tags of this server'
+        reply: true
+
     bubblebot_role: -> @get_tags[config.get('bubblebot_role_tag')]
 
 #Storage for credentials that we don't store in the bubblebot database
