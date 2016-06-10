@@ -737,7 +737,7 @@ bbserver.Command = class Command
                 #and passing through all the args we have so far
                 next = next.call @target, processed_args...
                 if next?
-                    processed_args.push do_cast next, u.ask next.help + (if param.type is 'list' then '  Options: ' + param.options().join(', ') else '')
+                    processed_args.push do_cast next, u.ask next.help + (if next.type is 'list' then '  Options: ' + next.options().join(', ') else '')
 
                     #See if there is a next question
                     next = next.next
@@ -1078,8 +1078,6 @@ class Monitor extends Command
 
 
 class Sudo extends Command
-    constructor: ->
-
     help: 'Temporarily grants adminstrative access... for use in emergencies if an adminstrator is not available'
 
     questions: -> {
