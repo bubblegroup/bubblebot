@@ -632,8 +632,7 @@ bbobjects.SecurityGroup = class SecurityGroup extends BubblebotObject
     add_to_group_cmd:
         params: [{name: 'groupname', required: true, help: 'The group to add this group to'}]
 
-        help: "Adds this security group to a containing group.  Any user in this group
-        will now be counted as part of the containing group"
+        help: "Adds this security group to a containing group.\nAny user in this group will now be counted as part of the containing group"
 
         reply: 'Added succesfully'
         groups: constants.TRUSTED

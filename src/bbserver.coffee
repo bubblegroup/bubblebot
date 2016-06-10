@@ -644,10 +644,13 @@ bbserver.build_command = (options) ->
         options.run = (args...) ->
             res = old_run args...
             if typeof(options.reply) is 'string'
-                return u.reply options.reply
+                u.reply options.reply
+                return
 
             if typeof(options.reply) is 'function'
-                res = options.reply.call options.target, res
+                return u.reply options.reply.call options.target, res
+                return
+
             message = bbserver.pretty_print(res)
             if message.indexOf('\n') is -1
                 u.reply 'Result: ' + message
