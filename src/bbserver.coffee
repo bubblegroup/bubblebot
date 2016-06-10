@@ -572,7 +572,7 @@ bbserver.pretty_print = (obj, indent = 0) ->
     for key in keys
         res.push indent_string + key + ':\n'
         res.push bbserver.pretty_print(obj[key], indent + 1)
-    return res.join ''
+    return res.join '\n'
 
 
 
