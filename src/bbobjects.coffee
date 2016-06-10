@@ -673,11 +673,6 @@ bbobjects.SecurityGroup = class SecurityGroup extends BubblebotObject
 
         return (bbobjects.instance 'SecurityGroup', id for id in res)
 
-    contained_groups_cmd:
-        help: 'Lists the groups directly contained by this group (does not list sub-sub-groups)'
-        reply: true
-        groups: constants.TRUSTED
-
     #Sets the message that describes what this group is about
     set_about: (msg) ->
         if BUILTIN_GROUP_DESCRIPTION[@id]
@@ -697,8 +692,13 @@ bbobjects.SecurityGroup = class SecurityGroup extends BubblebotObject
             return BUILTIN_GROUP_DESCRIPTION[@id]
         return @get('about') ? 'No description for this group yet.  Set one with "set_about"'
 
-    about_cmd:
-        help: 'Gets a description of this security group'
+    describe_keys: -> u.extend super(), {
+        about: @about()
+        'contained groups': @contained_groups()
+    }
+
+    describe_cmd:
+        help: 'Describes this'
         reply: true
         groups: constants.TRUSTED
 
