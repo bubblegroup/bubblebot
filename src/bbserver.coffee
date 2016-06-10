@@ -957,7 +957,7 @@ class Logs extends Command
     groups: constants.BASIC
 
 class Cancel extends Command
-    help: 'Cancels running commands.\nBy default, cancels all commands that you started'
+    help: 'Cancels running commands.\nWith no arguments, cancels all commands that you started.\nCan pass a command number to cancel a specific command.'
     params: [
         {name: 'command', type: 'number', help: 'The number of the specific command to cancel'}
     ]
