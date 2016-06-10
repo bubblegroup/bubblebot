@@ -285,8 +285,8 @@ bbserver.Server = class Server
         external_cancel = false
         try
             @build_context('running task ' + JSON.stringify(task_data))
-            u.log "Task started on fiber #{u.fiber_id()}: {task_data.task}"
-            @create_sub_logger "#{u.fiber_id()} Task {task_data.task}"
+            u.log "Task started on fiber #{u.fiber_id()}: #{task_data.task}"
+            @create_sub_logger "#{u.fiber_id()} Task #{task_data.task}"
             u.log 'Beginning task run: ' + JSON.stringify(task_data)
 
             #Recurring tasks have the task name and data stored as sub-properties
