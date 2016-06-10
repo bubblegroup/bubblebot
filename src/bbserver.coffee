@@ -942,7 +942,7 @@ class PS extends Command
 class Logs extends Command
     help: 'Show recent logging streams'
     params: [
-        {name: 'number', type: 'number', default: 10, help: 'The number of recent streams to show'}
+        {name: 'number', type: 'number', default: 5, help: 'The number of recent streams to show'}
     ]
 
     run: (number) ->
