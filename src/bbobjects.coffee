@@ -1851,7 +1851,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             name: @get 'name'
             status: @get 'status'
             aws_status: @get_state()
-            template: @template()
+            template: @get 'build_template_id'
             public_dns: @get_public_dns()
             address: @get_address()
             bubblebot_role: @bubblebot_role()
