@@ -450,31 +450,6 @@ parse_command = (msg) ->
 
     return args
 
-#Pads text with extra spaces up to num, and wraps in back-ticks
-pad_text = (text, num) ->
-    return '`' + text + (new Array(num - text.length)).join(' ') + '`'
-
-#Given a [Rows...] array where each row is a [columns...] array, prints out a padded table
-make_table = (rows) ->
-    #compute the max size of each column
-    maxes = []
-    for row in rows
-        for column, c_idx in row
-            if not maxes[c_idx]? or column.length > maxes[c_idx]
-                maxes[c_idx] = column.length
-
-    print_column = (column, idx) ->
-        #don't pad the last column
-        if idx is maxes.length - 1
-            return column
-        else
-            return pad_text(column, maxes[idx] + 1)
-
-    print_row = (row) -> (print_column column, c_idx for column, c_idx in row).join('    ')
-
-    return (print_row row for row in rows).join('\n')
-
-
 
 #Base class for building a command tree: ie, a command that isn't directly
 #executable but has a bunch of subcommands.
@@ -574,7 +549,7 @@ bbserver.CommandTree = class CommandTree
             full = prev + ' ' + name
             table.push [full, command.help_string(true)]
 
-        return header + make_table(table)
+        return header + u.make_table(table)
 
 MAX_DEPTH = 4
 
@@ -840,7 +815,7 @@ bbserver.Command = class Command
                 param_description += ': ' + @additional_params.help
             param_table.push [@additional_params.name, param_description]
 
-        return res + make_table(param_table)
+        return res + u.make_table(param_table)
 
 
 

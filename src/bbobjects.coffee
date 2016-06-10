@@ -380,6 +380,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     environment_cmd:
         help: 'Returns the environment that this is in'
         groups: constants.BASIC
+        reply: true
 
     #Gets the given property of this object
     get: (name) ->
@@ -477,13 +478,12 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Prints out a multi line human readable description
     describe: ->
-        res = @toString()
-        res += '\n\n'
+        describe_table = []
         for k, v of @describe_keys()
             if v?
-                res += '\n' + k + ': ' + String(v)
+                describe_table.push [k, String(v)]
 
-        return res
+        return @toString() + '\n\n' + u.make_table(describe_table)
 
     #A list of things used by describe.  Can be extended by children
     describe_keys: -> {
@@ -1984,17 +1984,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             tags[tag.Key] = tag.Value
         return tags
 
-    get_tags_cmd:
-        help: 'Lists all the tags of this server'
-        reply: true
-        groups: constants.BASIC
-
     bubblebot_role: -> @get_tags()[config.get('bubblebot_role_tag')]
-
-    bubblebot_role_cmd:
-        help: 'Returns whether this server has a special bubblebot-related purpose'
-        reply: true
-        groups: constants.BASIC
 
 #Storage for credentials that we don't store in the bubblebot database
 rds_credentials = {}

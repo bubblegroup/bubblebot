@@ -462,6 +462,31 @@ u.print_date = (date) ->
     moment(date).tz(config.get('default_timezone')).format('MM/DD/YY hh:mm:ss a z')
 
 
+#Pads text with extra spaces up to num, and wraps in back-ticks
+pad_text = (text, num) ->
+    return '`' + text + (new Array(num - text.length)).join(' ') + '`'
+
+#Given a [Rows...] array where each row is a [columns...] array, prints out a padded table
+u.make_table = (rows) ->
+    #compute the max size of each column
+    maxes = []
+    for row in rows
+        for column, c_idx in row
+            if not maxes[c_idx]? or column.length > maxes[c_idx]
+                maxes[c_idx] = column.length
+
+    print_column = (column, idx) ->
+        #don't pad the last column
+        if idx is maxes.length - 1
+            return column
+        else
+            return pad_text(column, maxes[idx] + 1)
+
+    print_row = (row) -> (print_column column, c_idx for column, c_idx in row).join('    ')
+
+    return (print_row row for row in rows).join('\n')
+
+
 child_process = require 'child_process'
 tmp = require 'tmp'
 Fiber = require 'fibers'
