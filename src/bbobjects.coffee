@@ -493,10 +493,9 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         Environment: @environment()
     }
 
-
     describe_cmd:
         help: 'Describes this'
-        reply: true
+        reply: (x) -> x
         groups: constants.BASIC
 
 
@@ -699,7 +698,7 @@ bbobjects.SecurityGroup = class SecurityGroup extends BubblebotObject
 
     describe_cmd:
         help: 'Describes this'
-        reply: true
+        reply: (x) -> x
         groups: constants.TRUSTED
 
 
