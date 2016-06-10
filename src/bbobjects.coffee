@@ -1650,6 +1650,10 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
     #Gets the current AMI for this build in the given region.  If there isn't one, creates it.
     get_ami: (region) ->
+        #If we don't have software to install on an ami, then the ami is just the base ami
+        if not @template().ami_software()?
+            return @template().base_ami(region)
+
         key = 'current_ami_' + region
         ami = @get key
         if not ami
@@ -1664,17 +1668,28 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
     #Make sure we are scheduling replacing
     startup: ->
+        if not @template().ami_software()?
+            return
+
         interval = @template().get_replacement_interval()
         if interval
             @schedule_recurring 'replace_ami_all', {}, interval
 
     #Replaces the AMI for all active regions
     replace_ami_all: ->
+        if not @template().ami_software()?
+            u.reply 'this build does not have an ami'
+            return
+
         for region in bbobjects.list_regions()
             @replace_ami(region)
 
     #Replaces the ami for this region
     replace_ami: (region) ->
+        if not @template().ami_software()?
+            u.reply 'this build does not have an ami'
+            return
+
         u.reply 'Replacing AMI for ' + this + ' in region ' + region
 
         environment = bbobjects.get_default_dev_environment region

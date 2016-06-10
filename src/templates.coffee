@@ -982,7 +982,25 @@ templates.EC2Build = class EC2Build
     get_replacement_interval: -> 24 * 60 * 60 * 1000
 
 
+#Represents a server with no software installed on it
+class BlankBuild extends templates.EC2Build
+    codebase: -> null
+
+    verify: (ec2instance) ->
+
+    software: -> new software.Software()
+
+    ami_software: -> null
+
+    termination_delay: -> 1
+
+    default_size: (instance) -> 't2.nano'
+
+
+templates.add 'EC2Build', 'blank', new BlankBuild()
+
 
 bbobjects = require './bbobjects'
 u = require './utilities'
 config = require './config'
+software = require './software'
