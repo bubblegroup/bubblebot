@@ -812,8 +812,9 @@ bbserver.Command = class Command
         res = '\nUsage:\n\n*' + prev + '* ' + @display_args() + '\n\n' + @help_string()
 
         if @params?.length > 0 or @additional_params?
-            res += '\n\nParameters:'
+            res += '\n\n\n_Parameters_:\n\n'
 
+        param_table = []
         for param in @params ? []
             if param.required
                 default_info = 'required'
@@ -822,15 +823,19 @@ bbserver.Command = class Command
             else
                 default_info = 'optional'
 
-            res += "\n#{param.name} (#{param.type}, #{default_info})"
+            param_description = (#{param.type}, #{default_info})"
             if param.help
-                res += ': ' + param.help
+                param_description += ': ' + param.help
+
+            param_table.push [param.name, param_description]
 
         if @additional_params?
-            res += "\n#{@additional_params.name} (list of strings)"
+            param_description = '(list of strings)'
             if @additional_params.help
-                res += ': ' + @additional_params.help
-        return res
+                param_description += ': ' + @additional_params.help
+            param_table.push [@additional_params.name, param_description]
+
+        return res + make_table(param_table)
 
 
 
@@ -838,7 +843,7 @@ bbserver.Command = class Command
 class Help extends Command
     additional_params: {name: 'commands'}
 
-    help: "Displays help for the given command\n*help* by itself will display the list of top-level commands, *help my_command my_subcommand* will display more information about that particular subcommand"
+    help: "Displays help for the given commands.\nWithout arguments, *help* will display the list of top-level commands.\n *help my_command my_subcommand* will display more information about that particular subcommand."
 
     constructor: (@tree) ->
 
