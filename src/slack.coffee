@@ -99,7 +99,11 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Sends an im to the given user
     send_im: (user_id, msg, cb) ->
+        if not user_id
+            throw new Error 'trying to send im with missing user id: ' + user_id
         user = @api.dataStore.getUserById(user_id)
+        if not user
+            throw new Error 'could not find user ' + user_id
         dm = @api.dataStore.getDMByName(user.name)
 
         #We cut off super-long messages to avoid issues...
