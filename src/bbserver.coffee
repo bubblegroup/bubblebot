@@ -554,7 +554,7 @@ bbserver.CommandTree = class CommandTree
     help_string: (short) ->
         help = @help ? ''
         if typeof(help) is 'function'
-            help = help()
+            help = help.apply this
         return help
 
     get_help: (prev) ->
