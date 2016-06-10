@@ -2009,6 +2009,11 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     bubblebot_role: -> @get_tags[config.get('bubblebot_role_tag')]
 
+    bubblebot_role_cmd:
+        help: 'Returns whether this server has a special bubblebot-related purpose'
+        reply: true
+        groups: constants.BASIC
+
 #Storage for credentials that we don't store in the bubblebot database
 rds_credentials = {}
 
