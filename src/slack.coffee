@@ -136,7 +136,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             reminder = setTimeout =>
                 @send_im user_id, 'Hey, still waiting for an answer...'
                 reminder = setTimeout =>
-                    @send_im "Mmm? In 2 minutes I'm going to give up..."
+                    @send_im user_id, "Mmm? In 2 minutes I'm going to give up..."
                 , 23 * 60 * 1000
             , 5 * 60 * 1000
 
