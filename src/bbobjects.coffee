@@ -80,11 +80,11 @@ bbobjects.get_bbserver = ->
     #Install node and supervisor
     command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
 
-    to_install = new software.Software()
-    to_install.add software.supervisor('bubblebot', command, config.get('install_directory'))
-    to_install.add(software.node('4.4.5')).add(software.metrics())
-    to_install.add(software.pg_dump95())
-    to_install.install(instance)
+    pkg = new software.Software()
+    pkg.add software.supervisor('bubblebot', command, config.get('install_directory'))
+    pkg.add(software.node('4.4.5')).add(software.metrics())
+    pkg.add(software.pg_dump95())
+    pkg.install(instance)
 
     environment.tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
 
@@ -1647,7 +1647,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     #given version of the software installed
     build: (parent, size, name, version) ->
         ami = @get_ami parent.environment().get_region()
-        software = @template().software(version)
+        software = @template().software(version, parent)
         @_build parent, size, name, ami, software, true
 
     #Gets the current AMI for this build in the given region.  If there isn't one, creates it.

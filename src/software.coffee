@@ -28,10 +28,20 @@ software.Software = class Software
 
         return commands
 
+    #Adds a log message to the list of commands
+    log: (msg) ->
+        if @locked
+            throw new Error 'locked!'
+        @commands.push {log: msg}
+        return this
+
     #Installs this stack of software on the given instance
     install: (instance) ->
         for command in @get_commands()
-            instance.run(command.cmd, {timeout: 300000, no_log: command.no_log})
+            if command.log
+                u.log command.log
+            else
+                instance.run(command.cmd, {timeout: 300000, no_log: command.no_log})
 
     #Adds the given software to this stack.  Returns itself to ease chaining.
     add: (pkg) ->
