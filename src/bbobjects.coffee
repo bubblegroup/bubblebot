@@ -1461,7 +1461,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     #Returns the deployment history for this service
     deploy_history: (n_entries) ->
-        u.db().recent_history 'deploy', n_entries
+        return u.db().recent_history 'deploy', n_entries
 
     deploy_history_cmd:
         params: [{name: 'n_entries', type: 'number', default: 10, help: 'The number of entries to return'}]
@@ -1472,7 +1472,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
                 entry = new Date(timestamp) + ' ' + username + ' ' + reference
                 entry += '\n' + (if rollback then '(ROLLBACK) ' else '') + deployment_message
                 formatted.push entry
-            return formatted.join('\n\n')
+            return '\nHistory:\n\n' + formatted.join('\n\n')
         groups: constants.BASIC
 
     #Checks if we are still using this instance
