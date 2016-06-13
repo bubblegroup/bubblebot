@@ -1148,7 +1148,7 @@ class RootCommand extends CommandTree
         #We put all the services in the default command namespace to save
         #typing.  If there's a name conflict, the command takes precedence
         services = {}
-        for service in bbobjects.list_all('Service')
+        for service in bbobjects.list_all('ServiceInstance')
             services[service.id] = service
         return u.extend {}, services, @commands
 
