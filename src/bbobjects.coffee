@@ -737,10 +737,10 @@ bbobjects.put_s3_config = (Key, Body) ->
 
 
 bbobjects.Environment = class Environment extends BubblebotObject
-    create: (type, template, region, vpc) ->
+    create: (prod, template, region, vpc) ->
         templates.verify 'Environment', template
 
-        super null, null, {type, template, region, vpc}
+        super null, null, {prod, template, region, vpc}
 
         @template().initialize this
 
@@ -764,6 +764,18 @@ bbobjects.Environment = class Environment extends BubblebotObject
         if not template
             return null
         return templates.get('Environment', template)
+
+    #Destroys this environment
+    destroy: ->
+        children = @children()
+        if children.length > 0
+            u.reply 'Cannot destroy this environment because it still has children.  Please clean up the children first:\n' + (String(child) for child in children).join('\n')
+            return
+
+        @delete()
+
+    destroy_cmd:
+        help: 'Destroys this environment'
 
 
     #Creates a server for development purposes
