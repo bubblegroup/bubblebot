@@ -1581,7 +1581,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     version: -> @get 'version'
 
     #On startup, we make sure we are monitoring this
-    startup: -> u.context().server?.monitor this
+    startup: ->
+        u.context().server?.monitor this
+        @template()?.startup(this)
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: -> @template().get_monitoring_policy this
@@ -1672,7 +1674,9 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     build: (parent, size, name, version) ->
         ami = @get_ami parent.environment().get_region()
         software = @template().software(version, parent)
-        @_build parent, size, name, ami, software, true
+        ec2instance = @_build parent, size, name, ami, software, true
+        ec2instance.set 'software_version', version
+        return ec2instance
 
     #Gets the current AMI for this build in the given region.  If there isn't one, creates it.
     get_ami: (region) ->
@@ -1905,6 +1909,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             name: @name()
             status: @get 'status'
             aws_status: @get_state()
+            software_version: @get 'software_version'
             template: @get 'build_template_id'
             public_dns: @get_public_dns()
             address: @get_address()

@@ -148,6 +148,26 @@ bbserver.Server = class Server
                             catch err
                                 u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
 
+    #Starts a long operation on its own fiber
+    run_fiber: (name, fn) ->
+        u.SyncRun =>
+            @build_context(name)
+            sub_logger = @create_sub_logger name
+            try
+                fn()
+            catch err
+                #If the user cancels this task, or times out replying, just log it
+                if err.reason in [u.CANCEL, u.USER_TIMEOUT]
+                    u.log 'Operation cancelled: ' + err.reason
+
+                #If the task was cancelled externally, just log it
+                else if err.reason in u.EXTERNAL_CANCEL
+                    u.uncancel_fiber()
+                    u.log 'Operation cancelled externally'
+
+                else
+                    u.report 'Unexpected error running operation ' + name + '.  Error was:\n' + (err.stack ? err)  + '\n\nTranscript: ' + sub_logger.get_tail_url()
+
     #Returns the url bubblebot server is accessible at
     get_server_url: ->
         eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
@@ -286,7 +306,6 @@ bbserver.Server = class Server
 
 
     run_task: (task_data) ->
-        external_cancel = false
         try
             @build_context('running task ' + JSON.stringify(task_data))
             u.log "Task started on fiber #{u.fiber_id()}: #{task_data.task}"

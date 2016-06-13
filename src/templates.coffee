@@ -327,6 +327,17 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
 
     endpoint: (instance) -> @switcher(instance).endpoint()
 
+    #Called on each service instance when bubblebot starts up
+    startup: (instance) ->
+        #make sure that our instance matches our version
+        version = instance.version()
+        if version
+            active_version = @switcher(instance).get_instance()?.get('software_version')
+            if active_version isnt version
+                u.announce "#{instance} has a version mismatch: should be #{version} but is #{active_version}.  About to replace it..."
+                u.context().server.run_fiber "Replacing #{instance}", @replace.bind(this, instance)
+
+
     replace: (instance) ->
         build = @ec2build()
         size = @get_size(instance)
