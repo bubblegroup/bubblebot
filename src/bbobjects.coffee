@@ -425,6 +425,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Creates this object in the database
     create: (parent_type, parent_id, initial_properties) ->
+        initial_properties ?= {}
         user_id = u.context().user_id
         if user_id
             initial_properties.creator = user_id
