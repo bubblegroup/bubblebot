@@ -316,7 +316,7 @@ templates.RDSService = class RDSService extends Service
 #an array of tests, and a switcher function that takes the service instance
 #and returns the switcher that controls where traffic is routed
 templates.SingleBoxService = class SingleBoxService extends templates.Service
-    constructor: (@build_id, @test_ids, @switcher) ->
+    constructor: (@build_id, @test_ids, @switcher, @get_monitoring_policy) ->
 
     #Retrieve the ec2build object for this service
     ec2build: -> bbobjects.instance 'EC2Build', @build_id

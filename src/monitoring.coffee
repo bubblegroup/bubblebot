@@ -20,6 +20,10 @@ monitoring.Monitor = class Monitor
     _get_uid: (object) -> object.type + '_' + object.id
 
     monitor: (object) ->
+        policy = object.get_monitoring_policy()
+        if policy.monitor is false
+            return
+
         uid = @_get_uid object
         if @to_monitor[uid]
             return
@@ -27,7 +31,7 @@ monitoring.Monitor = class Monitor
         @to_monitor[uid] = object
 
         #Set the initial frequency
-        @frequencies[uid] =  object.get_monitoring_policy().frequency
+        @frequencies[uid] =  policy.frequency
         @health[uid] = UNKNOWN
 
         #and schedule the initial check
@@ -52,7 +56,7 @@ monitoring.Monitor = class Monitor
                 @frequencies[uid] = policy.frequency
 
                 #If we have any upstream dependencies, make sure we are monitoring them
-                for dependency in policy.upstream ? []
+                for dependency in policy.dependencies ? []
                     @monitor dependency
 
                 #Mark its health unknown until we get a positive confirmation on its state
@@ -196,7 +200,7 @@ monitoring.Monitor = class Monitor
             res.push ''
             res.push String(object) + ':'
             res.push '  Frequency: ' + u.format_time(policy.frequency)
-            res.push '  Upstream: ' + (String(dep) for dep in policy.upstream ? []).join(', ')
+            res.push '  Upstream: ' + (String(dep) for dep in policy.dependencies ? []).join(', ')
             for service, threshold in policy.thresholds ? {}
                 if policy.limits?[service]
                     limit_text = '  (limit every ' + u.format_time(policy.limits[service]) + ')'
