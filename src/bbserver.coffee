@@ -899,12 +899,12 @@ class New extends Command
     params: [
         {name: 'id', type: 'string', required: true, help:"The id of the new environment"}
         {name: 'template', type: 'string', required: true, help: "The environment template to use to build this environment.  Pass 'blank' to create an empty environment"}
-        {name: 'prod', type: 'boolean', required: true, help: 'if true, we treat this like production; we protect against accidentally deleting things, and we monitor for downtime'}
+        {name: 'type', type: 'list', required: true, help: 'What kind of environment this is', options: -> [bbobjects.PROD, bbobjects.QA, bbobjects.DEV]}
         {name: 'region', type: 'string', help: 'The AWS region to host this environment in.  Defaults to same as bubblebot.'}
         {name: 'vpc', type: 'string', help: 'The AWS VPC id to host this environment in.  Defaults to same as bubblebot.'}
     ]
 
-    run: (id, template, prod, region, vpc) ->
+    run: (id, template, type, region, vpc) ->
         if u.db().exists 'Environment', id
             u.reply 'An environment with id ' + id + ' already exists!'
             return
@@ -918,7 +918,7 @@ class New extends Command
         vpc ?= bb_environment.get_vpc()
 
         environment = bbobjects.instance 'Environment', id
-        environment.create prod, template, region, vpc
+        environment.create type, template, region, vpc
 
         u.reply 'Environment successfully created!'
         return

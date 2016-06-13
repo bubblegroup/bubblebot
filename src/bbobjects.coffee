@@ -27,9 +27,9 @@ FINISHED = 'finished'
 TERMINATING = 'terminating'
 
 #Environment types
-PROD = 'prod'
-QA = 'qa'
-DEV = 'dev'
+bbobjects.PROD = PROD =  'prod'
+bbobjects.QA = QA = 'qa'
+bbobjects.DEV = DEV = 'dev'
 
 BUILTIN_GROUP_DESCRIPTION = {}
 BUILTIN_GROUP_DESCRIPTION[constants.ADMIN] = 'Administrators with full control over bubblebot'
@@ -737,10 +737,10 @@ bbobjects.put_s3_config = (Key, Body) ->
 
 
 bbobjects.Environment = class Environment extends BubblebotObject
-    create: (prod, template, region, vpc) ->
+    create: (type, template, region, vpc) ->
         templates.verify 'Environment', template
 
-        super null, null, {prod, template, region, vpc}
+        super null, null, {type, template, region, vpc}
 
         @template().initialize this
 
@@ -773,6 +773,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             return
 
         @delete()
+        u.reply 'Environment ' + @id + ' is destroyed'
 
     destroy_cmd:
         help: 'Destroys this environment'
