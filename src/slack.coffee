@@ -85,6 +85,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         user_id = u.context()?.user_id
         if not user_id?
             @announce msg
+            return
         block = u.Block 'replying'
         @send_im user_id, msg, block.make_cb()
         block.wait()
