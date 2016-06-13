@@ -1280,6 +1280,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         params: [
             {name: 'name', type: 'list', options: templates.list.bind(templates, 'Service'), help: 'The name of the service template to create'}
         ]
+        groups: bbobjects.BASIC
 
 
     #Gets a credential set for this environment, creating it if it does not exist
