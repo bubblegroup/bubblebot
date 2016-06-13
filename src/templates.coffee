@@ -421,7 +421,7 @@ templates.MultiGitCodebase = class MultiGitCodebase
                 return null
             results.push canonical
 
-        return results.join ' '
+        return results.join '-'
 
     #True if each version is ahead of each other version
     ahead_of: (first, second) ->
