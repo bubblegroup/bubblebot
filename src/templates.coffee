@@ -6,7 +6,7 @@ constants = require './constants'
 #this is an instance of the template.  We use this for templates.verify and templates.list
 interfaces =
     Environment: ['initialize']
-    Service: ['codebase', 'get_tests', 'deploy']
+    Service: ['codebase', 'get_tests', 'deploy', 'get_monitoring_policy']
     Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge']
     Test: ['run']
     EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size', 'get_replacement_interval']
