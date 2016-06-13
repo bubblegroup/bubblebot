@@ -487,10 +487,10 @@ bbserver.CommandTree = class CommandTree
                 #if we specify raw, we assume the function should be immediately called with
                 #this, and the return result is a command or a command tree
                 if command_object is 'raw'
-                    @add k, v.call(this)
+                    cmd = v.call(this)
                 else
                     cmd = bbserver.build_command u.extend {run: v.bind(this), target: this}, command_object
-                    @add k, cmd
+                @add k, cmd
 
     get_commands: -> @subcommands
 

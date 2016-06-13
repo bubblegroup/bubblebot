@@ -315,8 +315,16 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
             template = @template()
             for k, v of template
                 if typeof(v) is 'function' and template[k + '_cmd']?
-                   cmd = bbserver.build_command u.extend {run: v.bind(template, this), target: template}, @[k + '_cmd']
-                   template_commands[k] = cmd
+                    command_object = template[k + '_cmd']
+                    if typeof(command_object) is 'function'
+                        command_object = command_object()
+
+                    if command_object is 'raw'
+                        cmd = v.call(template, this)
+                    else
+                        cmd = bbserver.build_command u.extend {run: v.bind(template, this), target: template}, command_object
+
+                    template_commands[k] = cmd
 
         children = (new ChildCommand this).get_commands()
 
@@ -1428,7 +1436,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Returns a command tree allowing access to each test
     tests: ->
         tree = new bbserver.CommandTree()
-        tree.get_commands = ->
+        tree.get_commands = =>
             res = {}
             for test in @template().get_tests()
                 res[test.id] = test
