@@ -908,7 +908,7 @@ class New extends Command
         if u.db().exists name
             u.reply 'An environment with id ' + id + ' already exists!'
             return
-        if name is 'bubblebot'
+        if id is 'bubblebot'
             u.reply "Sorry, you cannot name an environment 'bubblebot'"
             return
 
