@@ -65,7 +65,7 @@ templates.Service = class Service
     #Deployment message allows hard-coded one; if absent (which it usually should be),
     #prompts the user for one
     deploy: (instance, version, rollback, deployment_message) ->
-        u.log 'Running deploy on ' + instance.id + ' ' + version + ' ' + rollback + ' ' + deployment_message
+        u.log 'Running deploy on ' + instance.id + ' ' + version + ' ' + (rollback ? false) + ' ' + (deployment_message ? '')
         u.log 'Current version: ' + instance.version()
         codebase = @codebase()
 

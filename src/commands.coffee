@@ -128,6 +128,10 @@ commands.dev = ->
 
 commands.set_config = (name, value) ->
     u.SyncRun ->
+        config.init()
+        config.set 'command_line', true
+        config.init_account_specific()
+
         config.set_secure name, value
         u.log 'config set successfully'
         process.exit()
