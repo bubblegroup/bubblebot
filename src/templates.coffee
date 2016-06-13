@@ -407,12 +407,12 @@ templates.GitCodebase = class GitCodebase
     pretty_print: (version) -> @repo.display_commit version
 
 #Implements the codebase interface using multiple git repositories.  A version is defined
-#as a space-separated list of commits in the order that the repos are passed in to the constructor
+#as a dash-separated list of commits in the order that the repos are passed in to the constructor
 templates.MultiGitCodebase = class MultiGitCodebase
     constructor: (@repos) ->
 
     canonicalize: (version) ->
-        commits = version.split(' ')
+        commits = version.split('-')
         results = []
         for repo, idx in @repos
             canonical = repo.resolve_commit commits[idx]?.trim()
@@ -425,8 +425,8 @@ templates.MultiGitCodebase = class MultiGitCodebase
 
     #True if each version is ahead of each other version
     ahead_of: (first, second) ->
-        first = first.split(' ')
-        second = second.split(' ')
+        first = first.split('-')
+        second = second.split('-')
         for repo, idx in @repos
             f = first[idx]
             s = second[idx]
@@ -435,8 +435,8 @@ templates.MultiGitCodebase = class MultiGitCodebase
         return true
 
     ahead_of_msg: (first, second) ->
-        first = first.split(' ')
-        second = second.split(' ')
+        first = first.split('-')
+        second = second.split('-')
         for repo, idx in @repos
             f = first[idx]
             s = second[idx]
@@ -445,18 +445,18 @@ templates.MultiGitCodebase = class MultiGitCodebase
         throw new Error 'is ahead of! ' + first + ' -- ' + second
 
     merge: (base, head) ->
-        base = base.split(' ')
-        head = head.split(' ')
+        base = base.split('-')
+        head = head.split('-')
         results = []
         for repo, idx in @repos
             res = @repo.merge base[idx], head[idx]
             if not res.success
                 return null
             results.push res.commit
-        return results.join(' ')
+        return results.join('-')
 
     pretty_print: (version) ->
-        version = version.split(' ')
+        version = version.split('-')
         return (repo.display_commit version[idx] for repo, idx in @repos).join('\n')
 
 #Returns [codebase_id (string), migration (number)]
