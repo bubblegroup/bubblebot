@@ -1765,6 +1765,25 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     #that we use to look at for more details (ie, whether or not it is production, etc.)
     valid_sizes: (instance) -> @template().valid_sizes instance
 
+    #Creates a copy of this build for running tests
+    #
+    #Version is the version of the build to create
+    #
+    #size is optional, defaults to calling default_size on the QA environment
+    create_test_instance: (version, size) ->
+        #Create a new instance with a random id
+        environment = bbobjects.get_default_qa_environment()
+
+        size ?= @default_size environment
+
+        ec2instance = @build environment, size, 'Test Instance for ' + @id, version
+
+        #Set the box to expire in an hour
+        ec2instance.set 'expiration_time', Date.now() + 60 * 60 * 1000
+
+        return ec2instance
+
+
 
 bbobjects.Test = class Test extends BubblebotObject
     #Creates in the database
@@ -1779,12 +1798,17 @@ bbobjects.Test = class Test extends BubblebotObject
     #Runs the tests against this version
     run: (version) ->
         u.reply 'Running test ' + @id + ' on version ' + version
-        result = @template().run version
+        try
+            result = @template().run version
+            u.log 'Test ' + (if result then 'passed' else 'failed') + ' with return value ' + result
+        catch err
+            u.log 'Test failed because of error: ' + (err.stack ? err)
+            result = false
         if result
             u.reply 'Test ' + @id + ' passed on version ' + version
             @mark_tested version
         else
-            u.reply 'Test ' + @id + ' failed on version ' + version
+            u.reply 'Test ' + @id + ' failed on version ' + version + ': ' + u.context().get_transcript()
 
     #Returns an array of the last n_entries versions that passed the tests.  Does not count tests marked
     #as skip_tests unless include_skipped is set to true

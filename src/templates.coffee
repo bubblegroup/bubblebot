@@ -316,7 +316,7 @@ templates.RDSService = class RDSService extends Service
 #an array of tests, and a switcher function that takes the service instance
 #and returns the switcher that controls where traffic is routed
 templates.SingleBoxService = class SingleBoxService
-    constructor: (@build_id, @tests, @switcher) ->
+    constructor: (@build_id, @test_ids, @switcher) ->
         super()
 
     #Retrieve the ec2build object for this service
@@ -324,7 +324,7 @@ templates.SingleBoxService = class SingleBoxService
 
     codebase: -> @ec2build().codebase()
 
-    get_tests: -> @tests
+    get_tests: -> (bbobjects.instance 'Test', id for id in @test_ids)
 
     endpoint: (instance) -> @switcher(instance).endpoint()
 
@@ -865,7 +865,8 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             new_schema = codebase.capture_schema rds_instance
             comparison = codebase.compare_schema rds_instance, pre_schema, new_schema
             if not comparison?
-                throw new Error 'The post-migration schema is the same as the pre-migration schema: ' + new_schema
+                u.log 'The post-migration schema is the same as the pre-migration schema: ' + new_schema
+                return false
             else
                 u.log 'Comparison after migration:\n' + comparison
 
@@ -873,7 +874,8 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
             no_rollback = not codebase.get_migration_data(version, true)
             if no_rollback
                 if not u.confirm 'We are testing a migration with no rollback: ' + version + '.  Are you sure you want to test and save it?'
-                    throw new Error 'aborting because no rollback'
+                    u.log 'aborting because no rollback'
+                    return false
 
             else
                 #Apply the rollback
@@ -883,25 +885,19 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
                 post_schema = codebase.capture_schema rds_instance
                 comparison = codebase.compare_schema rds_instance, pre_schema, post_schema
                 if comparison?
-                    throw new Error 'The rollback did not restore the schema.  Differences:\n' + comparison
+                    u.log 'The rollback did not restore the schema.  Differences:\n' + comparison
+                    return false
                 u.log 'post schema matches pre-schema... locking migration data'
 
             #save both migration and rollback to S3
             codebase.lock_migration_data version
 
+            u.log 'migration data locked'
+            return true
+
         finally
             rds_instance?.terminate()
 }
-
-
-#Base class for building tests.  Tests should have a globally-unique id that we use
-#to store results in the database
-#
-#children should define run(version) -> which executes the test and returns true / false
-#based on success or failure status
-templates.Test = class Test
-    constructor: (@id) ->
-
 
 #Base class for creating EC2Build templates
 #

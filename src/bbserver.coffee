@@ -162,6 +162,8 @@ bbserver.Server = class Server
     get_sublogger_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'sublogger')
 
     #Creates a seperate logger for the current context
+    #
+    #Returns the new sublogger
     create_sub_logger: (description) ->
         #create an id of the form timestamp_num
         ts = Date.now()
@@ -181,6 +183,8 @@ bbserver.Server = class Server
         #Record that we created a new log stream in our list
         @get_sublogger_stream().log JSON.stringify {id, description}
         u.log 'Logs: ' + log_stream.get_tail_url()
+
+        return log_stream
 
     #Returns an array of {id, description, timestamp} of recently created subloggers
     list_sub_loggers: ->
@@ -357,7 +361,10 @@ bbserver.Server = class Server
 
             #If the command is lengthy, it can create a sublogger...
             context.create_sub_logger = =>
-                @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
+                sub_logger = @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
+                link = sub_logger.get_tail_url()
+                u.reply 'Logging transcript here: ' + link
+                u.context().get_transcript = -> link
 
             u.log current_user.name() + ': ' + msg
 
