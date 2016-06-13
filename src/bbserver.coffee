@@ -138,8 +138,7 @@ bbserver.Server = class Server
                 @get_admins()
 
                 #Make a list of each type that has a startup function
-                for typename, cls in bbobjects
-                    u.log 'Checking ' + typename
+                for typename, cls of bbobjects
                     if typeof(cls::startup) is 'function'
                         u.log 'Startup: loading ' + typename + 's...'
                         for id in u.db().list_objects typename
