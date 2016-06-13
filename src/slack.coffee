@@ -84,7 +84,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
     reply: (msg) ->
         user_id = u.context()?.user_id
         if not user_id?
-            throw new Error 'tried to reply but no user / context: context is ' + u.context() + ' and user id is ' + user_id
+            @announce msg
         block = u.Block 'replying'
         @send_im user_id, msg, block.make_cb()
         block.wait()
