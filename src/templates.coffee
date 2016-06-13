@@ -363,7 +363,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         size ?= @ec2build().default_size(instance)
         return size
 
-    get_size_cmd:
+    get_size_cmd: ->
         help: 'Gets the size of the box for this service'
         reply: true
         groups: constants.BASIC
@@ -376,7 +376,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             return
         instance.set 'size', new_size
 
-    set_size_cmd:
+    set_size_cmd: ->
         params: [{name: 'new_size', type: 'number', required: true}]
         help: 'Sets the size of the box for this service'
         reply: 'Size successfully set'
