@@ -905,7 +905,7 @@ class New extends Command
     ]
 
     run: (id, template, prod, region, vpc) ->
-        if u.db().exists name
+        if u.db().exists 'Environment', id
             u.reply 'An environment with id ' + id + ' already exists!'
             return
         if id is 'bubblebot'
