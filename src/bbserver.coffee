@@ -227,7 +227,7 @@ bbserver.Server = class Server
             @schedule_recurring schedule_name, interval, task, data
 
 
-    monitor: (object) -> @_monitor object
+    monitor: (object) -> @_monitor.monitor object
 
     #registers a handler for a given task name
     register_task: (task, fn) ->
