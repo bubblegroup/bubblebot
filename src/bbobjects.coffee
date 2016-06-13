@@ -1258,6 +1258,17 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 return null
         return instance
 
+    #Creates the service for this environment with the given template name.  Does nothing if it
+    #already exists
+    create_service: (template_name) -> @get_service template_name, true
+
+    create_service_cmd:
+        help: 'Creates the given service in this environment'
+        params: [
+            {name: 'name', type: 'list', options: templates.list.bind(templates, 'Service'), help: 'The name of the service template to create'}
+        ]
+
+
     #Gets a credential set for this environment, creating it if it does not exist
     get_credential_set: (set_name) ->
         set = bbobjects.instance 'CredentialSet', @id + '-' + set_name
