@@ -1492,9 +1492,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     should_delete_rdsinstance: (rds_instance) -> false
 
     describe_keys: -> u.extend super(), {
-        template: @template()
         version: @version()
         endpoint: @endpoint()
+        maintenance: @maintenance()
     }
 
     #Returns the template for this service or null if not found
@@ -1572,11 +1572,6 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Returns the current version of this service
     version: -> @get 'version'
 
-    version_cmd:
-        help: 'Returns the current version of this service'
-        reply: (version) -> @template().codebase().pretty_print version
-        groups: constants.BASIC
-
     #On startup, we make sure we are monitoring this
     startup: -> u.context().server?.monitor this
 
@@ -1594,11 +1589,6 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             return true
 
         return false
-
-    maintenance_cmd:
-        help: 'Returns whether we are in maintenance mode'
-        reply: true
-        groups: constants.BASIC
 
     #Sets whether or not we should enter maintenance mode
     set_maintenance: (turn_on) ->
