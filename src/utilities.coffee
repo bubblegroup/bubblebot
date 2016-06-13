@@ -505,6 +505,13 @@ u.make_table = (rows) ->
     return (print_row row for row in rows).join('\n')
 
 
+#Generates a sha256 hex digest of the given text
+u.digest = (text, encoding = 'utf8') ->
+    hasher = crypto.createHash 'sha256'
+    hasher.update text, encoding
+    return hasher.digest 'hex'
+
+
 child_process = require 'child_process'
 tmp = require 'tmp'
 Fiber = require 'fibers'
