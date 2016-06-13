@@ -139,6 +139,7 @@ bbserver.Server = class Server
 
                 #Make a list of each type that has a startup function
                 for typename, cls in bbobjects
+                    u.log 'Checking ' + typename
                     if typeof(cls::startup) is 'function'
                         u.log 'Startup: loading ' + typename + 's...'
                         for id in u.db().list_objects typename
@@ -147,6 +148,8 @@ bbserver.Server = class Server
                                 bbobjects.instance(typename, id).startup()
                             catch err
                                 u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
+
+                u.log 'Startup complete'
 
     #Starts a long operation on its own fiber
     run_fiber: (name, fn) ->
