@@ -155,3 +155,4 @@ software.private_key = create (path) ->
 
 u = require './utilities'
 config = require './config'
+fs = require 'fs'
