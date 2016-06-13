@@ -1262,7 +1262,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #already exists
     create_service: (template_name) -> @get_service template_name, true
 
-    create_service_cmd:
+    create_service_cmd: ->
         help: 'Creates the given service in this environment'
         params: [
             {name: 'name', type: 'list', options: templates.list.bind(templates, 'Service'), help: 'The name of the service template to create'}
