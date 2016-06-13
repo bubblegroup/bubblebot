@@ -315,7 +315,7 @@ templates.RDSService = class RDSService extends Service
 #Base class for services that have a single box.  They take a template,
 #an array of tests, and a switcher function that takes the service instance
 #and returns the switcher that controls where traffic is routed
-templates.SingleBoxService = class SingleBoxService
+templates.SingleBoxService = class SingleBoxService extends templates.Service
     constructor: (@build_id, @test_ids, @switcher) ->
 
     #Retrieve the ec2build object for this service
