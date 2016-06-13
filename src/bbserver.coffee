@@ -139,6 +139,7 @@ bbserver.Server = class Server
 
                 #Make a list of each type that has a startup function
                 for typename, cls of bbobjects
+                    u.log 'Startup: checking ' + typename
                     if typeof(cls::?startup) is 'function'
                         u.log 'Startup: loading ' + typename + 's...'
                         for id in u.db().list_objects typename
