@@ -1,7 +1,6 @@
 bbserver = exports
 
 constants = require './constants'
-events = require 'events'
 
 bbserver.Server = class Server
     constructor: ->
@@ -495,7 +494,7 @@ parse_command = (msg) ->
 #
 #  -Or overriding the get_commands method altogether
 #
-bbserver.CommandTree = class CommandTree extends events.EventEmitter
+bbserver.CommandTree = class CommandTree
     constructor: (@subcommands) ->
         @subcommands ?= {}
 
