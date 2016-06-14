@@ -325,7 +325,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     emit: (event, args...) ->
         handlers = @_handers[event] ? []
         for handler in handlers
-            handler args...
+            handler.apply this, args
 
     #We want to check to see if there is a template defined for this object...
     #if so, we add those commands to the existing list of subcommands.
