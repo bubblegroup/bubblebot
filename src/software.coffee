@@ -41,7 +41,7 @@ software.Software = class Software
             if command.log
                 u.log command.log
             else
-                instance.run(command.cmd, {timeout: 300000, no_log: command.no_log})
+                instance.run(command.cmd, {timeout: command.timeout ? 300000, no_log: command.no_log})
 
     #Adds the given software to this stack.  Returns itself to ease chaining.
     add: (pkg) ->
@@ -51,11 +51,13 @@ software.Software = class Software
         return this
 
     #Runs the given command as part of this package.  Returns itself to ease chaining
-    run: (cmd) ->
+    run: (cmd, additonal) ->
         if @locked
             throw new Error 'locked!'
         if typeof(cmd) is 'string'
             cmd = {cmd}
+        if additional?
+            u.extend cmd, additional
         @commands.push cmd
         return this
 
