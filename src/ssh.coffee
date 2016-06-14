@@ -4,20 +4,31 @@ ssh = exports
 #preferably all at once, but if a slow-running command has periodic output we
 #log every 30 seconds
 class LogFlusher
-    constructor: (@logger) ->
+    constructor: (@name, @logger) ->
         @queue = []
 
         @flush_scheduled = null
 
     write: (data) ->
+        if @_finished
+            throw new Error 'writing to a finished flusher'
         @queue.push data
 
         if not @flush_scheduled?
             setTimeout @flush.bind(this), 30000
 
-    flush: ->
-        @logger @queue.join('')
-        @queue = []
+    flush: (finished) ->
+        if finished
+            @_finished = true
+
+        if @queue.length > 0
+            output = @queue.join('')
+            if not finished
+                output = "[partial #{@name}]: " + output
+
+            @logger output
+            @queue = []
+
         if @flush_scheduled?
             clearTimeout @flush_scheduled
             @flush_scheduled = null
@@ -38,8 +49,8 @@ ssh.run = (host, private_key, cmd, options) ->
 
     exit_code = null
 
-    stdout_log = new LogFlusher logger
-    stderr_log = new LogFlusher logger
+    stdout_log = new LogFlusher 'stdout', logger
+    stderr_log = new LogFlusher 'stderr', logger
 
     close_block = u.Block('ssh.run close block')
     block = u.Block('ssh.run')
@@ -80,8 +91,8 @@ ssh.run = (host, private_key, cmd, options) ->
     stream.removeListener 'close', on_close
     stream.removeListener 'end', on_end
 
-    stdout_log.flush()
-    stderr_log.flush()
+    stdout_log.flush(true)
+    stderr_log.flush(true)
 
     output = output.join ''
 
@@ -102,7 +113,7 @@ ssh.upload_file = (host, privateKey, filename, path) ->
 ssh.write_file = (host, privateKey, destination, content) ->
     block = u.Block 'write_file'
     client = new scp2.Client {host, privateKey, username: 'ec2-user'}
-    client.write {destination, content}, block.make_Cb()
+    client.write {destination, content}, block.make_cb()
     block.wait()
 
 exec_ssh = (host, private_key, cmd) ->
