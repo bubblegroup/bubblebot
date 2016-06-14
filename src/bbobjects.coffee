@@ -968,9 +968,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
 
     #Given a server id, returns an AMI id
-    create_ami_from_server: (server_id, name) ->
+    create_ami_from_server: (server, name) ->
         results = @ec2 'createImage', {
-            InstanceId: server_id
+            InstanceId: server.id
             Name: name
             NoReboot: false
         }

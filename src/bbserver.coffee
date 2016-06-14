@@ -494,7 +494,7 @@ parse_command = (msg) ->
 #
 #  -Or overriding the get_commands method altogether
 #
-bbserver.CommandTree = class CommandTree
+bbserver.CommandTree = class CommandTree extends events.EventEmitter
     constructor: (@subcommands) ->
         @subcommands ?= {}
 
@@ -1260,3 +1260,4 @@ tasks = require './tasks'
 monitoring = require './monitoring'
 url = require 'url'
 util = require 'util'
+events = require 'events'
