@@ -920,7 +920,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
 #codebase: -> returns the codebase object for this build
 #verify: (ec2instance) -> verifies that the build is complete (ie, if stuff should be running, that it's running)
 #software: (version) -> returns the software that gets run on top of the AMI.
-#ami_software: -> returns the software that gets run to create the AMI
+#ami_software: (lowest_version) -> returns the software that gets run to create the AMI
 #termination_delay: -> how long to wait before terminating an instance after a graceful shutdown
 #default_size: (instance) -> see function of same name on bbobjects.EC2Build
 

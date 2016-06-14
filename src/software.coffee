@@ -40,6 +40,8 @@ software.Software = class Software
         for command in @get_commands()
             if command.log
                 u.log command.log
+            else if command.fn
+                command.fn instance
             else
                 instance.run(command.cmd, {timeout: command.timeout ? 300000, no_log: command.no_log})
 
@@ -60,6 +62,12 @@ software.Software = class Software
             u.extend cmd, additional
         @commands.push cmd
         return this
+
+    #Runs the given function as part of this package
+    call: (fn) ->
+        if @locked
+            throw new Error 'locked!'
+        @commands.push {fn}
 
     #indicates that we are complete.  this is to avoid accidentally modifying built-in software
     lock: -> @locked = true

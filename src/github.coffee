@@ -119,7 +119,8 @@ github.Repo = class Repo
     clone_software: (ref, destination) ->
         pkg = new software.Software()
         pkg.run "git clone -n git@github.com:#{@org}/#{@project}.git #{destination}"
-        pkg.run "cd #{destination} && git checkout #{ref}"
+        if ref
+            pkg.run "cd #{destination} && git checkout #{ref}"
         return pkg
 
 

@@ -1654,6 +1654,21 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         codebase: @codebase()
     }
 
+    #Get the lowest version of this build in the given region.  Useful for building
+    #lowest-common-denominator AMIs
+    #
+    #Returns null if missing
+    lowest_version: (region) ->
+        environment = bbobjects.get_default_dev_environment region
+        lowest = null
+        for ec2instance in environment.describe_instances({})
+            if ec2instance.template().id is @id
+                version = ec2instance.get 'software_version'
+                if version
+                    if not lowest? or @codebase().ahead_of lowest, version
+                        lowest = version
+        return lowest
+
     #Retrieves the codebase object for this build
     codebase: -> @template().codebase()
 
@@ -1744,7 +1759,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
         #Build an instance to create the AMI from
         template = @template()
-        ec2instance = @_build environment, template.ami_build_size(), 'AMI build for ' + this, template.base_ami(region), template.ami_software(), false
+        ec2instance = @_build environment, template.ami_build_size(), 'AMI build for ' + this, template.base_ami(region), template.ami_software(@lowest_version(region)), false
 
         #Create the ami
         new_ami = environment.create_ami_from_server ec2instance, @id
