@@ -1295,7 +1295,12 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Creates the service for this environment with the given template name.  Does nothing if it
     #already exists
-    create_service: (template_name) -> @get_service template_name, true
+    create_service: (template_name) ->
+        if @get_service template_name
+            u.reply 'Service already exists'
+            return
+        @get_service template_name, true
+        u.reply 'Service created'
 
     create_service_cmd: ->
         help: 'Creates the given service in this environment'
