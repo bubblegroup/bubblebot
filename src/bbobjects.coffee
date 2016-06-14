@@ -934,6 +934,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         dangerous: -> return not @is_development()
 
+        reply: true
+
     #Creates and returns a new ec2 server in this environment, and returns the id
     #
     #ImageId and InstanceType are the ami and type to create this with
