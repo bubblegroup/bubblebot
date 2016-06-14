@@ -1,6 +1,7 @@
 bbserver = exports
 
 constants = require './constants'
+events = require 'events'
 
 bbserver.Server = class Server
     constructor: ->
@@ -1260,4 +1261,3 @@ tasks = require './tasks'
 monitoring = require './monitoring'
 url = require 'url'
 util = require 'util'
-events = require 'events'
