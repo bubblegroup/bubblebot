@@ -1938,10 +1938,10 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     set_status: (status) ->
         u.log 'setting status of ' + this + ' to ' + status
         @set 'status', status
-        @emit 'status_change', status
 
         new_name = @get('name') + ' (' + status + ')'
         @environment().tag_resource @id, 'Name', new_name
+        @on_status_change? status
 
     name: -> @get('name') ? @bubblebot_role()
 
