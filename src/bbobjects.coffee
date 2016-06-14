@@ -1916,6 +1916,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             bubblebot_role: @bubblebot_role()
             tags: (k + ': ' +v for k, v of @get_tags()).join(', ')
             age: u.format_time(Date.now() - @launch_time())
+            InstanceType: @get_data()?.InstanceType
             expires_in
         }
 
