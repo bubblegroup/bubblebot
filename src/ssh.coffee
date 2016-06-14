@@ -9,13 +9,18 @@ class LogFlusher
 
         @flush_scheduled = null
 
+        if @logger is console.log
+            @interval = 1000
+        else
+            @interval = 30000
+
     write: (data) ->
         if @_finished
             throw new Error 'writing to a finished flusher'
         @queue.push data
 
         if not @flush_scheduled?
-            @flush_scheduled = setTimeout @flush.bind(this), 30000
+            @flush_scheduled = setTimeout @flush.bind(this), @interval
 
     flush: (finished) ->
         if finished
