@@ -3,7 +3,7 @@ tasks = exports
 #Define built in schedules that we initialize on server start
 tasks.schedules =
     audit_all_instances:
-        interval: 60 * 60 * 1000
+        interval: 20 * 60 * 1000
         task: 'audit_instances'
         data: {auto_delete_mode: true}
     audit_all_instances_and_report:
