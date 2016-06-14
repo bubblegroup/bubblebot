@@ -135,7 +135,8 @@ templates.Service = class Service
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
         #Replace the existing servers with the new version
-        @replace instance
+        u.retry 3, 30000, =>
+            @replace instance
 
         #Let the user know we are finished
         u.reply 'We are finished rolling out the new version. Consider creating an announcement: http://forum.bubble.is/new-topic?title=[New%20Feature]&category=Announcements'
