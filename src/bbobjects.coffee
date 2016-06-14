@@ -302,6 +302,10 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         #Add the 'child' command
         @add 'child', new ChildCommand this
 
+    #On startup, call this templates' startup function with this
+    startup: ->
+        @template?()?.startup(this)
+
     #We want to check to see if there is a template defined for this object...
     #if so, we add those commands to the existing list of subcommands.
     #
@@ -1600,8 +1604,8 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     #On startup, we make sure we are monitoring this
     startup: ->
+        super()
         u.context().server?.monitor this
-        @template().startup?(this)
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: -> @template().get_monitoring_policy this
@@ -1731,6 +1735,8 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
     #Make sure we are scheduling replacing
     startup: ->
+        super()
+
         if not @template().ami_software()?
             return
 
@@ -1752,6 +1758,10 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         if not @template().ami_software()?
             u.reply 'this build does not have an ami'
             return
+
+        #make sure we exist in the database
+        if not @exists()
+            @create()
 
         u.reply 'Replacing AMI for ' + this + ' in region ' + region
 
