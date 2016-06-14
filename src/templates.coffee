@@ -327,6 +327,9 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
 
     endpoint: (instance) -> @switcher(instance).endpoint()
 
+    #Returns the ec2 instance that is currently live
+    get_active_instance: (instance) -> @switcher(instance).get_instance()
+
     #Called on each service instance when bubblebot starts up
     startup: (instance) ->
         #make sure that our instance matches our version
