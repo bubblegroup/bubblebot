@@ -1,5 +1,26 @@
 ssh = exports
 
+#As we get output from the server, we want to write it to our logger in chunks...
+#preferably all at once, but if a slow-running command has periodic output we
+#log every 30 seconds
+class LogFlusher
+    constructor: (@logger) ->
+        @queue = []
+
+        @flush_scheduled = null
+
+    write: (data) ->
+        @queue.push data
+
+        if not @flush_scheduled?
+            setTimeout @flush.bind(this), 30000
+
+    flush: ->
+        @logger @queue.join('')
+        @queue = []
+        if @flush_scheduled?
+            clearTimeout @flush_scheduled
+            @flush_scheduled = null
 
 ssh.run = (host, private_key, cmd, options) ->
     {can_fail, timeout, no_log} = options ? {}
@@ -17,15 +38,18 @@ ssh.run = (host, private_key, cmd, options) ->
 
     exit_code = null
 
+    stdout_log = new LogFlusher logger
+    stderr_log = new LogFlusher logger
+
     close_block = u.Block('ssh.run close block')
     block = u.Block('ssh.run')
     on_data = (data) ->
-        logger data
+        stdout_log.write data
         output.push data
     stream.on 'data', on_data
 
     on_stderr_data = (data) ->
-        logger data
+        stderr_log.write data
         output.push data
     stream.stderr.on 'data', on_stderr_data
 
@@ -55,6 +79,9 @@ ssh.run = (host, private_key, cmd, options) ->
     stream.removeListener 'error', on_error
     stream.removeListener 'close', on_close
     stream.removeListener 'end', on_end
+
+    stdout_log.flush()
+    stderr_log.flush()
 
     output = output.join ''
 
