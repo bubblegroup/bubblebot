@@ -926,7 +926,7 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
 #
 templates.EC2Build = class EC2Build
     #The size of the box we use to build the AMI on
-    ami_build_size: -> 't2.nano'
+    ami_build_size: -> 't2.micro'
 
     #The AMI we use as a base for creating our more-specific AMI.
     #
