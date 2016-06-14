@@ -926,6 +926,20 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
 
 #
 templates.EC2Build = class EC2Build
+    #This can get called with either a build object or an ec2instance
+    startup: (instance) ->
+        switch instance.type
+            when 'EC2Instance'
+                @startup_ec2_instance? instance
+            when 'EC2Build'
+                @startup_ec2_build? instance
+            else
+                throw new Error 'unrecognized ' + instance.type
+
+    startup_ec2_instance: -> #no-op
+
+    startup_ec2_build: -> #no-op
+
     #The size of the box we use to build the AMI on
     ami_build_size: -> 't2.micro'
 

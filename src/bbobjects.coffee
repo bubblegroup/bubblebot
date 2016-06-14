@@ -304,7 +304,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #On startup, call this templates' startup function with this
     startup: ->
-        @template?()?.startup(this)
+        @template?()?.startup?(this)
 
     #We want to check to see if there is a template defined for this object...
     #if so, we add those commands to the existing list of subcommands.
