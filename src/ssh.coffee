@@ -9,7 +9,7 @@ class LogFlusher
 
         @flush_scheduled = null
 
-        if @logger is console.log
+        if @logger.is_console
             @interval = 1000
         else
             @interval = 30000

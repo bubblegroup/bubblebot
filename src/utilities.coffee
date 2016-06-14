@@ -121,9 +121,12 @@ u.confirm = (msg) -> return u.get_logger('confirm') msg
 #Logs a message to the current context
 u.log = (msg) -> u.get_logger('log') msg
 
+bound_console = console.log.bind(console)
+bound_console.is_console = true
+
 #Gets a log function.  Sees if it is set in the current context... if not, uses the default logger
 u.get_logger = (log_fn) ->
-    u.context()?.loggers?[log_fn] ? u.default_loggers?[log_fn] ? console.log.bind(console)
+    u.context()?.loggers?[log_fn] ? u.default_loggers?[log_fn] ? bound_console
 
 #Sets a function in the current context
 u.set_logger = (name, fn) ->
