@@ -2016,7 +2016,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             {name: 'confirm',  type: 'boolean', help: 'Are you sure you want to terminate this server?'}
         dangerous: -> @environment().is_production()
         groups: ->
-            if @environment().is_production() or @owner().id isnt u.current_user().id
+            if @environment().is_production() or @owner()?.id isnt u.current_user().id
                 return constants.ADMIN
             else
                 return constants.BASIC
