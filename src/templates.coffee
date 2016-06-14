@@ -141,6 +141,7 @@ templates.Service = class Service
         #Let the user know we are finished
         u.reply 'We are finished rolling out the new version. Consider creating an announcement: http://forum.bubble.is/new-topic?title=[New%20Feature]&category=Announcements'
 
+    on_startup: -> #no op
 
     #Returns true if version is ahead of the currently deployed version (or rollback is true)
     version_ahead: (instance, version, rollback) ->
@@ -331,16 +332,16 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
     #Returns the ec2 instance that is currently live
     get_active_instance: (instance) -> @switcher(instance).get_instance()
 
-    #Called on each service instance when bubblebot starts up
-    register_handlers: (instance) =>
-        @on 'startup', =>
-            #make sure that our instance matches our version
-            version = instance.version()
-            if version
-                active_version = @switcher(instance).get_instance()?.get('software_version')
-                if active_version isnt version
-                    u.announce "#{instance} has a version mismatch: should be #{version} but is #{active_version}.  About to replace it..."
-                    u.context().server.run_fiber "Replacing #{instance}", @replace.bind(this, instance)
+    on_startup: (instance) ->
+        super()
+
+        #make sure that our instance matches our version
+        version = instance.version()
+        if version
+            active_version = @switcher(instance).get_instance()?.get('software_version')
+            if active_version isnt version
+                u.announce "#{instance} has a version mismatch: should be #{version} but is #{active_version}.  About to replace it..."
+                u.context().server.run_fiber "Replacing #{instance}", @replace.bind(this, instance)
 
 
     replace: (instance) ->
@@ -928,18 +929,18 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
 #
 templates.EC2Build = class EC2Build
     #This can get called with either a build object or an ec2instance
-    register_handlers: (instance) ->
+    on_startup: (instance) ->
         switch instance.type
             when 'EC2Instance'
-                @register_handlers_ec2_instance? instance
+                @on_startup_ec2_instance instance
             when 'EC2Build'
-                @register_handlers_ec2_build? instance
+                on_startup_ec2_build instance
             else
                 throw new Error 'unrecognized ' + instance.type
 
-    register_handlers_ec2_instance: -> #no-op
+    on_startup_ec2_instance: -> #no-op
 
-    register_handlers_ec2_build: -> #no-op
+    on_startup_ec2_build: -> #no-op
 
     #The size of the box we use to build the AMI on
     ami_build_size: -> 't2.micro'

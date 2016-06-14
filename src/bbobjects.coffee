@@ -3,7 +3,6 @@ bbobjects = exports
 constants = require './constants'
 bbserver = require './bbserver'
 
-bbobjects_cache = {}
 #Retrieves an object with the given type and id
 bbobjects.instance = (type, id) ->
     if not bbobjects[type]
@@ -11,15 +10,7 @@ bbobjects.instance = (type, id) ->
     if not id
         throw new Error 'missing id: ' + id
 
-    #If db is not set, we don't want to load from cache, because we might not be able
-    #to run all the startup code
-    if not u.context().db
-        return new bbobjects[type] type, id
-
-    key = type + '_' + id
-    if not bbobjects_cache[key]
-        bbobjects_cache[key] = new bbobjects[type] type, id
-    return bbobjects_cache[key]
+    return new bbobjects[type] type, id
 
 #Returns the bubblebot environment
 bbobjects.bubblebot_environment = ->
@@ -312,28 +303,9 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         #Add the 'child' command
         @add 'child', new ChildCommand this
 
-        #Register event handlers
-        if not u.context().db
-            #We can't do this without DB (so we don't cache instances created without a db)
-            return
-        @_handlers = {}
-        @register_handlers()
-
-    #Hook for making sure all event handlers are registered for this instance
-    register_handlers: ->
-        @template?()?.register_handlers?(this)
-
-    #Register a handler function for this event.
-    on: (event, handler) ->
-        @_handers[event] ?= []
-        @_handers[event].push handler
-
-    #Emits the given event.  Runs handlers sequentially in the same fiber,
-    #with no error handling (ie, all handlers have to succeed, or event will throw)
-    emit: (event, args...) ->
-        handlers = @_handers[event] ? []
-        for handler in handlers
-            handler.apply this, args
+    #Runs the startup function on the template if it exists
+    on_startup: ->
+        @template?()?.on_startup?(this)
 
     #We want to check to see if there is a template defined for this object...
     #if so, we add those commands to the existing list of subcommands.
@@ -474,7 +446,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
         u.db().create_object @type, @id, parent_type, parent_id, initial_properties
 
-        @emit 'startup'
+        @on_startup()
 
     #Deletes this object from the database
     delete: ->
@@ -1632,11 +1604,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Returns the current version of this service
     version: -> @get 'version'
 
-    #On startup, we make sure we are monitoring this
-    register_handlers: ->
+    on_startup: ->
         super()
-        @on 'startup', =>
-            u.context().server?.monitor this
+        u.context().server?.monitor this
+
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: -> @template().get_monitoring_policy this
@@ -1764,17 +1735,14 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         reply: true
         groups: constants.BASIC
 
-    #Make sure we are scheduling replacing
-    register_handlers: ->
+    on_startup: ->
         super()
+        if not @template().ami_software()?
+            return
 
-        @on 'startup', =>
-            if not @template().ami_software()?
-                return
-
-            interval = @template().get_replacement_interval()
-            if interval
-                @schedule_recurring 'replace_ami_all', {}, interval
+        interval = @template().get_replacement_interval()
+        if interval
+            @schedule_recurring 'replace_ami_all', {}, interval
 
     #Replaces the AMI for all active regions
     replace_ami_all: ->
