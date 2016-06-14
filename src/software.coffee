@@ -144,6 +144,7 @@ software.private_key = create (path) ->
 
     #Write the key
     key_data = fs.readFileSync path, 'utf8'
+    pkg.log 'Writing private key to ~/.ssh/id_rsa'
     pkg.run {cmd: 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', no_log: true}
     pkg.run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
 
