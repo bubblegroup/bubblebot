@@ -923,6 +923,17 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 throw new Error 'Could not retrieve private key for ' + keyname + '; deleted public key'
             throw err
 
+    get_private_key_cmd:
+        help: 'Gets the private key for logging into servers in this environment'
+
+        groups: ->
+            if @is_development()
+                return constants.BASIC
+            else
+                return constants.ADMIN
+
+        dangerous: -> return not @is_development()
+
     #Creates and returns a new ec2 server in this environment, and returns the id
     #
     #ImageId and InstanceType are the ami and type to create this with
