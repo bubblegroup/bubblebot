@@ -15,7 +15,7 @@ class LogFlusher
         @queue.push data
 
         if not @flush_scheduled?
-            setTimeout @flush.bind(this), 30000
+            @flush_scheduled = setTimeout @flush.bind(this), 30000
 
     flush: (finished) ->
         if finished
@@ -23,8 +23,6 @@ class LogFlusher
 
         if @queue.length > 0
             output = @queue.join('')
-            if not finished
-                output = "[partial #{@name}]: " + output
 
             @logger output
             @queue = []
