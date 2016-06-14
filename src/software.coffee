@@ -51,7 +51,7 @@ software.Software = class Software
         return this
 
     #Runs the given command as part of this package.  Returns itself to ease chaining
-    run: (cmd, additonal) ->
+    run: (cmd, additional) ->
         if @locked
             throw new Error 'locked!'
         if typeof(cmd) is 'string'
