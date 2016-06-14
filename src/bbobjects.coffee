@@ -18,7 +18,7 @@ bbobjects.instance = (type, id) ->
 
 #Returns the bubblebot environment
 bbobjects.bubblebot_environment = ->
-    environment = bbobjects.instance 'Environment', 'bubblebot'
+    environment = bbobjects.instance 'Environment', constants.BUBBLEBOT_ENV
 
     return environment
 
@@ -793,6 +793,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
     is_production: -> @get('type') is PROD
 
     template: ->
+        if @id is constants.BUBBLEBOT_ENV
+            return null
         template = @get 'template'
         if not template
             return null
@@ -1033,7 +1035,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
 
         #If this is not bubblebot, add the bubblebot security group
-        if @id isnt 'bubblebot'
+        if @id isnt constants.BUBBLEBOT_ENV
             bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
             #Allow bubblebot to connect on any port
             rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}], IpProtocol: '-1'}
@@ -1059,7 +1061,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             if external
                 rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
             #if this is not bubblebot, let the bubblebot server connect
-            if @id isnt 'bubblebot'
+            if @id isnt constants.BUBBLEBOT_ENV
                 bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
                 #Allow bubblebot to connect on this port
                 rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
@@ -1273,7 +1275,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     allow_outside_ssh: ->
         #We allow direct SSH connections to bubblebot to allow for deployments.
         #The security key for connecting should NEVER be saved locally!
-        if @id is 'bubblebot'
+        if @id is constants.BUBBLEBOT_ENV
             true
         else
             return @is_development()
