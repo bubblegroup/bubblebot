@@ -11,6 +11,11 @@ bbobjects.instance = (type, id) ->
     if not id
         throw new Error 'missing id: ' + id
 
+    #If db is not set, we don't want to load from cache, because we might not be able
+    #to run all the startup code
+    if not u.context().db
+        return new bbobjects[type] type, id
+
     key = type + '_' + id
     if not bbobjects_cache[key]
         bbobjects_cache[key] = new bbobjects[type] type, id
@@ -308,6 +313,9 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         @add 'child', new ChildCommand this
 
         #Register event handlers
+        if not u.context().db
+            #We can't do this without DB (so we don't cache instances created without a db)
+            return
         @_handlers = {}
         @register_handlers()
 
