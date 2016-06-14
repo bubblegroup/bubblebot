@@ -41,7 +41,7 @@ commands.publish = (access_key, secret_access_key) ->
         #First, try the quick version.  On error, do a full version
         try
             bbserver.run("cd bubblebot && git pull")
-            bbserver.run("cd bubblebot && npm install")
+            bbserver.run("cd bubblebot && npm install", {timeout: 300000})
 
         catch err
             u.log 'Error trying quick update.  Will do full update.  Error:\n' + err.stack
@@ -52,7 +52,7 @@ commands.publish = (access_key, secret_access_key) ->
             #Clone our bubblebot installation to a fresh directory, and run npm install and npm test
             install_dir = 'bubblebot-' + Date.now()
             bbserver.run('git clone ' + config.get('remote_repo') + ' ' + install_dir)
-            bbserver.run("cd #{install_dir} && npm install")
+            bbserver.run("cd #{install_dir} && npm install", {timeout: 300000})
 
             #Create a symbolic link pointing to the new directory, deleting the old one if it exits
             bbserver.run('rm -rf bubblebot-old', {can_fail: true})
