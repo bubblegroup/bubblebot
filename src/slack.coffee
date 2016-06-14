@@ -61,6 +61,10 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         if not channel.is_im
             return
 
+        #if there is no user, ignore it
+        if not message.user
+            return
+
         text = message.text
 
         #If we are already talking to this user, send the message to the conversation
@@ -70,7 +74,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
             delete @talking_to[message.user]
             return
 
-        #otherwise, interpet this as a new conversation
+        #otherwise, interpret this as a new conversation
         @emit 'new_conversation', message.user, text
 
     #Sends a message to the indicated user
