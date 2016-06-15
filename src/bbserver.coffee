@@ -1078,8 +1078,18 @@ class Update extends Command
 
     run: ->
         u.reply 'Updating...'
-        u.run_local('git pull')
-        u.run_local('npm install')
+
+        #Clone our bubblebot installation to a fresh directory, and run npm install and npm test
+        install_dir = 'bubblebot-' + Date.now()
+        u.run_local('cd .. && git clone ' + config.get('remote_repo') + ' ' + install_dir)
+        u.run_local("cd ../#{install_dir} && npm install", {timeout: 300000})
+
+        #Create a symbolic link pointing to the new directory, deleting the old one if it exits
+        bbserver.run('rm -rf ../bubblebot-old', {can_fail: true})
+        bbserver.run("mv $(readlink ../#{config.get('install_directory')}) ../bubblebot-old", {can_fail: true})
+        bbserver.run('unlink ../' + config.get('install_directory'), {can_fail: true})
+        bbserver.run('ln -s ../' + install_dir + ' ../' + config.get('install_directory'))
+
         u.reply 'Doing a graceful shutdown...'
         @server.graceful_shutdown()
 
