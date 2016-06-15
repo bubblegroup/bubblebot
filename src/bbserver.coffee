@@ -136,6 +136,8 @@ bbserver.Server = class Server
 
                 u.log 'Running startup'
 
+                @create_sub_logger 'startup'
+
                 #Make sure we have at least one user who is an admin
                 @get_admins()
 
