@@ -176,9 +176,9 @@ templates.Service = class Service
 
         get_message = ->
             if saved
-                message = u.ask 'Please enter a message to describe this deployment, or type "go" to use the last message (' + saved + ')'
+                message = u.ask 'Please enter a message to describe this deployment, or type "go" to use the last message (' + saved.message + ')'
                 if message.toLowerCase().trim() is 'go'
-                    message = saved
+                    message = saved.message
             else
                 message = u.ask 'Please enter a message to describe this deployment'
 
