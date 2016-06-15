@@ -336,16 +336,15 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return u.extend {}, children, template_commands, @subcommands
 
     #Schedule a method of this object as a recurring task.  Idempotent operation; we schedule
-    #at most one [method, object, variant] combination.  variant is an optional and exists to
+    #at most one [object, schedule_name, method] combination.  variant exists to
     #allow multiple schedules / property combinations for the same method.
-    schedule_recurring: (method, properties, interval, variant) ->
-        schedule_name = 'call_object_method.' + @type + '.' + @id + '.' + method + '.' + (variant ? '')
-        u.context().server.schedule_recurring schedule_name, interval, 'call_object_method', {object_type: @type, object_id: @id, method, properties}
+    schedule_recurring: (interval, schedule_name, method, params...) ->
+        schedule_name = @type + '.' + @id + '.' + schedule_name + '.' method
+        u.context().server.schedule_recurring interval, schedule_name, @type, @id, method, params...
 
     #Schedule a method of this object as a one time task
-    schedule_once: (method, properties, timeout) ->
-        u.context().server.schedule_once timeout, 'call_object_method', {object_type: @type, object_id: @id, method, properties}
-
+    schedule_once: (timeout, method, params...) ->
+        u.context().server.schedule_once timeout, @type, @id, method, params...
 
     #If we want to call a command added via a template from our own code, this returns
     #the function (pre-bound)
@@ -804,7 +803,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         #Make sure we remind the user to destroy this when finished
         interval = hours * 60 * 60 * 1000
         box.set 'expiration_time', Date.now() + (interval * 2)
-        u.context().schedule_once interval, 'follow_up_on_instance', {id: box.id}
+        box.schedule_once interval, 'follow_up'
 
         u.reply 'Okay, your box is ready:\n' + box.describe()
 
@@ -1462,6 +1461,73 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
     get_credential: (name) ->
         @get 'credential_' + name
 
+    #Goes through and audits instances to see if they should be deleted
+    audit_instances: (auto_delete_mode, override_check) ->
+        #if we are in autodelete mode, we want to do this hourly, if we are in report
+        #mode we want to do it daily.  we abort if the mode doesn't match our autodelete setting
+        autodelete = if config.get('audit_instances_autodelete', false) then true else false
+        auto_delete_mode ?= false
+        if autodelete isnt auto_delete_mode and not override_check
+            return
+
+        all_instances = bbobjects.get_all_instances()
+
+        to_delete = []
+
+        for instance in all_instances
+            #if it is newer than 10 minutes, skip it
+            if Date.now() - instance.launch_time() < 10 * 60 * 1000
+                continue
+
+            #if it is not saved in the database, this is a good candidate for deletion...
+            if not instance.exists()
+                if not instance.bubblebot_role()
+                    to_delete.push {instance, reason: 'instance not in database'}
+
+            #otherwise, see if we know why it should exist
+            else
+                #make sure the parent exists
+                parent = instance.parent()
+                if not parent?.exists()
+                    to_delete.push {instance, reason: 'parent does not exist'}
+
+                if parent.should_delete?(instance)
+                    to_delete.push {instance, reason: 'parent says we should delete this'}
+
+        #If autodelete is set, actually do the delete, otherwise just announce.
+        msg = (String(instance) + ': ' + reason for {instance, reason} in to_delete).join('\n')
+
+        if to_delete.length > 0
+            if autodelete
+                u.announce 'Automatically cleaning up unused instances:\n\n' + msg
+                for {instance, reason} in to_delete
+                    instance.terminate()
+            else
+                u.report "There are some instances that look like they should be deleted.
+                To autodelete them, set bubblebot configuration setting audit_instances_autodelete to true.  They are:\n\n" + msg
+
+
+    audit_instances_cmd: ->
+        autodelete = config.get('audit_instances_autodelete', false)
+        if autodelete
+            groups = constants.BASIC
+        else
+            groups = constants.ADMIN
+        params = [
+            {name: 'auto delete mode', type: 'boolean', help: 'If true, actually deletes the servers instead of just listing them'}
+        ]
+        if not autodelete
+            params.push {name: 'override check', type: 'boolean', help: 'Need to set this to true to set auto delete mode to true'}
+
+        return {
+            help: 'Cleans up old instances.\nSearches ALL environments, not just the one you call it one.\nIf auto_delete_mode is true, actually does the deletes, otherwise just lists them'
+            params
+            groups
+        }
+
+
+
+
 
 bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Adds it to the database
@@ -1760,7 +1826,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
         interval = @template().get_replacement_interval()
         if interval
-            @schedule_recurring 'replace_ami_all', {}, interval
+            @schedule_recurring interval, 'refresh', 'replace_ami_all'
 
     #Replaces the AMI for all active regions
     replace_ami_all: ->
@@ -1842,7 +1908,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
         #Schedule a termination
         termination_delay = template.termination_delay()
-        u.context().schedule_once termination_delay, 'terminate_instance', {id: ec2instance.id}
+        ec2instance.schedule_once termination_delay, 'terminate'
 
         #Tell the server to begin its graceful shutdown
         template.graceful_shutdown ec2instance
@@ -1872,6 +1938,28 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         ec2instance.set 'expiration_time', Date.now() + 60 * 60 * 1000
 
         return ec2instance
+
+    #Checks to see if the owner still needs this instance
+    follow_up: ->
+        owner = @owner()
+        if not owner
+            u.report 'Following up on destroying an ec2 instance without an owner: ' + @id
+            return
+
+        still_need = bbserver.do_cast 'boolean', u.ask('Hey, do you still need the server you created called ' + @get('name') + '?  If not, we will delete it for you', owner.id)
+        if still_need
+            params = {
+                type: 'number'
+                validate: bbobjects.validate_destroy_hours
+            }
+            hours = bbserver.do_cast params, u.ask("Great, we will keep it for now.  How many more hours do you think you need it around for?", owner.id)
+            interval = hours * 60 * 60 * 1000
+            instance.set 'expiration_time', Date.now() + (interval * 2)
+            @schedule_once interval, 'follow_up'
+        else
+            u.message owner.id, "Okay, we are terminating the server now..."
+            @terminate()
+
 
 
 

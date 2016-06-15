@@ -2,11 +2,13 @@ bbserver = exports
 
 constants = require './constants'
 
+#Schedule name for one-time tasks
+ONCE = 'once'
+
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand(this)
         @_monitor = new monitoring.Monitor(this)
-        @_registered_tasks = {}
 
     _build_bbdb: ->
         #Make sure the database exists.  This will also set u.context().db
@@ -240,40 +242,33 @@ bbserver.Server = class Server
         owner.add_to_group constants.ADMIN
         return [owner]
 
-    #Loads pre-built tasks and schedules
+    #Loads pre-built task schedules
     load_tasks: ->
-        for k, v of tasks.builtin
-            @register_task k, v
-
-        for schedule_name, {interval, task, data} of tasks.schedules
-            @schedule_recurring schedule_name, interval, task, data
+        for schedule_name, {interval, type, id, method, params} of tasks.schedules
+            @schedule_recurring interval, schedule_name, type, id, method, params...
 
 
     monitor: (object) -> @_monitor.monitor object
 
-    #registers a handler for a given task name
-    register_task: (task, fn) ->
-        @_registered_tasks[task] = fn
+    #Errors if we try to schedule a bad task
+    _check_valid_schedule: (type, id, method) ->
+        instance = bbobjects.instance(type, id)
+        if not instance.exists()
+            throw new Error 'trying to schedule a task on an instance that does not exist'
+        if not instance[method]
+            throw new Error 'Instance ' + String(instance) + ' does not have method ' + method
 
     #Schedules a task to run at a future time
-    schedule_once: (timeout, task, data) ->
-        if data.is_recurring_task
-            task_fn = data.task
-        else
-            task_fn = task
-
-        if not @_registered_tasks[task_fn]
-            throw new Error 'task ' + task + ' is not registered!'
-        u.db().schedule_task Date.now() + timeout, task, data
+    schedule_once: (timeout, type, id, method, params...) ->
+        @_check_valid_schedule type, id, method
+        u.db().schedule_task Date.now() + timeout, ONCE, {type, id, method, params}
 
     #Schedules a function to run on a regular basis
     #
-    #If a task with the same name is already scheduled, does nothing
-    schedule_recurring: (schedule_name, interval, task, data) ->
-        if not @_registered_tasks[task]
-            throw new Error 'task ' + task + ' is not registered!'
-        u.db().upsert_task schedule_name, {interval, is_recurring_task: true, task, data}
-
+    #If a task with the same schedule_name is already scheduled, does nothing
+    schedule_recurring: (interval, schedule_name, type, id, method, params...) ->
+        @_check_valid_schedule type, id, method
+        u.db().upsert_task schedule_name, {interval, type, id, method, params}
 
     #Executes scheduled tasks
     start_task_engine: ->
@@ -314,26 +309,23 @@ bbserver.Server = class Server
             @create_sub_logger "#{u.fiber_id()} Task #{task_data.task}"
             u.log 'Beginning task run: ' + JSON.stringify(task_data)
 
-            #Recurring tasks have the task name and data stored as sub-properties
-            if task_data.properties.is_recurring_task
-                task_fn = task_data.properties.task
-                data = task_data.properties.data
+            {interval, type, id, method, params} = task_data.properties
+            schedule_name = task_data.task
 
-            else
-                task_fn = task_data.task
-                data = task_data.properties
+            instance = bbobjects.instance(type, id)
+            if not instance.exists()
+                u.log 'Instance no longer exists, so aborting'
+                return
 
-            if not @_registered_tasks[task_fn]
-                throw new Error 'no task named ' + task_fn
+            instance[method] params...
 
-            @_registered_tasks[task_fn] data
-            u.log 'Task completed successfully: ' + JSON.stringify(task_data)
+            u.log 'Task completed successfully'
 
         catch err
             #If the user cancels this task, or times out replying, reschedule it in 12 hours
             if err.reason in [u.CANCEL, u.USER_TIMEOUT]
                 u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
-                @schedule_once 12 * 60 * 60 * 1000, task_data.task, task_data.properties
+                u.db().schedule_task Date.now() + 12 * 60 * 60 * 1000, schedule_name, task_data.properties
             #If the task was cancelled externally, just log it
             else if err.reason in u.EXTERNAL_CANCEL
                 u.uncancel_fiber()
@@ -342,8 +334,8 @@ bbserver.Server = class Server
                 u.report 'Unexpected error running task ' + JSON.stringify(task_data) + '.  Error was: ' + (err.stack ? err)
         finally
             #We always want to make sure scheduled tasks get rescheduled
-            if task_data.properties.is_recurring_task
-                @schedule_once task_data.properties.interval, task_data.task, task_data.properties
+            if schedule_name isnt ONCE
+                u.db().schedule_task Date.now() + task_data.properties.interval, schedule_name, task_data.properties
 
             #Mark the task as complete.
             u.db().complete_task task_data.id
