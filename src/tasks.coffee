@@ -9,14 +9,14 @@ tasks.schedules =
         type: 'Environment'
         id: constants.BUBBLEBOT_ENV
         method: 'audit_instances'
-        params: [true]
+        params: [true, true]
 
     audit_all_instances_and_report:
         interval: 24 * 60 * 60 * 1000
         type: 'Environment'
         id: constants.BUBBLEBOT_ENV
         method: 'audit_instances'
-        params: []
+        params: [false, true]
 
 bbobjects = require './bbobjects'
 bbserver = require './bbserver'

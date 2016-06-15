@@ -1434,13 +1434,17 @@ bbobjects.Environment = class Environment extends BubblebotObject
         help: 'Recursively deletes children from the database that used to correspond to an AWS object that we can no longer find'
 
     #Goes through and audits instances to see if they should be deleted
-    audit_instances: (auto_delete_mode, override_check) ->
+    audit_instances: (auto_delete_mode, from_scheduled) ->
         #if we are in autodelete mode, we want to do this hourly, if we are in report
         #mode we want to do it daily.  we abort if the mode doesn't match our autodelete setting
-        autodelete = if config.get('audit_instances_autodelete', false) then true else false
-        auto_delete_mode ?= false
-        if autodelete isnt auto_delete_mode and not override_check
-            return
+        if from_scheduled
+            autodelete = if config.get('audit_instances_autodelete', false) then true else false
+            auto_delete_mode ?= false
+            if autodelete isnt auto_delete_mode and not override_check
+                return
+        else
+            #If the user called it, we trust what they passed in
+            autodelete = auto_delete_mode
 
         all_instances = bbobjects.get_all_instances()
 
@@ -1471,12 +1475,20 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         if to_delete.length > 0
             if autodelete
-                u.announce 'Automatically cleaning up unused instances:\n\n' + msg
+                msg = 'Automatically cleaning up unused instances:\n\n' + msg
+                if from_scheduled
+                    u.announce msg
+                else
+                    u.reply msg
+
                 for {instance, reason} in to_delete
                     instance.terminate()
             else
-                u.report "There are some instances that look like they should be deleted.
-                To autodelete them, set bubblebot configuration setting audit_instances_autodelete to true.  They are:\n\n" + msg
+                msg = "There are some instances that look like they should be deleted.\nTo autodelete them, set bubblebot configuration setting audit_instances_autodelete to true, or call the environment audit_instances command.  They are:\n\n" + msg
+                if from_scheduled
+                    u.report msg
+                else
+                    u.reply msg
 
     audit_instances_cmd: ->
         autodelete = config.get('audit_instances_autodelete', false)
@@ -1484,11 +1496,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             groups = constants.BASIC
         else
             groups = constants.ADMIN
-        params = [
-            {name: 'auto delete mode', type: 'boolean', help: 'If true, actually deletes the servers instead of just listing them'}
-        ]
+        params = []
         if not autodelete
-            params.push {name: 'override check', type: 'boolean', help: 'Need to set this to true to set auto delete mode to true'}
+            params.push {name: 'auto delete mode', type: 'boolean', help: 'If true, actually deletes the servers instead of just listing them'}
 
         return {
             help: 'Cleans up old instances.\nSearches ALL environments, not just the one you call it one.\nIf auto_delete_mode is true, actually does the deletes, otherwise just lists them'
