@@ -339,7 +339,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     #at most one [object, schedule_name, method] combination.  variant exists to
     #allow multiple schedules / property combinations for the same method.
     schedule_recurring: (interval, schedule_name, method, params...) ->
-        schedule_name = @type + '.' + @id + '.' + schedule_name + '.' method
+        schedule_name = @type + '.' + @id + '.' + schedule_name + '.' + method
         u.context().server.schedule_recurring interval, schedule_name, @type, @id, method, params...
 
     #Schedule a method of this object as a one time task
