@@ -1507,7 +1507,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         else
             groups = constants.ADMIN
         params = [
-            params.push {name: 'aggressive', type: 'boolean', help: 'If true, deletes servers more aggressively.  Useful if we are running out of instances, but might delete recent failures, etc.'}
+            {name: 'aggressive', type: 'boolean', help: 'If true, deletes servers more aggressively.  Useful if we are running out of instances, but might delete recent failures, etc.'}
         ]
         if not autodelete
             params.push {name: 'auto delete mode', type: 'boolean', help: 'If true, actually deletes the servers instead of just listing them'}
