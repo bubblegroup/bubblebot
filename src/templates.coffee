@@ -334,7 +334,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
 
     on_startup: (instance) ->
         super()
-        ensure_version_deployed()
+        @ensure_version_deployed(instance)
 
     #Ensures that the version we've set is actually what's deployed
     ensure_version_deployed: (instance) ->
