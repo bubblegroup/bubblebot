@@ -987,7 +987,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         retries = 0
         while retries < 100
             data = @ec2 'describeImages', {ImageIds: [ImageId]}
-            state = data.State
+            state = data.Images?[0]?.State
             u.log 'Image state: ' + state
             if state is READY_STATE
                 break
