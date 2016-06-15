@@ -981,7 +981,25 @@ bbobjects.Environment = class Environment extends BubblebotObject
             NoReboot: false
         }
 
-        return results.ImageId
+        ImageId = results.ImageId
+        u.log 'Image ' + ImageId + ' created, waiting for it to become available'
+
+        READY_STATE = 'available'
+        retries = 0
+        while retries < 100
+            data = @ec2 'describeImages', {ImageIds: [ImageId]}
+            state = data.State
+            u.log 'Image state: ' + state
+            if state is READY_STATE
+                break
+
+            u.pause 10000
+            retries++
+
+        if state isnt READY_STATE
+            throw new Error 'timed out waiting for image ' + ImageId + ' to become available: ' + state
+
+        return ImageId
 
     #De-registers an AMI
     deregister_ami: (ami) ->
