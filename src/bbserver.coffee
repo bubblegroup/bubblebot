@@ -1153,6 +1153,7 @@ class RootCommand extends CommandTree
         @commands.env = new EnvTree()
         @commands.new = new New()
         @commands.servers = new ServersTree()
+        @commands.builds = new BuildsTree()
         @commands.ps = new PS()
         @commands.cancel = new Cancel()
         @commands.monitor = new Monitor(@server)
@@ -1191,6 +1192,16 @@ class ServersTree extends CommandTree
     get_commands: ->
         commands = {}
         for instance in bbobjects.get_all_instances()
+            commands[instance.id] = instance
+        return commands
+
+#A command tree that lets you navigate EC2Builds
+class BuildsTree extends CommandTree
+    help: 'Shows all builds'
+
+    get_commands: ->
+        commands = {}
+        for instance in bbobjects.list_all 'EC2Build'
             commands[instance.id] = instance
         return commands
 
