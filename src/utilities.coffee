@@ -383,7 +383,12 @@ u.sub_fiber = (fn) ->
     block = u.Block 'running sub-fiber'
     u.SyncRun ->
         try
-            Fiber.current.current_context = shared_context
+            Fiber.current.current_context = u.extend {}, shared_context
+            if Fiber.current.current_context.original_message
+                Fiber.current.current_context.original_message + ' (sub-fiber)'
+            if Fiber.current.current_context.name
+                Fiber.current.current_context.name + ' (sub-fiber)'
+
             block.success fn()
         catch err
             block.fail err
