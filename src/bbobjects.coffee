@@ -1441,6 +1441,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             autodelete = if config.get('audit_instances_autodelete', false) then true else false
             auto_delete_mode ?= false
             if autodelete isnt auto_delete_mode
+                u.log "Aborting: autodelete #{autodelete} does not match auto_delete_mode #{auto_delete_mode}"
                 return
         else
             #If the user called it, we trust what they passed in
