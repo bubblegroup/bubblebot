@@ -40,8 +40,6 @@
     "ssh2": "^0.5.0",
     "strip-json-comments": "^2.0.1",
     "tmp": "0.0.28"
-  },
-  "devDependencies": {
     "eslint": "^2.7.0"
   },
   "eslintConfig": {
