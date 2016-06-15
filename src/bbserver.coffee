@@ -1088,10 +1088,10 @@ class Update extends Command
         u.run_local("cd ../#{install_dir} && npm test", {timeout: 300000})
 
         #Create a symbolic link pointing to the new directory, deleting the old one if it exits
-        u.run_local('rm -rf ../bubblebot-old', {can_fail: true})
-        u.run_local("mv $(readlink #{config.get('install_directory')}) ../bubblebot-old", {can_fail: true})
-        u.run_local('unlink ' + config.get('install_directory'), {can_fail: true})
-        u.run_local('ln -s ../' + install_dir + ' ' + config.get('install_directory'))
+        u.run_local('cd .. && rm -rf bubblebot-old', {can_fail: true})
+        u.run_local("cd .. && mv $(readlink #{config.get('install_directory')}) bubblebot-old", {can_fail: true})
+        u.run_local('cd .. && unlink ' + config.get('install_directory'), {can_fail: true})
+        u.run_local('cd && ln -s ' + install_dir + ' ' + config.get('install_directory'))
 
         u.reply 'Doing a graceful shutdown...'
         @server.graceful_shutdown()
