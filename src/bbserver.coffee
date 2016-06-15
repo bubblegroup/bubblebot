@@ -1085,6 +1085,7 @@ class Update extends Command
         install_dir = 'bubblebot-' + Date.now()
         u.run_local('cd .. && git clone ' + config.get('remote_repo') + ' ' + install_dir)
         u.run_local("cd ../#{install_dir} && npm install", {timeout: 300000})
+        u.run_local("cd ../#{install_dir} && npm test", {timeout: 300000})
 
         #Create a symbolic link pointing to the new directory, deleting the old one if it exits
         u.run_local('rm -rf ../bubblebot-old', {can_fail: true})
