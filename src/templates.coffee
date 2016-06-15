@@ -934,7 +934,7 @@ templates.EC2Build = class EC2Build
             when 'EC2Instance'
                 @on_startup_ec2_instance instance
             when 'EC2Build'
-                on_startup_ec2_build instance
+                @on_startup_ec2_build instance
             else
                 throw new Error 'unrecognized ' + instance.type
 
