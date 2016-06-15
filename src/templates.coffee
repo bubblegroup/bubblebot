@@ -165,7 +165,7 @@ templates.Service = class Service
 
             #if the current version is ahead of its version, it means we succeeded in
             #deploying it already, so we should ignore it
-            if @codebase().ahead_of instance.version(), saved.version
+            if instance.version() and @codebase().ahead_of instance.version(), saved.version
                 saved = null
 
             #if the version we are deploying is not ahead of its version, it means
