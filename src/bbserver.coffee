@@ -1098,6 +1098,8 @@ class Update extends Command
 
     groups: constants.ADMIN
 
+    sublogger: true
+
 
 
 
