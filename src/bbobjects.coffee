@@ -1772,7 +1772,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         ec2instance = @_build environment, template.ami_build_size(), 'AMI build for ' + this, template.base_ami(region), template.ami_software(@lowest_version(region)), false
 
         #Create the ami
-        name = @id + ' ' + u.print_date(Date.now())
+        name = @id + ' ' + u.print_date(Date.now()).replace(/[^a-zA-Z0-9]/g, '-')
         new_ami = environment.create_ami_from_server ec2instance, name
 
         #Retrieve the existing AMI if there is one
