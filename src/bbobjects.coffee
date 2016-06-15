@@ -1433,34 +1433,6 @@ bbobjects.Environment = class Environment extends BubblebotObject
     remove_stale_entries_from_db_cmd:
         help: 'Recursively deletes children from the database that used to correspond to an AWS object that we can no longer find'
 
-
-#Represents a collection of (possibly secure) credentials
-bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
-    #Adds it to the database
-    create: (environment) ->
-        prefix = environment.id + '-'
-        if @id.indexOf(prefix) isnt 0
-            throw new Error 'CredentialSet ids should be of the form [environment id]_[set name]'
-        super parent.type, parent.id
-
-    set_name: ->
-        prefix = @environment().id + '-'
-        return @id[prefix.length...]
-
-    set_credential: (name, value, overwrite) ->
-        if not overwrite
-            prev = @get 'credential_' + name
-            if prev
-                u.reply 'There is already a credential for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name + '. To overwrite it, call this command again with overwrite set to true'
-                return
-        @set 'credential_' + name, value
-        msg = 'Credential set for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name
-        u.announce msg
-        u.reply msg
-
-    get_credential: (name) ->
-        @get 'credential_' + name
-
     #Goes through and audits instances to see if they should be deleted
     audit_instances: (auto_delete_mode, override_check) ->
         #if we are in autodelete mode, we want to do this hourly, if we are in report
@@ -1506,7 +1478,6 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
                 u.report "There are some instances that look like they should be deleted.
                 To autodelete them, set bubblebot configuration setting audit_instances_autodelete to true.  They are:\n\n" + msg
 
-
     audit_instances_cmd: ->
         autodelete = config.get('audit_instances_autodelete', false)
         if autodelete
@@ -1526,6 +1497,34 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
         }
 
 
+
+
+#Represents a collection of (possibly secure) credentials
+bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
+    #Adds it to the database
+    create: (environment) ->
+        prefix = environment.id + '-'
+        if @id.indexOf(prefix) isnt 0
+            throw new Error 'CredentialSet ids should be of the form [environment id]_[set name]'
+        super parent.type, parent.id
+
+    set_name: ->
+        prefix = @environment().id + '-'
+        return @id[prefix.length...]
+
+    set_credential: (name, value, overwrite) ->
+        if not overwrite
+            prev = @get 'credential_' + name
+            if prev
+                u.reply 'There is already a credential for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name + '. To overwrite it, call this command again with overwrite set to true'
+                return
+        @set 'credential_' + name, value
+        msg = 'Credential set for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name
+        u.announce msg
+        u.reply msg
+
+    get_credential: (name) ->
+        @get 'credential_' + name
 
 
 
