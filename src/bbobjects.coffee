@@ -1447,18 +1447,23 @@ bbobjects.Environment = class Environment extends BubblebotObject
             autodelete = auto_delete_mode
 
         all_instances = bbobjects.get_all_instances()
+        u.log 'Found the following instances: ' + (String(instance) for instance in all_instances).join(', ')
 
         to_delete = []
 
         for instance in all_instances
             #if it is newer than 10 minutes, skip it
             if Date.now() - instance.launch_time() < 10 * 60 * 1000
+                u.log 'Newer than 10 minutes: ' + String(instance)
                 continue
 
             #if it is not saved in the database, this is a good candidate for deletion...
             if not instance.exists()
                 if not instance.bubblebot_role()
+                    u.log 'Not in database: ' + String(instance)
                     to_delete.push {instance, reason: 'instance not in database'}
+                else
+                    u.log 'Has bubblebot role: ' + String(instance)
 
             #otherwise, see if we know why it should exist
             else
@@ -1466,9 +1471,13 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 parent = instance.parent()
                 if not parent?.exists()
                     to_delete.push {instance, reason: 'parent does not exist'}
+                    u.log 'Parent does not exist: ' + String(instance)
 
-                if parent.should_delete?(instance)
+                else if parent.should_delete?(instance)
                     to_delete.push {instance, reason: 'parent says we should delete this'}
+                    u.log 'Parent says we should delete: ' + String(instance)
+                else
+                    u.log 'Parent says we should not delete: ' + String(instance)
 
         #If autodelete is set, actually do the delete, otherwise just announce.
         msg = (String(instance) + ': ' + reason for {instance, reason} in to_delete).join('\n')
