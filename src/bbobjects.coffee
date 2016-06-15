@@ -19,9 +19,10 @@ bbobjects.bubblebot_environment = ->
     return environment
 
 
-#Constant we use to tag resources for things that don't use the database
+#Constant we use to tag resources
 BUILDING = 'building'
 BUILD_FAILED = 'build failed'
+TEST_FAILED = 'test_failed'
 BUILD_COMPLETE = 'build complete'
 ACTIVE = 'active'
 FINISHED = 'finished'
@@ -1615,6 +1616,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
         #Otherwise, see if there is an expiration time set
         else
+            #If we are in aggressive mode, clean up immediately any build_failed or test_failed boxes
+            if aggressive and ec2instance.get('status') in [BUILD_FAILED, TEST_FAILED]
+                return true
+
             expiration = ec2instance.get 'expiration_time'
             #if there isn't an expiration time, set it for 2 hours (or 30 minutes if aggressive)
             if not expiration
@@ -1922,6 +1927,10 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         #Inform the instance, if appropriate
         @template().make_active ec2instance
 
+    #Tells this ec2 instance that it was used for running tests, and the tests failed.
+    test_failed: (ec2instance) ->
+        ec2instance.set_status TEST_FAILED
+
     #Tells this ec2 instance to perform a graceful shutdown, and schedules a termination
     graceful_shutdown: (ec2instance) ->
         template = @template()
@@ -2061,18 +2070,17 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Double-dispatch for should_delete
     should_delete: (owner, aggressive) -> owner.should_delete_ec2instance(this, aggressive)
 
-    toString: -> "#{@type} #{@id} (#{@name()})"
+    toString: -> "#{@type} #{@id} #{@name()}"
 
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
         u.log 'setting status of ' + this + ' to ' + status
         @set 'status', status
 
-        new_name = @get('name') + ' (' + status + ')'
-        @environment().tag_resource @id, 'Name', new_name
+        @environment().tag_resource @id, 'Name', @name()
         @on_status_change? status
 
-    name: -> @get('name') ? @bubblebot_role()
+    name: -> (@get('name') ? @bubblebot_role()) + ' (' + @get('status') + ')'
 
     describe_keys: ->
         expiration = @get('expiration_time')
