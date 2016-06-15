@@ -89,6 +89,8 @@ software.basics = create ->
 
     #Redirects 80 -> 8080 so that don't have to run things as root
     pkg.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080"
+    #And 443 -> 8043
+    pkg.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8043"
 
     #update yum and install git + development tools
     pkg.run 'sudo yum update -y'
