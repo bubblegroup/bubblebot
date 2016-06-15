@@ -1440,7 +1440,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         if from_scheduled
             autodelete = if config.get('audit_instances_autodelete', false) then true else false
             auto_delete_mode ?= false
-            if autodelete isnt auto_delete_mode and not override_check
+            if autodelete isnt auto_delete_mode
                 return
         else
             #If the user called it, we trust what they passed in
@@ -1963,7 +1963,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
             }
             hours = bbserver.do_cast params, u.ask("Great, we will keep it for now.  How many more hours do you think you need it around for?", owner.id)
             interval = hours * 60 * 60 * 1000
-            instance.set 'expiration_time', Date.now() + (interval * 2)
+            @set 'expiration_time', Date.now() + (interval * 2)
             @schedule_once interval, 'follow_up'
         else
             u.message owner.id, "Okay, we are terminating the server now..."
