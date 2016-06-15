@@ -1219,16 +1219,16 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Policy for deleting instances directly owned by this environment.
     #
     #The rule is they need to have an expiration set on them if they persist for longer than
-    #6 hours
-    should_delete: (instance) ->
-        #if it is newer than 6 hours, we are fine
-        if Date.now() - instance.launch_time() < 6 * 60 * 60 * 1000
-            return false
-
-        #otherwise, check the expiration time
+    #3 hours
+    should_delete: (instance, aggressive) ->
         expires = instance.get 'expiration_time'
         if not expires
-            return true
+            #if it is newer than 3 hours, we are fine
+            threshold = if aggressive then 0.5 else 3
+            if Date.now() - instance.launch_time() < threshold * 60 * 60 * 1000
+                return false
+
+        #otherwise, check the expiration time
         return Date.now() > expires
 
     get_region: -> @get 'region'
@@ -1434,7 +1434,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         help: 'Recursively deletes children from the database that used to correspond to an AWS object that we can no longer find'
 
     #Goes through and audits instances to see if they should be deleted
-    audit_instances: (auto_delete_mode, from_scheduled) ->
+    audit_instances: (aggressive, auto_delete_mode, from_scheduled) ->
         #if we are in autodelete mode, we want to do this hourly, if we are in report
         #mode we want to do it daily.  we abort if the mode doesn't match our autodelete setting
         if from_scheduled
@@ -1474,7 +1474,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                     to_delete.push {instance, reason: 'parent does not exist'}
                     u.log 'Parent does not exist: ' + String(instance)
 
-                else if parent.should_delete?(instance)
+                else if parent.should_delete?(instance, aggressive)
                     to_delete.push {instance, reason: 'parent says we should delete this'}
                     u.log 'Parent says we should delete: ' + String(instance)
                 else
@@ -1506,7 +1506,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             groups = constants.BASIC
         else
             groups = constants.ADMIN
-        params = []
+        params = [
+            params.push {name: 'aggressive', type: 'boolean', help: 'If true, deletes servers more aggressively.  Useful if we are running out of instances, but might delete recent failures, etc.'}
+        ]
         if not autodelete
             params.push {name: 'auto delete mode', type: 'boolean', help: 'If true, actually deletes the servers instead of just listing them'}
 
@@ -1603,9 +1605,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         groups: constants.BASIC
 
     #Checks if we are still using this instance
-    should_delete: (instance) -> instance.should_delete this
+    should_delete: (instance, aggressive) -> instance.should_delete this, aggressive
 
-    should_delete_ec2instance: (ec2instance) ->
+    should_delete_ec2instance: (ec2instance, aggressive) ->
         #If we are active, delete any expiration time, and don't delete
         if ec2instance.get('status') is ACTIVE
             ec2instance.set 'expiration_time', null
@@ -1614,9 +1616,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         #Otherwise, see if there is an expiration time set
         else
             expiration = ec2instance.get 'expiration_time'
-            #if there isn't an expiration time, set it for 2 hours
+            #if there isn't an expiration time, set it for 2 hours (or 30 minutes if aggressive)
             if not expiration
-                ec2instance.set 'expiration_time', Date.now() + 2 * 60 * 60 * 1000
+                threshold = if aggressive then 0.5 else 2
+                ec2instance.set 'expiration_time', Date.now() + threshold * 60 * 60 * 1000
                 return false
             #otherwise, see if we are expired
             else
@@ -1624,7 +1627,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     #We never want to delete the RDS instance for a given service without shutting
     #down the service itself
-    should_delete_rdsinstance: (rds_instance) -> false
+    should_delete_rdsinstance: (rds_instance, aggressive) -> false
 
     describe_keys: -> u.extend super(), {
         version: @version()
@@ -1873,6 +1876,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         #Build an instance to create the AMI from
         template = @template()
         ec2instance = @_build environment, template.ami_build_size(), 'AMI build for ' + this, template.base_ami(region), template.ami_software(@lowest_version(region)), false
+        ec2instance.set 'expiration_time', Date.now() + 2 * 60 * 60 * 1000
 
         #Create the ami
         name = @id + ' ' + u.print_date(Date.now()).replace(/[^a-zA-Z0-9]/g, '-')
@@ -2055,7 +2059,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         @environment().tag_resource @id, 'Name', name + ' (' + status + ')'
 
     #Double-dispatch for should_delete
-    should_delete: (owner) -> owner.should_delete_ec2instance(this)
+    should_delete: (owner, aggressive) -> owner.should_delete_ec2instance(this, aggressive)
 
     toString: -> "#{@type} #{@id} (#{@name()})"
 
@@ -2323,7 +2327,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         return null
 
     #Double-dispatch for should_delete
-    should_delete: (owner) -> owner.should_delete_rdsinstance(this)
+    should_delete: (owner, aggressive) -> owner.should_delete_rdsinstance(this, aggressive)
 
     #When this RDS instance was created
     launch_time: -> new Date(@get_configuration().InstanceCreateTime)
