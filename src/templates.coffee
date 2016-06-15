@@ -334,7 +334,10 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
 
     on_startup: (instance) ->
         super()
+        ensure_version_deployed()
 
+    #Ensures that the version we've set is actually what's deployed
+    ensure_version_deployed: (instance) ->
         #make sure that our instance matches our version
         version = instance.version()
         if version
@@ -343,7 +346,6 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
                 u.announce "#{instance} has a version mismatch: should be #{version} but is #{active_version}.  About to replace it..."
                 u.context().server.run_fiber "Replacing #{instance}", @replace.bind(this, instance)
 
-
     replace: (instance) ->
         build = @ec2build()
         size = @get_size(instance)
@@ -351,7 +353,12 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
 
         #Create the new server
         u.announce 'Building a replacement server for ' + instance
-        new_ec2instance = build.build instance, size, String(instance), instance.version()
+        current_version = instance.version()
+        new_ec2instance = build.build instance, size, String(instance), current_version
+
+        #If someone deployed a new version in the interim, abort this
+        if current_version isnt instance.version()
+            return
 
         #See if there is an old server
         old_ec2instance = switcher.get_instance()
@@ -373,6 +380,9 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         if old_ec2instance
             build.graceful_shutdown old_ec2instance
         u.announce new_ec2instance + ' is now the active server for ' + instance
+
+        #Double-check to make sure we are still in a consistent state
+        @ensure_version_deployed(instance)
 
     #Gets the size of the box for this service
     get_size: (instance) ->
