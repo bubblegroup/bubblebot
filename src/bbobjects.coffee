@@ -2080,7 +2080,11 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         @environment().tag_resource @id, 'Name', @name()
         @on_status_change? status
 
-    name: -> (@get('name') ? @bubblebot_role()) + ' (' + @get('status') + ')'
+    name: ->
+        status = @get('status')
+        if status
+            status = ' (' + status + ')'
+        return (@get('name') ? @bubblebot_role()) + status
 
     describe_keys: ->
         expiration = @get('expiration_time')
