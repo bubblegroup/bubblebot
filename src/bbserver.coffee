@@ -203,12 +203,12 @@ bbserver.Server = class Server
 
         #Create the new logstream and set it as the default logger for this context
         log_stream = @get_sub_logger(id)
+        u.log 'Logs: ' + log_stream.get_tail_url()
         u.set_logger 'log', log_stream.log.bind(log_stream)
         log_stream.log id + ' ' + description
 
         #Record that we created a new log stream in our list
         @get_sublogger_stream().log JSON.stringify {id, description}
-        u.log 'Logs: ' + log_stream.get_tail_url()
 
         return log_stream
 
