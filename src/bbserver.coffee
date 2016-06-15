@@ -1182,7 +1182,7 @@ class EnvTree extends CommandTree
     get_commands: ->
         commands = {}
         for environment in bbobjects.list_environments()
-            commands[environment.id] = environment
+            commands[environment.id.toLowerCase()] = environment
         return commands
 
 #A command tree that lets you navigate servers
@@ -1192,7 +1192,7 @@ class ServersTree extends CommandTree
     get_commands: ->
         commands = {}
         for instance in bbobjects.get_all_instances()
-            commands[instance.id] = instance
+            commands[instance.id.toLowerCase()] = instance
         return commands
 
 #A command tree that lets you navigate EC2Builds
@@ -1202,7 +1202,7 @@ class BuildsTree extends CommandTree
     get_commands: ->
         commands = {}
         for instance in bbobjects.list_all 'EC2Build'
-            commands[instance.id] = instance
+            commands[instance.id.toLowerCase()] = instance
         return commands
 
 #A command tree that lets you navigate users
@@ -1212,7 +1212,7 @@ class UsersTree extends CommandTree
     get_commands: ->
         commands = {}
         for user in bbobjects.list_users()
-            commands[user.name()] = user
+            commands[user.name().toLowerCase()] = user
         return commands
 
 class SecurityGroupsTree extends CommandTree
@@ -1228,7 +1228,7 @@ class SecurityGroupsTree extends CommandTree
                 group.create()
 
         for group in bbobjects.list_all 'SecurityGroup'
-            commands[group.id] = group
+            commands[group.id.toLowerCase()] = group
 
         #Creates a new security group
         commands.new = bbserver.build_command {
