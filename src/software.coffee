@@ -110,6 +110,22 @@ software.supervisor = create (name, command, pwd) ->
 
     return pkg
 
+#Verifies that the given supervisor process is running for the given number of seconds
+#
+#If not, logs the tail and throws an error
+software.verify_supervisor = (server, name, seconds) ->
+    u.pause (seconds + 2) * 1000
+    status = server.run 'supervisorctl status ' + name
+    if status.indexOf('RUNNING') isnt -1
+        uptime = status.split('uptime ')[1]
+        uptime_seconds = parseInt(uptime.split(':')[2])
+        uptime_minutes = parseInt(uptime.split(':')[1])
+        if (uptime_minutes * 60) + uptime_seconds >= seconds
+            return
+
+    server.run 'tail -n 100 /tmp/' + name + '*'
+
+    throw new Error 'Supervisor not running for at least ' + seconds + ' seconds: ' + status + '.  See tailed logs below'
 
 #Installs node
 software.node = create (version) ->
