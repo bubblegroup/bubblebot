@@ -304,13 +304,21 @@ bbserver.Server = class Server
 
     run_task: (task_data) ->
         try
-            @build_context('running task ' + JSON.stringify(task_data))
-            u.log "Task started on fiber #{u.fiber_id()}: #{task_data.task}"
-            @create_sub_logger "#{u.fiber_id()} Task #{task_data.task}"
-            u.log 'Beginning task run: ' + JSON.stringify(task_data)
-
+            #Extract the task data
             {interval, type, id, method, params} = task_data.properties
             schedule_name = task_data.task
+
+            #build a human friendly name for the task
+            if schedule_name is ONCE
+                friendly = "(#{type} #{id}).#{method})"
+            else
+                frinedly = schedule_name
+
+            #Create the server context and a fresh sub-logger for running the task under
+            @build_context('running task ' + friendly)
+            u.log "Task started on fiber #{u.fiber_id()}: #{friendly}"
+            @create_sub_logger "#{u.fiber_id()} Task #{friendly}"
+            u.log 'Beginning task run: ' + JSON.stringify(task_data, null, 4)
 
             instance = bbobjects.instance(type, id)
             if not instance.exists()
