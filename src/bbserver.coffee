@@ -314,7 +314,7 @@ bbserver.Server = class Server
             if schedule_name is ONCE
                 friendly = "(#{type} #{id}).#{method})"
             else
-                frinedly = schedule_name
+                friendly = schedule_name
 
             #Create the server context and a fresh sub-logger for running the task under
             @build_context('running task ' + friendly)
