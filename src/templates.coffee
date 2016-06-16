@@ -7,7 +7,7 @@ constants = require './constants'
 interfaces =
     Environment: ['initialize']
     Service: ['codebase', 'get_tests', 'deploy', 'get_monitoring_policy']
-    Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge']
+    Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge', 'debug_version']
     Test: ['run']
     EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size', 'get_replacement_interval']
 
@@ -72,7 +72,7 @@ templates.Service = class Service
         #Get the canonical version
         canonical = codebase.canonicalize version
         if not canonical
-            u.reply 'Could not resolve version ' + version
+            u.reply codebase.debug_version version
             return
         version = canonical
 
@@ -417,6 +417,8 @@ templates.GitCodebase = class GitCodebase
 
     canonicalize: (version) -> return @repo.resolve_commit version
 
+    debug_version: (version) -> return 'Could not find commit ' + version + ' in ' + @repo
+
     ahead_of: (first, second) -> return @repo.ahead_of first, second
 
     ahead_of_msg: (first, second) ->
@@ -449,6 +451,18 @@ templates.MultiGitCodebase = class MultiGitCodebase
             results.push canonical
 
         return results.join '-'
+
+    debug_version: (version) ->
+        if String(version).indexOf('-') is '-1'
+            format_string = ('[commit ' + i + 1 for repo, i in @repos).join('-')
+            return 'Bad version: '  + version + '.  Format should be ' + format_string + ' (hyphen-seperated)'
+        commits = version.split('-')
+        for repo, idx in @repos
+            canonical = repo.resolve_commit commits[idx]?.trim()
+            if not canonical
+                return 'Could not find commit ' + commits[idx] + ' in ' + String(repo)
+
+        throw new Error 'debug_version could not figure out what was wrong with ' + version
 
     #True if each version is ahead of each other version
     ahead_of: (first, second) ->
