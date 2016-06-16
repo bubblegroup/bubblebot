@@ -139,7 +139,8 @@ templates.Service = class Service
             @replace instance
 
         #Let the user know we are finished
-        u.reply 'We are finished rolling out the new version. Consider creating an announcement: http://forum.bubble.is/new-topic?title=[New%20Feature]&category=Announcements'
+        u.reply 'We are finished rolling out the new version'
+        @on_deploy_finished?()
 
     on_startup: -> #no op
 

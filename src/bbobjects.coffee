@@ -19,15 +19,6 @@ bbobjects.bubblebot_environment = ->
     return environment
 
 
-#Constant we use to tag resources
-BUILDING = 'building'
-BUILD_FAILED = 'build failed'
-TEST_FAILED = 'test_failed'
-BUILD_COMPLETE = 'build complete'
-ACTIVE = 'active'
-FINISHED = 'finished'
-TERMINATING = 'terminating'
-
 #Environment types
 bbobjects.PROD = PROD =  'prod'
 bbobjects.QA = QA = 'qa'
@@ -1632,14 +1623,14 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     should_delete_ec2instance: (ec2instance, aggressive) ->
         #If we are active, delete any expiration time, and don't delete
-        if ec2instance.get('status') is ACTIVE
+        if ec2instance.get('status') is constants.ACTIVE
             ec2instance.set 'expiration_time', null
             return false
 
         #Otherwise, see if there is an expiration time set
         else
             #If we are in aggressive mode, clean up immediately any build_failed or test_failed boxes
-            if aggressive and ec2instance.get('status') in [BUILD_FAILED, TEST_FAILED]
+            if aggressive and ec2instance.get('status') in [constants.BUILD_FAILED, constants.TEST_FAILED]
                 return true
 
             expiration = ec2instance.get 'expiration_time'
@@ -1818,7 +1809,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         id = environment.create_server_raw ami, size
         ec2instance = bbobjects.instance 'EC2Instance', id
         try
-            ec2instance.create parent, name, BUILDING, @id
+            ec2instance.create parent, name, constants.BUILDING, @id
 
             #wait for ssh
             ec2instance.wait_for_ssh()
@@ -1832,13 +1823,13 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
             if do_verify
                 @template().verify ec2instance
                 u.log 'installation on ' + ec2instance + ' verified, marking build complete'
-                ec2instance.set_status BUILD_COMPLETE
+                ec2instance.set_status constants.BUILD_COMPLETE
 
             return ec2instance
 
         catch err
             #if we had an error building it, set the status to build failed
-            ec2instance.set_status BUILD_FAILED
+            ec2instance.set_status constants.BUILD_FAILED
             throw err
 
     #Creates a server with the given size owned by the given parent, and with the
@@ -1944,21 +1935,21 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     #We also update our status
     make_active: (ec2instance) ->
         #Set the status
-        ec2instance.set_status ACTIVE
+        ec2instance.set_status constants.ACTIVE
 
         #Inform the instance, if appropriate
         @template().make_active ec2instance
 
     #Tells this ec2 instance that it was used for running tests, and the tests failed.
     test_failed: (ec2instance) ->
-        ec2instance.set_status TEST_FAILED
+        ec2instance.set_status constants.TEST_FAILED
 
     #Tells this ec2 instance to perform a graceful shutdown, and schedules a termination
     graceful_shutdown: (ec2instance) ->
         template = @template()
 
         #set the status to finished
-        ec2instance.set_status FINISHED
+        ec2instance.set_status constants.FINISHED
 
         #Schedule a termination
         termination_delay = template.termination_delay()
@@ -2100,7 +2091,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         @set 'status', status
 
         @environment().tag_resource @id, 'Name', @name()
-        @on_status_change? status
+        @template().on_status_change? this, status
 
     name: ->
         status = @get('status')
@@ -2200,7 +2191,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
         #first update the status if we have this in the database
         if @exists()
-            @set_status TERMINATING
+            @set_status constants.TERMINATING
 
         #then do the termination...
         data = @environment().ec2 'terminateInstances', {InstanceIds: [@id]}
