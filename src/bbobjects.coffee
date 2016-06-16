@@ -766,6 +766,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
         is_production: @is_production()
     }
 
+    #Need to overwrite the default here since we're the environment
+    environment: -> this
+
     #Need to overwrite the default implementation since it by default checks the environment
     is_development: -> @get('type') is DEV
 
@@ -1549,6 +1552,25 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
     get_credential: (name) ->
         @get 'credential_' + name
 
+    #Loads a new-line separated list of keys, returns [errors, results].
+    #If any key not marked "optional" is missing, errors is a list of missing keys.
+    #Otherwise, returns a key:value mapping in results.
+    get_list: (items) ->
+        errors = []
+        results = {}
+        for line in items.split('\n')
+            if line.trim()
+                key = line.trim().split(' ')[0]
+                optional = line.indexOf(' optional') isnt -1
+                value = get_credential(key)
+                if not value? and not optional
+                    errors.push key
+                else if value?
+                    results[key] = value
+        if errors.length > 0
+            return [errors]
+        else
+            return [null, results]
 
 
 bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
