@@ -1048,7 +1048,7 @@ class BlankBuild extends templates.EC2Build
 
     verify: (ec2instance) ->
 
-    software: (version) -> new software.Software()
+    software: (version) -> (instance) ->
 
     ami_software: -> null
 

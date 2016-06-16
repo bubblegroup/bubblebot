@@ -117,11 +117,10 @@ github.Repo = class Repo
 
     #Generates a software package for cloning this repo to the given folder
     clone_software: (ref, destination) ->
-        pkg = new software.Software()
-        pkg.run "git clone -n git@github.com:#{@org}/#{@project}.git #{destination}"
-        if ref
-            pkg.run "cd #{destination} && git checkout #{ref}"
-        return pkg
+        return (instance) ->
+            instance.run "git clone -n git@github.com:#{@org}/#{@project}.git #{destination}"
+            if ref
+                instance.run "cd #{destination} && git checkout #{ref}"
 
 
 

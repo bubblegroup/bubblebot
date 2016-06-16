@@ -82,11 +82,11 @@ bbobjects.get_bbserver = ->
     #Install node and supervisor
     command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
 
-    pkg = new software.Software()
-    pkg.add software.supervisor('bubblebot', command, config.get('install_directory'))
-    pkg.add(software.node('4.4.5')).add(software.metrics())
-    pkg.add(software.pg_dump95())
-    pkg.install(instance)
+
+    software.supervisor('bubblebot', command, config.get('install_directory')) instance
+    software.node('4.4.5')) instance
+    software.metrics() instance
+    software.pg_dump95() instance
 
     environment.tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
 
@@ -1790,7 +1790,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     codebase: -> @template().codebase()
 
     #Used internally by build and create ami to build a machine
-    _build: (parent, size, name, ami, software, do_verify) ->
+    _build: (parent, size, name, ami, software_to_install, do_verify) ->
         environment = parent.environment()
 
         id = environment.create_server_raw ami, size
@@ -1803,7 +1803,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
             u.log ec2instance + ' is available over ssh, installing software'
 
             #install software
-            software.install ec2instance
+            software_to_install ec2instance
             u.log 'done installing software on ' + ec2instance + ', verifying...'
 
             #verify software is installed and mark complete
@@ -2211,7 +2211,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     #Writes the given private key to the default location on the box
     install_private_key: (path) ->
-        software.private_key(path).install(this)
+        software.private_key(path) this
 
     #Returns the address bubblebot can use for ssh / http requests to this instance
     get_address: ->
