@@ -256,6 +256,11 @@ u.TIMEOUT = 'timeout'                 #generic timeout (lots of things could cau
 u.CANCEL = 'cancel'                   #user cancelled the command
 u.USER_TIMEOUT = 'user_timeout'       #timed out waiting on a user reply
 u.EXTERNAL_CANCEL = 'external_cancel' #was cancelled from off-fiber
+u.EXPECTED = 'expected'               #this error is expected and should be passed on to the end user
+
+u.expected_error = (msg) ->
+    err = new Error msg
+    err.reason = u.EXPECTED
 
 #Marks this fiber as cancelled, and schedules it to run
 u.cancel_fiber = (fiber) ->

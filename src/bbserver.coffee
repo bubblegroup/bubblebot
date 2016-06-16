@@ -171,6 +171,9 @@ bbserver.Server = class Server
                     u.uncancel_fiber()
                     u.log 'Operation cancelled externally'
 
+                else if err.reason is u.EXPECTED
+                    u.log err.message
+
                 else
                     u.report 'Unexpected error running operation ' + name + '.  Error was:\n' + (err.stack ? err)  + '\n\nTranscript: ' + sub_logger.get_tail_url()
 
@@ -337,11 +340,15 @@ bbserver.Server = class Server
                 u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
                 u.db().schedule_task Date.now() + 12 * 60 * 60 * 1000, schedule_name, task_data.properties
             #If the task was cancelled externally, just log it
-            else if err.reason in u.EXTERNAL_CANCEL
+            else if err.reason is u.EXTERNAL_CANCEL
                 u.uncancel_fiber()
                 u.log 'Task cancelled externally: ' + JSON.stringify(task_data)
+            #If it was an expected error, just log it
+            else if err.reason is u.EXPECTED
+                u.log err.message
             else
                 u.report 'Unexpected error running task ' + JSON.stringify(task_data) + '.  Error was: ' + (err.stack ? err)
+
         finally
             #We always want to make sure scheduled tasks get rescheduled
             if schedule_name isnt ONCE
@@ -402,6 +409,8 @@ bbserver.Server = class Server
                     u.reply 'Cancelled: ' + cmd
                 else if err.reason is u.USER_TIMEOUT
                     u.reply 'Timed out waiting for your reply: ' + cmd
+                else if err.reason is u.EXPECTED
+                    u.reply 'Operation failed:\n' + err.message
                 else if err.reason is u.EXTERNAL_CANCEL
                     u.uncancel_fiber()
                     u.reply 'Cancelled (via the cancel cmd): ' + cmd
