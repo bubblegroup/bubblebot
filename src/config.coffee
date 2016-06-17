@@ -7,8 +7,8 @@ plugins = {}
 
 plugin_names = ['metrics', 'alerting']
 
-#Sets the given plugin
-config.set_plugin = (name, plugin) ->
+#Adds the given plugin to this category
+config.add_plugin = (name, plugin) ->
     if name not in plugin_names
         throw new Error 'unrecognized plugin name: ' + name
     plugins[name] ?= []
