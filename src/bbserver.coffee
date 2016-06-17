@@ -1217,6 +1217,7 @@ class ServersTree extends CommandTree
         commands = {}
         for instance in bbobjects.get_all_instances()
             commands[instance.id.toLowerCase()] = instance
+        commands.clean = bbobjects.bubblebot_environment().get_command('audit_instances')
         return commands
 
 #A command tree that lets you navigate EC2Builds
