@@ -2,7 +2,7 @@
 
 command = process.argv[2];
 child_process = require('child_process');
-fs = require 'fs'
+fs = require('fs');
 
 run_command = function() {
     if (!bubblebot[command]) {
