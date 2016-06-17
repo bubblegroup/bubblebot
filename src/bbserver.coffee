@@ -9,6 +9,7 @@ bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand(this)
         @_monitor = new monitoring.Monitor(this)
+        @custom_commands = {}
 
     _build_bbdb: ->
         #Make sure the database exists.  This will also set u.context().db
@@ -24,6 +25,9 @@ bbserver.Server = class Server
             instance.deploy instance.codebase().get_latest_version(), false, 'Automatically upgrading BBDB'
 
         return u.context().db
+
+    #Adds a custom command to the server
+    add_custom_command: (name, command) -> @custom_commands[name] = command
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
@@ -1209,9 +1213,11 @@ class RootCommand extends CommandTree
         #We put all the services in the default command namespace to save
         #typing.  If there's a name conflict, the command takes precedence
         services = {}
+        custom_commands = @server.custom_commands ? {}
+
         for service in bbobjects.list_all('ServiceInstance')
             services[service.id] = service
-        return u.extend {}, services, @commands
+        return u.extend {}, services, custom_commands, @commands
 
 
 #A command tree that lets you navigate environments
