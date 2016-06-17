@@ -213,13 +213,33 @@ monitoring.Monitor = class Monitor
 
     #Tries to access the server, returns true if it is up, false if not
     hit_endpoint: (object) ->
-        latency = throw new Error 'not yet implemented'
+        policy = object.get_monitoring_policy()
+        endpoint = object.endpoint()
+        protocol = policy.endpoint.protocol
+
+        if protocol in ['http', 'https']
+            url = protocol + '://' + endpoint
+
+            start = Date.now()
+            block = u.Block url
+            request url, block.make_cb()
+            res = block.wait()
+            latency = Date.now() - start
+
+            result = 200 <= res.statusCode <= 299
+
+        else
+            throw new Error 'monitoring: unrecognized protocol ' + protocol
 
         #Report the latency to metrics
-        for plugin in config.get_plugins('metrics')
-            if typeof(plugin.measure) is 'function'
-                plugin.measure object.type + '_' + object.id, 'bubblebot_monitor_latency', latency
+        if result
+            for plugin in config.get_plugins('metrics')
+                if typeof(plugin.measure) is 'function'
+                    plugin.measure object.type + '_' + object.id, 'bubblebot_monitor_latency', latency
+
+        return result
 
 
 u = require './utilities'
 config = require './config'
+request = require 'request'
