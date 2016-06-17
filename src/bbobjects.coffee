@@ -1560,7 +1560,7 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
             if line.trim()
                 key = line.trim().split(' ')[0]
                 optional = line.indexOf(' optional') isnt -1
-                value = get_credential(key)
+                value = @get_credential(key)
                 if not value? and not optional
                     errors.push key
                 else if value?

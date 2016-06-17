@@ -421,8 +421,8 @@ templates.Codebase = class Codebase
         if not canonical
             #if there is no current user, abort
             if not u.current_user()
-                u.expected_error codebase.debug_version version
-            msg = codebase.debug_version(version) + '\nPlease enter a valid version (or type "cancel" to abort)'
+                u.expected_error @debug_version version
+            msg = @debug_version(version) + '\nPlease enter a valid version (or type "cancel" to abort)'
             return @ensure_version u.ask msg
         else
             return canonical
