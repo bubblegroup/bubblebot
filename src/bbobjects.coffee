@@ -1937,6 +1937,11 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         help: 'Replaces the current AMI for this build in the given region'
         groups: constants.BASIC
 
+    #Notifies this ec2instance that we are about to start sending external
+    #traffic to it.  This is an opportunity to run any logic that we want to do
+    #right before putting the box into production
+    pre_make_active: (ec2instance, service) -> @template().pre_make_active? ec2instance, service
+
     #Tells this ec2 instance that it is receiving external traffic.
     #Some builds might want notification given to the box.
     #We also update our status
