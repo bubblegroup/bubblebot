@@ -1991,6 +1991,25 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
         return ec2instance
 
+    #Runs the given test passing in a test instance.  Handles cleaning up the test
+    #instance afterwards
+    run_with_test_instance: (version, test) ->
+        ec2instance = @create_test_instance(version)
+
+        try
+            result = test ec2instance
+            return result
+        catch err
+            result = false
+            throw err
+        finally
+            if result
+                u.log 'Tests pass, so terminating test server'
+                ec2instance.terminate()
+            else
+                u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns()
+                ec2instance.test_failed()
+
     #Checks to see if the owner still needs this instance
     follow_up: ->
         owner = @owner()
