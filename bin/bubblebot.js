@@ -13,13 +13,26 @@ run_command = function() {
     }
 }
 
+function exists(file) {
+    try {
+        fs.statSync(file);
+        return true
+    } catch (err) {
+        return false;
+    }
+}
 
 var not_installed;
-if (fs.statSync(process.cwd() + '/node_modules/bubblebot').isDirectory()) {
+if (exists(process.cwd() + '/node_modules/bubblebot')) {
     not_installed = false;
     bubblebot = require(process.cwd() + '/node_modules/bubblebot');
-    if (fs.statSync(process.cwd() + '/lib/index.js').isFile()) {
-        require('./lib/index');
+    try {
+        child_process.execSync('npm install');
+    } catch (err) {
+        console.log(err.stack);
+    }
+    if (exists(process.cwd() + '/lib/index.js')) {
+        require(process.cwd() + '/lib/index');
     }
 } else {
     not_installed = true;
