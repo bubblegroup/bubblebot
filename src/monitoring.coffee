@@ -223,10 +223,23 @@ monitoring.Monitor = class Monitor
             start = Date.now()
             block = u.Block url
             request url, block.make_cb()
-            res = block.wait()
-            latency = Date.now() - start
+            try
+                res = block.wait()
+                latency = Date.now() - start
 
-            result = 200 <= res.statusCode <= 299
+                result = 200 <= res.statusCode <= 299
+            catch err
+                result = false
+
+        else if protocol is 'postgres'
+            db = databases.Postgres object
+            try
+                start = Date.now()
+                db.query 'select 1'
+                latency = block.wait()
+                result = true
+            catch err
+                result = false
 
         else
             throw new Error 'monitoring: unrecognized protocol ' + protocol

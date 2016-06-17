@@ -274,7 +274,22 @@ class BBDBService extends templates.RDSService
     rds_instance: (instance) ->
         return bbobjects.get_bbdb_instance()
 
-    get_monitoring_policy: -> {monitor: false}
+    get_monitoring_policy: -> {
+        monitor: true
+        frequency: 2000
+        dependencies: []
+        thresholds: {
+            announce: 0
+            report: 5000
+        }
+        limits: {
+            announce: 30000
+            report: 30000
+        }
+        endpoint: {
+            protocol: 'postgres'
+        }
+    }
 
 templates.add 'Service', 'BBDBService', new BBDBService 'BBDBCodebase'
 
