@@ -70,11 +70,7 @@ templates.Service = class Service
         codebase = @codebase()
 
         #Get the canonical version
-        canonical = codebase.canonicalize version
-        if not canonical
-            u.reply codebase.debug_version version
-            return
-        version = canonical
+        version = codebase.ensure_version version
 
         #Don't redeploy the version that is already deployed
         if instance.version() is version
@@ -412,8 +408,26 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         dangerous: -> @environment().is_production()
 
 
+#Base class for codebases
+templates.Codebase = class Codebase
+    debug_version: (version) -> return 'Not a valid version: ' + version
+
+    #If this version is not valid, prompts the user for a valid one
+    ensure_version: (version) ->
+        canonical = @canonicalize version
+        if not canonical
+            #if there is no current user, abort
+            if not u.current_user()
+                u.expected_error codebase.debug_version version
+            msg = codebase.debug_version(version) + '\nPlease enter a valid version (or type "cancel" to abort)'
+            return @ensure_version u.ask msg
+        else
+            return canonical
+
+
+
 #Implements the codebase interface using git.  Should pass in a git repo as in github.coffee
-templates.GitCodebase = class GitCodebase
+templates.GitCodebase = class GitCodebase extends Codebase
     constructor: (@repo) ->
 
     canonicalize: (version) -> return @repo.resolve_commit version
@@ -438,7 +452,7 @@ templates.GitCodebase = class GitCodebase
 
 #Implements the codebase interface using multiple git repositories.  A version is defined
 #as a dash-separated list of commits in the order that the repos are passed in to the constructor
-templates.MultiGitCodebase = class MultiGitCodebase
+templates.MultiGitCodebase = class MultiGitCodebase extends Codebase
     constructor: (@repos) ->
 
     canonicalize: (version) ->
@@ -519,7 +533,7 @@ join_rds_version_pieces = (codebase_id, migration) -> codebase_id + '/' + String
 #  get_rollbacks
 #  get_additional_tests
 #
-templates.RDSCodebase = class RDSCodebase
+templates.RDSCodebase = class RDSCodebase extends Codebase
     #Version should be [codebase id]/[migration #]
     canonicalize: (version) ->
         [codebase_id, migration] = String(version).split('/')
@@ -1043,9 +1057,17 @@ templates.EC2Build = class EC2Build
     get_replacement_interval: -> 24 * 60 * 60 * 1000
 
 
+class BlankCodebase extends templates.Codebase
+    canonicalize: -> 'blank'
+    ahead_of: -> true
+    ahead_of_msg: -> throw new Error 'nope'
+    merge: -> 'blank'
+    debug_version: -> throw new Error 'nope'
+
+
 #Represents a server with no software installed on it
 class BlankBuild extends templates.EC2Build
-    codebase: -> null
+    codebase: -> new BlankCodebase()
 
     verify: (ec2instance) ->
 

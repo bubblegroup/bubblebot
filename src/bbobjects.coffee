@@ -789,11 +789,13 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
 
     #Creates a server for development purposes
-    create_box: (build_id, hours, size, name) ->
+    create_box: (build_id, version, hours, size, name) ->
         ec2build = bbobjects.instance 'EC2Build', build_id
 
+        version = ec2build.codebase().ensure_version version
+
         u.reply 'beginning build of box... '
-        box = ec2build.build this, size, name
+        box = ec2build.build this, size, name, version
 
         #Make sure we remind the user to destroy this when finished
         interval = hours * 60 * 60 * 1000
@@ -812,6 +814,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 type: 'list'
                 options: templates.list.bind(null, 'EC2Build')
             },
+            {
+                name: 'version'
+                help: 'The version of this software to install on the server'
+                required: true
+            }
             {
                 name: 'hours'
                 help: 'How many hours before asking if we can delete this server'

@@ -261,6 +261,7 @@ u.EXPECTED = 'expected'               #this error is expected and should be pass
 u.expected_error = (msg) ->
     err = new Error msg
     err.reason = u.EXPECTED
+    throw err
 
 #Marks this fiber as cancelled, and schedules it to run
 u.cancel_fiber = (fiber) ->
