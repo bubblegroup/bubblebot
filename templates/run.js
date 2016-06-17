@@ -7,6 +7,9 @@ bubblebot = require('bubblebot');
 
 console.log('run.js: initializing configuration');
 
+//This should be the primary entrypoint for bubblebot customization
+index = require('./lib/index')
+
 //Loads configuration from configuration.json.
 //Alternately, can pass an object with configuration values to use instead.
 bubblebot.initialize_configuration(function (){
@@ -18,6 +21,7 @@ bubblebot.initialize_configuration(function (){
     console.log('run.js: starting server');
 
     //Do any customization here
+    index.initialize(server)
 
     //Start the server
     server.start()

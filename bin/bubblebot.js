@@ -2,7 +2,7 @@
 
 command = process.argv[2];
 child_process = require('child_process');
-
+fs = require 'fs'
 
 run_command = function() {
     if (!bubblebot[command]) {
@@ -15,10 +15,13 @@ run_command = function() {
 
 
 var not_installed;
-try {
-    bubblebot = require(process.cwd() + '/node_modules/bubblebot');
+if (fs.statSync(process.cwd() + '/node_modules/bubblebot').isDirectory()) {
     not_installed = false;
-} catch (err) {
+    bubblebot = require(process.cwd() + '/node_modules/bubblebot');
+    if (fs.statSync(process.cwd() + '/lib/index.js').isFile()) {
+        require('./lib/index');
+    }
+} else {
     not_installed = true;
 }
 if (not_installed) {
