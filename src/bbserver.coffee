@@ -39,6 +39,21 @@ bbserver.Server = class Server
                             if path[0] is 'logs'
                                 @show_logs req, res, path[1...]
 
+                            #Endpoint to make it easy to monitor bubblebot via http
+                            #queries BBDB
+                            else if path[0] is 'monitor'
+                                u.SyncRun =>
+                                    try
+                                        @build_context()
+                                        u.db().exists 'Environment', 'bubblebot'
+                                        res.statusCode = 200
+                                        res.write 'Okay!'
+                                        res.end()
+                                    catch err
+                                        res.statusCode = 500
+                                        res.write err.stack
+                                        res.end()
+
                             else if not path[0]
                                 res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
                                 res.end()
