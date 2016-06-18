@@ -79,7 +79,7 @@ software.metrics = do_once 'metrics_plugin', (instance) ->
         u.log 'WARNING: no metrics plugin installed... metrics package will not do anything'
 
     for plugin in metrics_plugins
-        plugin.get_server_metrics_software instance
+        plugin.get_server_metrics_software() instance
 
 
 #Installs pg_dump for postgres 9.5
