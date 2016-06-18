@@ -2116,6 +2116,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     toString: -> "#{@id} #{@name()}"
 
+    #Sets this instance to expire ms miliseconds in the future
+    set_expiration: (ms) -> @set 'expiration_time', Date.now() + ms
+
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
         u.log 'setting status of ' + this + ' to ' + status

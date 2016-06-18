@@ -279,7 +279,7 @@ bbserver.Server = class Server
         instance = bbobjects.instance(type, id)
         if not instance.exists()
             throw new Error 'trying to schedule a task on an instance that does not exist'
-        if not instance[method]
+        if not instance[method] and not instance.template?()?[method]
             throw new Error 'Instance ' + String(instance) + ' does not have method ' + method
 
     #Schedules a task to run at a future time
@@ -349,7 +349,14 @@ bbserver.Server = class Server
                 u.log 'Instance no longer exists, so aborting'
                 return
 
-            instance[method] params...
+            if instance[method]
+                instance[method] params...
+            else
+                template = instance.template?()
+                if template?[method]
+                    template[method] instance, params...
+                else
+                    throw new Error 'could not find ' + method + ' on ' + type + ' ' + id
 
             u.log 'Task completed successfully'
 

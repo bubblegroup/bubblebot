@@ -46,6 +46,8 @@ templates.get = (iface, id) ->
 templates.Environment = class Environment
     initialize: (environment) ->
 
+    on_startup: -> #no-op
+
 #A blank environment...
 templates.add 'Environment', 'blank', new Environment()
 
