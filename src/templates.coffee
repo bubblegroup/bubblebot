@@ -138,7 +138,7 @@ templates.Service = class Service
 
         #Let the user know we are finished
         u.reply 'We are finished rolling out the new version'
-        @on_deploy_finished?()
+        @on_deploy_finished?(instance, version, deployment_message)
 
     on_startup: -> #no op
 

@@ -39,8 +39,23 @@ librato.increment = (source, name, value = 1) ->
     counts[source][name] += value
 
 
+#Sends an annotation
+librato.annotate = (stream, title, description) ->
+    librato_client().post '/annotations/' + stream, {
+        title
+        description
+    }, (err, res) ->
+        if err
+            throw err
+
+
+
 LIBRATO_INTERVAL = 10 * 1000
 
+librato_client = -> librato.createClient {
+    email: config.get 'plugins.librato.email'
+    token: config.get 'plugins.librato.token'
+}
 
 sanitize_source = (source) ->
     source = source.replace(/[^A-Za-z0-9\.:\-_]/g, '.')
@@ -52,11 +67,6 @@ start_flusher = ->
     if _flusher_on
         return
     _flusher_on = true
-
-    librato_client = librato.createClient {
-        email: config.get 'plugins.librato.email'
-        token: config.get 'plugins.librato.token'
-    }
 
     setInterval ->
         gauges = []
@@ -85,7 +95,7 @@ start_flusher = ->
         counts = {}
 
         if gauges.length > 0
-            librato_client.post '/metrics', {
+            librato_client().post '/metrics', {
                 gauges
             }, (err, res) ->
                 if err
