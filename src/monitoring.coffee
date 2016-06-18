@@ -239,7 +239,7 @@ monitoring.Monitor = class Monitor
                 reason = err.stack
 
         else if protocol is 'postgres'
-            db = databases.Postgres object
+            db = new databases.Postgres object
             try
                 start = Date.now()
                 db.query 'select 1'
