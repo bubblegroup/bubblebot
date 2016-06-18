@@ -1342,6 +1342,23 @@ bbobjects.Environment = class Environment extends BubblebotObject
             set.create this
         return set
 
+    #Retrieves credentials that start with the given key as an object
+    get_credential_object: (set_name, key) -> @get_credential_set(set_name).get_credential_object(key)
+
+    get_credential_object_cmd:
+        params: [
+            {name: 'set_name', required: true, help: 'The name of the credential-set to retrieve'}
+            {name: 'key', required: true, help: 'The key of the object'}
+        ]
+        help: 'Retrieves dot-seperated credentials starting with the given key as an object'
+        dangerous: -> not @environment().type().is_development()
+        groups: ->
+            if @environment().type().is_development()
+                return constants.BASIC
+            else
+                return constants.ADMIN
+
+
     #Retrieves a credential from this environment
     get_credential: (set_name, name) -> @get_credential_set(set_name).get_credential(name)
 
@@ -1549,6 +1566,20 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
 
     get_credential: (name) ->
         @get 'credential_' + name
+
+    get_credential_object: (key) ->
+        result = {}
+        prefix = 'credential_' + key + '.'
+        for k, v of @properties()
+            if k.indexOf(prefix) is 0 and k.length > prefix.length
+                pieces = k[prefix.length..].split('.')
+                targ = result
+                for piece in pieces[0...pieces.length - 1]
+                    if typeof(targ[piece]) isnt 'object'
+                        targ[piece] = {}
+                    targ = targ[piece]
+                targ[pieces[pieces.length - 1]] = v
+        return result
 
     #Loads a new-line separated list of keys, returns [errors, results].
     #If any key not marked "optional" is missing, errors is a list of missing keys.
