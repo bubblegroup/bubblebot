@@ -256,3 +256,4 @@ monitoring.Monitor = class Monitor
 u = require './utilities'
 config = require './config'
 request = require 'request'
+databases = require './databases'
