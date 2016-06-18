@@ -1325,3 +1325,9 @@ monitoring = require './monitoring'
 url = require 'url'
 util = require 'util'
 config = require './config'
+
+#Testing
+if require.main is module
+    #currently we just make sure it loads
+    console.log 'BBServer loaded'
+    process.exit(0)
