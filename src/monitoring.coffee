@@ -243,7 +243,7 @@ monitoring.Monitor = class Monitor
             try
                 start = Date.now()
                 db.query 'select 1'
-                latency = block.wait()
+                latency = Date.now() - start
                 result = true
                 reason = null
             catch err
