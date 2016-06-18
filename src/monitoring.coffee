@@ -189,7 +189,7 @@ monitoring.Monitor = class Monitor
         for uid, object of @to_monitor
             if @health[uid] is HEALTHY
                 uptime = (total_time - (@downtime[uid] ? 0)) / total_time
-                res.push String(object) + ': ' + @health[uid] + if ' (' + u.format_percent(uptime) + ')'
+                res.push String(object) + ': ' + @health[uid] + ' (' + u.format_percent(uptime) + ')'
             else
                 res.push String(object) + ': ' + @health[uid]
 
