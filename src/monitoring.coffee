@@ -62,8 +62,8 @@ monitoring.Monitor = class Monitor
                 #Mark its health unknown until we get a positive confirmation on its state
                 @health[uid] = UNKNOWN
 
-                #Check its current state
-                state = @get_state(object)
+                #Check its current state and reason
+                [state, reason] = @get_state(object)
 
                 #If it is unhealthy, start tracking downtime...
                 if state is UNHEALTHY
@@ -89,11 +89,11 @@ monitoring.Monitor = class Monitor
 
                                 if within_limit
                                     services[service] = true
-                                    @report_down service, object, downtime
+                                    @report_down service, object, downtime, reason
 
                         #Wait for a second before checking again
                         u.pause 1000
-                        state = @get_state(object)
+                        [state, reason] = @get_state(object)
 
                     #We are no longer unhealthy, so update our total downtime, and inform services.
                     downtime = Date.now() - down
@@ -115,19 +115,20 @@ monitoring.Monitor = class Monitor
     get_state: (object) ->
         #first, see if the object thinks it is in maintenance mode
         if object.maintenance()
-            return MAINTENANCE
+            return [MAINTENANCE, 'self-report']
 
         #Then, see if any of its dependencies are unhealthy / unknown / in maintenance.
         #
         #If so, we consider this in maintenance mode
         if @unhealthy_dependencies(object)
-            return MAINTENANCE
+            return [MAINTENANCE, 'dependency is down']
 
         #Then try to hit it
-        if @hit_endpoint object
-            return HEALTHY
+        [up, reason] = @hit_endpoint object
+        if up
+            return [HEALTHY]
         else
-            return UNHEALTHY
+            return [UNHEALTHY, reason]
 
 
     #Returns true if we have any dependencies who don't have a confirmed health
@@ -143,16 +144,16 @@ monitoring.Monitor = class Monitor
             if plugin.name() is service
                 return plugin
 
-    report_down: (service, object, downtime) ->
+    report_down: (service, object, downtime, reason) ->
         #Record that we've reported down to this service
         uid = @_get_uid(object)
         @last_service_times[uid] ?= {}
         @last_service_times[uid][service] = Date.now()
 
         if service is 'announce'
-            u.announce 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime)
+            u.announce 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
         else if service is 'report'
-            u.report 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime)
+            u.report 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
         else if service is 'replace'
             u.report 'Monitoring: automatically replacing ' + object
             u.announce 'Monitoring: automatically replacing ' + object
@@ -160,7 +161,7 @@ monitoring.Monitor = class Monitor
         else
             plugin = @get_alerting_plugin(service)
             if plugin
-                plugin.report_down object, downtime
+                plugin.report_down object, downtime, reason
             else
                 u.report 'Monitoring: unrecognized reporting service ' + service
 
@@ -186,8 +187,11 @@ monitoring.Monitor = class Monitor
         res.push 'Bubblebot has been up for ' + u.format_time(total_time)
         res.push ''
         for uid, object of @to_monitor
-            uptime = (total_time - (@downtime[uid] ? 0)) / total_time
-            res.push String(object) + ': ' + @health[uid] + ' (' + u.format_percent(uptime) + ')'
+            if @health[uid] is HEALTHY
+                uptime = (total_time - (@downtime[uid] ? 0)) / total_time
+                res.push String(object) + ': ' + @health[uid] + if ' (' + u.format_percent(uptime) + ')'
+            else
+                res.push String(object) + ': ' + @health[uid]
 
         return res.join '\n'
 
@@ -211,7 +215,8 @@ monitoring.Monitor = class Monitor
         return res.join '\n'
 
 
-    #Tries to access the server, returns true if it is up, false if not
+    #Tries to access the server, returns [up, reason] where up is a boolean inicating
+    #if the server is accessible, and reason is a string giving more info on why it's not up
     hit_endpoint: (object) ->
         policy = object.get_monitoring_policy()
         endpoint = object.endpoint()
@@ -228,8 +233,10 @@ monitoring.Monitor = class Monitor
                 latency = Date.now() - start
 
                 result = 200 <= res.statusCode <= 299
+                reason = res.statusCode + ' ' + res.body
             catch err
                 result = false
+                reason = err.stack
 
         else if protocol is 'postgres'
             db = databases.Postgres object
@@ -238,8 +245,10 @@ monitoring.Monitor = class Monitor
                 db.query 'select 1'
                 latency = block.wait()
                 result = true
+                reason = null
             catch err
                 result = false
+                reason = err.stack
 
         else
             throw new Error 'monitoring: unrecognized protocol ' + protocol
@@ -250,7 +259,7 @@ monitoring.Monitor = class Monitor
                 if typeof(plugin.measure) is 'function'
                     plugin.measure object.type + '_' + object.id, 'bubblebot_monitor_latency', latency
 
-        return result
+        return [result, reason]
 
 
 u = require './utilities'
