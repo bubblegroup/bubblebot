@@ -1547,7 +1547,7 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
         prefix = environment.id + '-'
         if @id.indexOf(prefix) isnt 0
             throw new Error 'CredentialSet ids should be of the form [environment id]_[set name]'
-        super parent.type, parent.id
+        super environment.type, environment.id
 
     set_name: ->
         prefix = @environment().id + '-'
