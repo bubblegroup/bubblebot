@@ -23,7 +23,7 @@ software.do_once = do_once = (name, fn) ->
 
 
 #Sets up sudo and yum and installs GCC
-software.basics = do_once 'basics', (instance) ->
+software.basics = -> do_once 'basics', (instance) ->
     #Redirects 80 -> 8080 so that don't have to run things as root
     instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080"
     #And 443 -> 8043
@@ -37,7 +37,7 @@ software.basics = do_once 'basics', (instance) ->
 
 #Installs supervisor and sets it up to run the given command
 software.supervisor = (name, command, pwd) -> (instance) ->
-    software.basics instance
+    software.basics() instance
 
     instance.run 'sudo pip install supervisor==3.1'
     instance.run '/usr/local/bin/echo_supervisord_conf > tmp'
@@ -63,7 +63,7 @@ software.verify_supervisor = (server, name, seconds) ->
 
 #Installs node
 software.node = (version) -> do_once 'node ' + version, (instance) ->
-    software.basics instance
+    software.basics() instance
 
     instance.run 'git clone https://github.com/tj/n'
     instance.run 'cd n; sudo make install'
@@ -72,7 +72,7 @@ software.node = (version) -> do_once 'node ' + version, (instance) ->
 
 
 #Installs the server metrics plugin
-software.metrics = do_once 'metrics_plugin', (instance) ->
+software.metrics = -> do_once 'metrics_plugin', (instance) ->
     metrics_plugins = config.get_plugins 'metrics'
 
     if metrics_plugins.length is 0
@@ -83,7 +83,7 @@ software.metrics = do_once 'metrics_plugin', (instance) ->
 
 
 #Installs pg_dump for postgres 9.5
-software.pg_dump95 = do_once 'pg_dump95', (instance) ->
+software.pg_dump95 = -> do_once 'pg_dump95', (instance) ->
     instance.run 'sudo yum -y localinstall https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-6-x86_64/pgdg-ami201503-95-9.5-2.noarch.rpm'
     instance.run 'sudo yum -y install postgresql95'
 
