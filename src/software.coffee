@@ -93,12 +93,13 @@ software.private_key = (path) -> (instance) ->
     #Write the key
     key_data = fs.readFileSync path, 'utf8'
     u.log 'Writing private key to ~/.ssh/id_rsa'
-    instance.run {cmd: 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', no_log: true}
+    instance.run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
     instance.run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
 
     #turn off strict host checking so that we don't get interrupted by prompts
     instance.run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
     instance.run 'chmod 600 /home/ec2-user/.ssh/config'
+
 
 u = require './utilities'
 config = require './config'
