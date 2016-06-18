@@ -1,7 +1,5 @@
 bubblebot = exports
 
-console.log 'IN BUBBLEBOT'
-
 commands = require './commands'
 config = require './config'
 bbserver = require './bbserver'
@@ -37,5 +35,4 @@ bubblebot.config = require './config'
 bubblebot.software = require './software'
 bubblebot.bbobjects = require './bbobjects'
 bubblebot.plugins = require './plugins'
-console.log 'ADDING CONSTANTS'
 bubblebot.constants = require './constants'
