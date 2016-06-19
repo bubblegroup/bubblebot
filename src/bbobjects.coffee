@@ -865,6 +865,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
         for reservation in data.Reservations ? []
             for instance in reservation.Instances ? []
                 id = instance.InstanceId
+                #We save the environment since it can be hard to retrieve it later if
+                #the instance isn't in the database
+                instance._bubblebot_environment = this
                 instance_cache.set id, instance
                 res.push bbobjects.instance 'EC2Instance', id
 
@@ -2157,6 +2160,10 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
         @environment().tag_resource @id, 'Name', @name()
         @template().on_status_change? this, status
+
+    #We check the cache before checking the database, since sometimes we have access
+    #to cached info about the environment, but the instance isn't in the database
+    environment: -> @get_data()?._bubblebot_environment ? super()
 
     name: ->
         status = @get('status')
