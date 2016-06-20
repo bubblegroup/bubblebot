@@ -1078,6 +1078,8 @@ class BlankBuild extends templates.EC2Build
 
     software: (version) -> (instance) ->
 
+    restart: (ec2instance) ->
+
     ami_software: -> null
 
     termination_delay: -> 1
