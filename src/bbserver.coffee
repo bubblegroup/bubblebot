@@ -419,7 +419,7 @@ bbserver.Server = class Server
             context.create_sub_logger = =>
                 sub_logger = @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
                 link = sub_logger.get_tail_url()
-                u.reply 'Logging transcript here: ' + link
+                u.reply 'Logging transcript for ' + msg + ': ' + link
                 u.context().get_transcript = -> link
 
             u.log current_user.name() + ': ' + msg
