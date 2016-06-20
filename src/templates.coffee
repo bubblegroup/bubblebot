@@ -9,7 +9,7 @@ interfaces =
     Service: ['codebase', 'get_tests', 'deploy', 'get_monitoring_policy']
     Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge', 'debug_version']
     Test: ['run']
-    EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size', 'get_replacement_interval']
+    EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size', 'get_replacement_interval', 'restart']
 
 
 #For each interface, create an object for registering things that implement that interface

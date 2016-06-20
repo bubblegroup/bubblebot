@@ -2215,6 +2215,29 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         groups: constants.BASIC
         sublogger: true
 
+    #Runs the restart command for this box
+    #If aws is true, restarts via aws as well
+    restart: (aws) ->
+        if aws
+            u.reply 'Doing an AWS restart...'
+
+        u.reply 'Doing a software restart...'
+        if not @template()
+            u.reply 'Cannot do a software restart because we do not have a template set'
+            return
+        @template().restart this
+        u.reply 'Restart complete'
+
+
+    restart_cmd:
+        help: 'Restarts this server'
+        params: [
+            {name: 'aws', type: 'boolean', help: 'If true, we restart at the AWS level, not just the software level'}
+        ]
+        dangerous: -> @is_production()
+        groups: (aws) -> if aws and @is_production() then constants.ADMIN else constants.BASIC
+        sublogger: true
+
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
         u.log 'setting status of ' + this + ' to ' + status
