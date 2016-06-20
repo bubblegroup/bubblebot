@@ -175,6 +175,9 @@ bbobjects.get_bbdb_instance = ->
 #Returns all the objects of a given type
 bbobjects.list_all = (type) -> (bbobjects.instance type, id for id in u.db().list_objects type)
 
+#Like list_all but just returns the ids
+bbobjects.list_all_ids = (type) -> u.db().list_objects type
+
 #Returns all the users.  We get the list of ids from slack rather than from the database
 bbobjects.list_users = -> (bbobjects.instance 'User', slack_user.id for slack_user in u.context().server.slack_client.get_all_users() ? [])
 
@@ -1399,6 +1402,31 @@ bbobjects.Environment = class Environment extends BubblebotObject
             else
                 return constants.BASIC
 
+    #copies the credential set of another environment
+    copy_credential_set: (set_name, copy_from_env) ->
+        my_set = @get_credential_set(set_name)
+        their_set = bbobjects.instance('Environment', copy_from_env).get_credential_set(set_name)
+        my_keys = my_set.all_credentials()
+        their_keys = my_set.all_credentials()
+        overlap = []
+        overlap = (key for key in their_keys when key in my_keys)
+        if overlap.length > 0
+            if not u.confirm 'This operation would overwrite the following credentials: ' + overlap.join(', ') + '.  Are you sure you want to proceed?'
+                u.reply 'Okay, aborting'
+                return
+
+        for key in their_keys
+            my_set.set_credential key, their_set.get_credential(key), true
+
+        u.reply 'Okay, credentials copied over: ' + their_keys.join(', ')
+
+    copy_credential_set_cmd: ->
+        help: 'Copies a credential set from another environment to this environment'
+        params: [
+            {name: 'set name', required: true, help: 'The name of the credential-set to set'}
+            {name: 'copy from env', required: true, type: 'list', options: bbobjects.list_all_ids.bind(null, 'Environment'), help: 'The name of the environment to copy from'}
+        ]
+
 
     #Gets the RDS subnet group for this environment, creating it if necessary
     get_rds_subnet_group: ->
@@ -1542,6 +1570,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
 
 
+CREDENTIAL_PREFIX = 'credential_'
 
 #Represents a collection of (possibly secure) credentials
 bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
@@ -1558,21 +1587,25 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
 
     set_credential: (name, value, overwrite) ->
         if not overwrite
-            prev = @get 'credential_' + name
+            prev = @get CREDENTIAL_PREFIX  + name
             if prev
                 u.reply 'There is already a credential for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name + '. To overwrite it, call this command again with overwrite set to true'
                 return
-        @set 'credential_' + name, value
+        @set CREDENTIAL_PREFIX + name, value
         msg = 'Credential set for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name
         u.announce msg
         u.reply msg
 
+    #Get all the keys in this set as an array
+    all_credentials: ->
+        return (k[CREDENTIAL_PREFIX.length..] for k, v of @properties() when k.indexOf(CREDENTIAL_PREFIX) is 0)
+
     get_credential: (name) ->
-        @get 'credential_' + name
+        @get CREDENTIAL_PREFIX + name
 
     get_credential_object: (key) ->
         result = {}
-        prefix = 'credential_' + key + '.'
+        prefix = CREDENTIAL_PREFIX + key + '.'
         for k, v of @properties()
             if k.indexOf(prefix) is 0 and k.length > prefix.length
                 pieces = k[prefix.length..].split('.')
