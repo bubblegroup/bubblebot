@@ -2318,7 +2318,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         if @get_state(true) is target_state
             return
         else if retries is 0
-            throw new Error 'timed out while waiting for ' + @id + ' to be ' target_state + ': ' + @get_state()
+            throw new Error 'timed out while waiting for ' + @id + ' to be ' + target_state + ': ' + @get_state()
         else
             u.pause 10000
             @wait_for_running(retries - 1)
