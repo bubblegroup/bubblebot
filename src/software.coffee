@@ -40,7 +40,7 @@ software.supervisor = (name, command, pwd) -> (instance) ->
     instance.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
 
 #Make sure ports are exposed and starts supervisord
-software.supervisor_start (can_fail) -> (instance) ->
+software.supervisor_start = (can_fail) -> (instance) ->
     #Redirects 80 -> 8080 so that don't have to run things as root
     instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080", {can_fail}
     #And 443 -> 8043
