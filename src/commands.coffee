@@ -60,7 +60,7 @@ commands.publish = (access_key, secret_access_key) ->
         catch err
             u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
             #make sure supervisord is running
-            bbserver.run('supervisord -c /etc/supervisord.conf', {can_fail: true})
+            software.supervisor_start(true) bbserver
             #stop bubblebot if it is running
             bbserver.run('supervisorctl stop bubblebot', {can_fail: true})
             #start bubblebot

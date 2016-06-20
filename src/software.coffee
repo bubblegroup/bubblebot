@@ -24,11 +24,6 @@ software.do_once = do_once = (name, fn) ->
 
 #Sets up sudo and yum and installs GCC
 software.basics = -> do_once 'basics', (instance) ->
-    #Redirects 80 -> 8080 so that don't have to run things as root
-    instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080"
-    #And 443 -> 8043
-    instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8043"
-
     #update yum and install git + development tools
     instance.run 'sudo yum update -y'
     instance.run 'sudo yum -y install git'
@@ -43,6 +38,15 @@ software.supervisor = (name, command, pwd) -> (instance) ->
     instance.run '/usr/local/bin/echo_supervisord_conf > tmp'
     instance.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\ndirectory=' + pwd + '\n\nEOF'
     instance.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
+
+#Make sure ports are exposed and starts supervisord
+software.supervisor_start (can_fail) -> (instance) ->
+    #Redirects 80 -> 8080 so that don't have to run things as root
+    instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080", {can_fail}
+    #And 443 -> 8043
+    instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8043", {can_fail}
+    #Start supervisord
+    instance.run "supervisord -c /etc/supervisord.conf", {can_fail}
 
 #Verifies that the given supervisor process is running for the given number of seconds
 #
