@@ -2163,7 +2163,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     #We check the cache before checking the database, since sometimes we have access
     #to cached info about the environment, but the instance isn't in the database
-    environment: -> @get_data()?._bubblebot_environment ? super()
+    environment: -> @get_data(false, true)?._bubblebot_environment ? super()
 
     name: ->
         status = @get('status')
@@ -2211,8 +2211,11 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     refresh: -> @environment().describe_instances({InstanceIds: [@id]})
 
     #Gets the amazon metadata for this instance, refreshing if it is null or if force_refresh is true
-    get_data: (force_refresh) ->
+    #if no_refresh is true, returns null if we don't have data yet
+    get_data: (force_refresh, no_refresh) ->
         if force_refresh or not instance_cache.get(@id)
+            if no_refresh
+                return null
             @refresh()
         return instance_cache.get(@id)
 
