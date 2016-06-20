@@ -1363,6 +1363,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 return constants.BASIC
             else
                 return constants.ADMIN
+        reply: true
 
 
     #Retrieves a credential from this environment
@@ -1380,6 +1381,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 return constants.BASIC
             else
                 return constants.ADMIN
+        reply: true
 
     #Sets a credential for this environment
     set_credential: (set_name, name, value, overwrite) ->

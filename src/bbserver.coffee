@@ -516,7 +516,7 @@ parse_command = (msg) ->
             endpos = msg.indexOf('"')
         else if msg[0] is "'"
             msg = msg[1..]
-            endpos = msg.indexof("'")
+            endpos = msg.indexOf("'")
         else
             endpos = msg.search(/[ \n]/) #first newline or space
 
@@ -527,6 +527,16 @@ parse_command = (msg) ->
         args.push msg[...endpos]
 
         msg = msg[endpos + 1..]
+
+    #Remove auto-links, since this makes entering urls and emails really difficult
+    remove_auto = (arg) ->
+        if arg[0] is '<' and arg[arg.length - 1] is '>'
+            pipe_idx = arg.indexOf('|')
+            if pipe_idx isnt -1
+                return arg[pipe_idx + 1...arg.length - 1]
+        return arg
+
+    args = (remove_auto arg for arg in args)
 
     return args
 
