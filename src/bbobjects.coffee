@@ -2216,10 +2216,17 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         sublogger: true
 
     #Runs the restart command for this box
-    #If aws is true, restarts via aws as well
+    #If aws is true, restarts via aws as well via a stop and start (not reboot, which isn't always effective)
     restart: (aws) ->
         if aws
-            u.reply 'Doing an AWS restart...'
+            u.reply 'Stopping the instance...'
+            @environment().ec2 'stopInstances', {InstanceIds: [@id]}
+            u.pause 5000
+            u.reply 'Starting the instance...'
+            @environment().ec2 'startInstances', {InstanceIds: [@id]}
+            u.pause 2000
+            u.reply 'Waiting for the instance to be running...'
+            @wait_for_running()
 
         u.reply 'Doing a software restart...'
         if not @template()
