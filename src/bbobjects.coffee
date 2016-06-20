@@ -1373,7 +1373,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         help: 'Retrieves a credential for this environment.'
         dangerous: -> not @environment().type().is_development()
         groups: ->
-            if @environment().type().is_development()
+            if @environment().is_development()
                 return constants.BASIC
             else
                 return constants.ADMIN
