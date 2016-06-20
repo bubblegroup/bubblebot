@@ -922,6 +922,27 @@ bbserver.Command = class Command
 
 
 
+class Tasks extends Command
+    help: 'Lists / deletes tasks'
+
+    params: [
+        {name: 'to_delete', help: 'If given, deletes all tasks with this name'}
+    ]
+
+    run: (to_delete) ->
+        if to_delete
+            u.db().remove_by_taskname to_delete
+            u.reply 'Deleted all tasks named ' + to_delete
+        else
+            table = []
+            for {task, count} in u.db().list_tasks()
+                table.push [task, String(count)]
+            u.reply 'Tasks:\n' + u.make_table(table)
+
+    dangerous: (to_delete) -> to_delete
+
+    groups: (to_delete) -> if to_delete then constants.ADMIN else constants.BASIC
+
 
 class Help extends Command
     additional_params: {name: 'commands'}
@@ -1207,6 +1228,7 @@ class RootCommand extends CommandTree
         @commands.ps = new PS()
         @commands.cancel = new Cancel()
         @commands.monitor = new Monitor(@server)
+        @commands.tasks = new Tasks()
         @commands.users = new UsersTree()
         @commands.security_groups = new SecurityGroupsTree()
         @commands.logs = new Logs()

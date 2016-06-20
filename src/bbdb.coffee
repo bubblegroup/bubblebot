@@ -137,6 +137,17 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
             return null
 
+    #Returns tasks by taskname and count
+    list_tasks: ->
+        query = 'SELECT task, count(*) FROM scheduler GROUP BY task'
+        result = @query query
+        return result.rows
+
+    #Deletes all tasks with the given taskname
+    remove_by_taskname: (task) ->
+        query = 'DELETE FROM scheduler WHERE task = $1'
+        @query query, task
+        return null
 
     #Retrieves the first task that a) is unclaimed and b) is ready to go.
     #
