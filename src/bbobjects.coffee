@@ -2186,6 +2186,28 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Sets this instance to expire ms miliseconds in the future
     set_expiration: (ms) -> @set 'expiration_time', Date.now() + ms
 
+    #Re-applies the EC2 build to this instance
+    rebuild: (version) ->
+        if not version
+            version = @get 'software_version'
+            if not version
+                u.expected_error 'No software_version set... pass in an explicit version'
+        if @is_production()
+            u.expected_error 'Cannot rebuild instances in production -- this is for development purposes only'
+        if not @template()
+            u.expected_error 'This ec2 instance does not have a template set'
+        @template().software(version, @parent()) this
+        u.reply 'Rebuild complete'
+
+    rebuild_cmd:
+        help: 'Attempts to re-install the software on this server'
+        params: [
+            {name: 'version', help: 'The version of this software to install.  Defaults to whatever is currently installed'}
+        ]
+        dangerous: -> not @is_development()
+        groups: commands.BASIC
+        sublogger: true
+
     #Updates the status and adds a ' (status)' to the name in the AWS console
     set_status: (status) ->
         u.log 'setting status of ' + this + ' to ' + status
