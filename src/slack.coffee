@@ -56,10 +56,12 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
     #We want to avoid sending more than 1 message per second, because otherwise the slack
     #API will start rate-limiting us
     rate_limit: ->
-        if @last_sent and Date.now() - @last_sent < 1000
-            u.pause 1000 - (Date.now() - @last_sent)
+        @rate_limit_lock ?= u.Lock(5 * 60 * 1000)
+        @rate_limit_lock.run =>
+            if @last_sent and Date.now() - @last_sent < 1000
+                u.pause 1000 - (Date.now() - @last_sent)
 
-        @last_sent = Date.now()
+            @last_sent = Date.now()
 
 
 
