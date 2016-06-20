@@ -534,6 +534,8 @@ parse_command = (msg) ->
             pipe_idx = arg.indexOf('|')
             if pipe_idx isnt -1
                 return arg[pipe_idx + 1...arg.length - 1]
+            else
+                return arg[1...arg.length - 1]
         return arg
 
     args = (remove_auto arg for arg in args)
