@@ -52,7 +52,7 @@ librato.annotate = (stream, title, description) ->
 
 LIBRATO_INTERVAL = 10 * 1000
 
-librato_client = -> librato.createClient {
+librato_client = -> librato_metrics.createClient {
     email: config.get 'plugins.librato.email'
     token: config.get 'plugins.librato.token'
 }
