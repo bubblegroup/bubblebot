@@ -2231,6 +2231,8 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         status = @get('status')
         if status
             status = ' (' + status + ')'
+        else
+            status = ''
         return (@get('name') ? @bubblebot_role()) + status
 
     describe_keys: ->
