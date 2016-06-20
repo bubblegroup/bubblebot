@@ -2205,7 +2205,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             {name: 'version', help: 'The version of this software to install.  Defaults to whatever is currently installed'}
         ]
         dangerous: -> not @is_development()
-        groups: commands.BASIC
+        groups: constants.BASIC
         sublogger: true
 
     #Updates the status and adds a ' (status)' to the name in the AWS console
