@@ -508,7 +508,7 @@ parse_command = (msg) ->
 
     #Go through and chunk based on whitespace or on quotes
     while msg.length > 0
-        while msg[0] is ' '
+        while msg[0] in [' ', '\n']
             msg = msg[1..]
 
         if msg[0] is '"'
@@ -518,7 +518,7 @@ parse_command = (msg) ->
             msg = msg[1..]
             endpos = msg.indexof("'")
         else
-            endpos = msg.indexOf(' ')
+            endpos = msg.search(/[ \n]/) #first newline or space
 
         #if we don't see our chunk segment, go to the end of the string
         if endpos is -1
