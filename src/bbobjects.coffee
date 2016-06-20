@@ -2221,10 +2221,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         if aws
             u.reply 'Stopping the instance...'
             @environment().ec2 'stopInstances', {InstanceIds: [@id]}
-            u.pause 5000
+            @wait_for_running(20, 'stopped')
             u.reply 'Starting the instance...'
             @environment().ec2 'startInstances', {InstanceIds: [@id]}
-            u.pause 2000
             u.reply 'Waiting for the instance to be running...'
             @wait_for_running()
 
@@ -2314,12 +2313,12 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         return instance_cache.get(@id)
 
     #Waits til the server is in the running state
-    wait_for_running: (retries = 20) ->
+    wait_for_running: (retries = 20, target_state = 'running') ->
         u.log 'waiting for server to be running (' + retries + ')'
-        if @get_state(true) is 'running'
+        if @get_state(true) is target_state
             return
         else if retries is 0
-            throw new Error 'timed out while waiting for ' + @id + ' to be running: ' + @get_state()
+            throw new Error 'timed out while waiting for ' + @id + ' to be ' target_state + ': ' + @get_state()
         else
             u.pause 10000
             @wait_for_running(retries - 1)
