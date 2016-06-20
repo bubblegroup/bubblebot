@@ -1357,9 +1357,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {name: 'key', required: true, help: 'The key of the object'}
         ]
         help: 'Retrieves dot-seperated credentials starting with the given key as an object'
-        dangerous: -> not @environment().type().is_development()
+        dangerous: -> not @environment().is_development()
         groups: ->
-            if @environment().type().is_development()
+            if @environment().is_development()
                 return constants.BASIC
             else
                 return constants.ADMIN
@@ -1374,7 +1374,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {name: 'name', required: true, help: 'The name of the credential to retrieve'}
         ]
         help: 'Retrieves a credential for this environment.'
-        dangerous: -> not @environment().type().is_development()
+        dangerous: -> not @environment().is_development()
         groups: ->
             if @environment().is_development()
                 return constants.BASIC
@@ -1397,7 +1397,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         groups: (set_name, name, value, overwrite) ->
             if not value?
                 throw new Error 'assertion error: ' + JSON.stringify({set_name, name, value, overwrite})
-            if overwrite and @environment().type().is_development()
+            if overwrite and @environment().is_development()
                 return constants.ADMIN
             else
                 return constants.BASIC
