@@ -53,6 +53,15 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         catch err
             console.log err.stack ? err
 
+    #We want to avoid sending more than 1 message per second, because otherwise the slack
+    #API will start rate-limiting us
+    rate_limit: ->
+        if @last_sent and Date.now() - @last_sent < 1000
+            u.pause 1000 - (Date.now() - @last_sent)
+
+        @last_sent = Date.now()
+
+
 
     #Handles incoming messages
     handle_message: (message) ->
@@ -79,6 +88,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Sends a message to the indicated user
     message: (user_id, msg) ->
+        @rate_limit()
         block = u.Block 'sending message'
         @send_im user_id, msg, block.make_cb()
         block.wait()
@@ -90,6 +100,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         if not user_id?
             @announce msg
             return
+        @rate_limit()
         block = u.Block 'replying'
         @send_im user_id, msg, block.make_cb()
         block.wait()
@@ -130,6 +141,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         @talking_to_lock[user_id] ?= u.Lock(60 * 60 * 1000)
 
         return @talking_to_lock[user_id].run =>
+            @rate_limit()
 
             block = u.Block 'sending message'
             @send_im user_id, msg, block.make_cb()
@@ -177,6 +189,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
     announce: (msg) ->
         u.ensure_fiber =>
             channel = @get_announcement_channel()
+            @rate_limit()
             block = u.Block 'sending message'
             @api.sendMessage msg, channel.id, block.make_cb()
             block.wait()
@@ -208,6 +221,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
                 admin_ids = (admin.id for admin in @server.get_admins())
                 for id in admin_ids
                     u.retry =>
+                        @rate_limit()
                         block = u.Block 'messaging admin'
                         @send_im id, msg, block.make_cb()
                         block.wait()
