@@ -1988,7 +1988,8 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         @set key, new_ami
 
         msg = 'Replaced AMI for ' + this + ' in region ' + region + ': new AMI ' + new_ami
-        u.reply msg
+        if u.current_user()
+            u.reply msg
         u.announce msg
 
         #destroy the server we used to create the ami
