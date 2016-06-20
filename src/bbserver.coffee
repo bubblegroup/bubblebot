@@ -424,29 +424,41 @@ bbserver.Server = class Server
 
             u.log current_user.name() + ': ' + msg
 
-            try
-                args = parse_command msg
-                u.context().parsed_message = args
-                @root_command.execute [], args
-            catch err
-                cmd = context.original_message
+            parsed_args = parse_command msg
 
-                if err.reason is u.CANCEL
-                    u.reply 'Cancelled: ' + cmd
-                else if err.reason is u.USER_TIMEOUT
-                    u.reply 'Timed out waiting for your reply: ' + cmd
-                else if err.reason is u.EXPECTED
-                    u.reply 'Operation failed:\n' + err.message
-                else if err.reason is u.EXTERNAL_CANCEL
-                    u.uncancel_fiber()
-                    u.reply 'Cancelled (via the cancel cmd): ' + cmd
-                else
-                    u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
-                    if context.user_id
-                        current_user = bbobjects.instance('User', context.user_id)
-                    if not current_user?.is_in_group(constants.ADMIN)
-                        name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
-                        u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
+
+            #if there are ;s in the parsed commands, split on the semi-colons and run as seperate commands
+            to_run = []
+            while parsed_args.indexOf(';') isnt -1
+                to_run.push parsed_args[...parsed_args.indexOf(';')]
+                parsed_args = parsed_args[parsed_args.indexOf(';') + 1..]
+            to_run.push parsed_args
+
+            for args in to_run
+                if args.length is 0
+                    continue
+                try
+                    u.context().parsed_message = args
+                    @root_command.execute [], args
+                catch err
+                    cmd = context.original_message
+
+                    if err.reason is u.CANCEL
+                        u.reply 'Cancelled: ' + cmd
+                    else if err.reason is u.USER_TIMEOUT
+                        u.reply 'Timed out waiting for your reply: ' + cmd
+                    else if err.reason is u.EXPECTED
+                        u.reply 'Operation failed:\n' + err.message
+                    else if err.reason is u.EXTERNAL_CANCEL
+                        u.uncancel_fiber()
+                        u.reply 'Cancelled (via the cancel cmd): ' + cmd
+                    else
+                        u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
+                        if context.user_id
+                            current_user = bbobjects.instance('User', context.user_id)
+                        if not current_user?.is_in_group(constants.ADMIN)
+                            name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
+                            u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
 
     graceful_shutdown: (no_restart) ->
         if no_restart
