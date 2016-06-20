@@ -1385,6 +1385,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Sets a credential for this environment
     set_credential: (set_name, name, value, overwrite) ->
+        if value is 'true'
+            value = true
+        if value is 'false'
+            value = false
         @get_credential_set(set_name).set_credential(name, value, overwrite)
 
     set_credential_cmd:
