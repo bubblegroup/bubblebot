@@ -2316,7 +2316,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     #Waits til the server is in the running state
     wait_for_running: (retries = 20, target_state = 'running') ->
-        u.log 'waiting for server to be running (' + retries + ')'
+        u.log 'waiting for server to be ' + target_state + ' (' + retries + ')'
         if @get_state(true) is target_state
             return
         else if retries is 0
