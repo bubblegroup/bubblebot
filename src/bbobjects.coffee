@@ -2026,10 +2026,6 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         #Inform the instance, if appropriate
         @template().make_active ec2instance
 
-    #Tells this ec2 instance that it was used for running tests, and the tests failed.
-    test_failed: (ec2instance) ->
-        ec2instance.set_status constants.TEST_FAILED
-
     #Tells this ec2 instance to perform a graceful shutdown, and schedules a termination
     graceful_shutdown: (ec2instance) ->
         template = @template()
@@ -2361,9 +2357,13 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     #Inform this instance it was used for running a test that failed
     test_failed: (version, test) ->
-        @template().test_failed this, version, test
+        @set_status constants.TEST_FAILED
         #we save the version and test so that we can re-run:
         @set 'test_failure', {version, test}
+
+        #Hook for informing the template
+        @template().test_failed? this, version, test
+
 
     #Reruns the given version and test against this instance
     rerun: ->
