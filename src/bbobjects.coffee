@@ -2373,7 +2373,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         {version, test} = failure_info
         u.reply 'Running test ' + test + ' against this instance (version ' + version + ')'
         u.context().use_this_instance = this
-        bbobjects.instance('Test', test').run(version)
+        bbobjects.instance('Test', test).run(version)
 
     rerun_cmd:
         help: 'Re-run a failed test against this box'
