@@ -2370,6 +2370,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         failure_info = @get 'test_failure'
         if not failure_info
             u.expected_error 'Could not retrieve a test failure for this instance'
+        u.log 'Failure info: ' + JSON.stringify failure_info
         {version, test} = failure_info
         u.reply 'Running test ' + test + ' against this instance (version ' + version + ')'
         u.context().use_this_instance = this
