@@ -2223,6 +2223,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         if aws
             u.reply 'Stopping the instance...'
             @environment().ec2 'stopInstances', {InstanceIds: [@id]}
+            u.log 'Waiting for server to be stopped'
             @wait_for_running(20, 'stopped')
             u.reply 'Starting the instance...'
             @environment().ec2 'startInstances', {InstanceIds: [@id]}
@@ -2323,7 +2324,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             throw new Error 'timed out while waiting for ' + @id + ' to be ' + target_state + ': ' + @get_state()
         else
             u.pause 10000
-            @wait_for_running(retries - 1)
+            @wait_for_running(retries - 1, target_state)
 
     #When the server was launched
     launch_time: -> new Date(@get_data().LaunchTime)
