@@ -2227,8 +2227,8 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             @wait_for_running(20, 'stopped')
             u.reply 'Starting the instance...'
             @environment().ec2 'startInstances', {InstanceIds: [@id]}
-            u.reply 'Waiting for the instance to be running...'
-            @wait_for_running()
+            u.reply 'Waiting for the instance to be accessible via ssh...'
+            @wait_for_ssh()
 
         u.reply 'Doing a software restart...'
         if not @template()
