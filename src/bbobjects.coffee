@@ -2087,7 +2087,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
                 ec2instance.terminate()
             else
                 u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns()
-                ec2instance.test_failed(version, test)
+                ec2instance.test_failed(version)
 
     #Checks to see if the owner still needs this instance
     follow_up: ->
@@ -2127,6 +2127,7 @@ bbobjects.Test = class Test extends BubblebotObject
     run: (version) ->
         u.reply 'Running test ' + @id + ' on version ' + version
         try
+            u.context().currently_running_test = @id
             result = @template().run version
             u.log 'Test ' + (if result then 'passed' else 'failed') + ' with return value ' + result
         catch err
@@ -2356,13 +2357,15 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     get_state: (force_refresh) -> @get_data(force_refresh).State.Name
 
     #Inform this instance it was used for running a test that failed
-    test_failed: (version, test) ->
+    test_failed: (version) ->
         @set_status constants.TEST_FAILED
         #we save the version and test so that we can re-run:
-        @set 'test_failure', {version, test}
+        test = u.context().currently_running_test
+        if test?
+            @set 'test_failure', {version, test}
 
         #Hook for informing the template
-        @template().test_failed? this, version, test
+        @template().test_failed? this, version
 
 
     #Reruns the given version and test against this instance
@@ -2378,8 +2381,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     rerun_cmd:
         help: 'Re-run a failed test against this box'
-
+        sublogger: true
         groups: constants.BASIC
+
 
     terminate: ->
         u.log 'Terminating server ' + @id
