@@ -2073,7 +2073,11 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     #Runs the given test passing in a test instance.  Handles cleaning up the test
     #instance afterwards
     run_with_test_instance: (version, test) ->
-        ec2instance = @create_test_instance(version)
+        #Allows injecting a previously failed test
+        if u.context().use_this_instance
+            ec2instance = u.context().use_this_instance
+        else
+            ec2instance = @create_test_instance(version)
 
         try
             result = test ec2instance
@@ -2087,7 +2091,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
                 ec2instance.terminate()
             else
                 u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns()
-                ec2instance.test_failed()
+                ec2instance.test_failed(version, test)
 
     #Checks to see if the owner still needs this instance
     follow_up: ->
@@ -2145,6 +2149,7 @@ bbobjects.Test = class Test extends BubblebotObject
         return (reference for {reference, properties} in versions when include_skipped or not properties?.skip_tests)
 
     good_versions_cmd:
+        help: 'Returns a list of versions that passed the test'
         params: [
             {name: 'n_entries', type: 'number', default: 10, help: 'Number of entries to return.  May return less if not including ones where we skipped the test'}
             {name: 'include_skipped', type: 'boolean', default: false, help: 'If set, includes versions where tests were skipped instead of being run'}
@@ -2355,7 +2360,25 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     get_state: (force_refresh) -> @get_data(force_refresh).State.Name
 
     #Inform this instance it was used for running a test that failed
-    test_failed: -> @template().test_failed this
+    test_failed: (version, test) ->
+        @template().test_failed this, version, test
+        #we save the version and test so that we can re-run:
+        @set 'test_failure', {version, test}
+
+    #Reruns the given version and test against this instance
+    rerun: ->
+        failure_info = @get 'test_failure'
+        if not failure_info
+            u.expected_error 'Could not retrieve a test failure for this instance'
+        {version, test} = failure_info
+        u.reply 'Running test ' + test + ' against this instance (version ' + version + ')'
+        u.context().use_this_instance = this
+        bbobjects.instance('Test', test').run(version)
+
+    rerun_cmd:
+        help: 'Re-run a failed test against this box'
+
+        groups: constants.BASIC
 
     terminate: ->
         u.log 'Terminating server ' + @id
