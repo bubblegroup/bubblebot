@@ -2354,6 +2354,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Returns the state of the instance.  Set force_refresh to true to check for changes.
     get_state: (force_refresh) -> @get_data(force_refresh).State.Name
 
+    #Inform this instance it was used for running a test that failed
+    test_failed: -> @template().test_failed this
+
     terminate: ->
         u.log 'Terminating server ' + @id
 
