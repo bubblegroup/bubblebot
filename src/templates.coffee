@@ -351,21 +351,43 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         #ensure bbdb is reachable before attempting the switch
         instance.get 'active_instance'
 
-        @switcher(instance).switch ec2instance
-        instance.set 'active_instance', ec2instance.id
+        try
+            @switcher(instance).switch ec2instance
+            instance.set 'active_instance', ec2instance.id
+        catch err
+            u.SyncRun =>
+                @ensure_switcher_correct instance
+            throw err
 
 
     on_startup: (instance) ->
         super()
-        @ensure_switcher_correct(instance)
         @ensure_version_deployed(instance)
+
+        ensure_switcher = =>
+            u.SyncRun =>
+                try
+                    u.retry 10, 10000, =>
+                        @ensure_switcher_correct(instance)
+                catch err
+                    u.report 'Error in ensure_switcher_correct:\n' + err.stack
+                setTimeout ensure_switcher, 5 * 60 * 1000
+
+        ensure_switcher()
 
 
     ensure_switcher_correct: (instance) ->
-        switcher_instance = u.retry 30, 1000 ->
-            return @switcher(instance).get_instance()
-        if switcher_instance?.id and switcher_instance.id isnt instance.get('active_instance')
-            instance.set 'active_instance', switcher_instance.id
+        switcher_instance = @switcher(instance).get_instance()
+        db_instance = @get_active_instance(instance)
+        if db_instance and db_instance.id isnt switcher_instance?.id
+            u.report 'Switcher mismatch for ' + instance + '; in database: ' + db_instance + ' and in switcher: ' + switcher_instance + '.  Attempting to fix..'
+            @switcher(instance).switch db_instance.id
+
+
+    ensure_switcher_correct_cmd:
+        help: 'Ensures that this services switcher is pointing at the correct box'
+        reply: 'Okay, ensured that it is correct'
+        groups: constants.BASIC
 
     #Ensures that the version we've set is actually what's deployed
     ensure_version_deployed: (instance) ->
