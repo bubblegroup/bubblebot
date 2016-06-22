@@ -341,29 +341,48 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
     endpoint: (instance) -> @switcher(instance).endpoint()
 
     #Returns the ec2 instance that is currently live
-    get_active_instance: (instance) -> @switcher(instance).get_instance()
+    get_active_instance: (instance) ->
+        id = instance.get('active_instance')
+        if not id
+            return null
+        return bbobjects.instance('EC2Instance', id)
+
+    set_active_instance: (instance, ec2instance) ->
+        #ensure bbdb is reachable before attempting the switch
+        instance.get 'active_instance'
+
+        @switcher(instance).switch ec2instance
+        instance.set 'active_instance', ec2instance.id
+
 
     on_startup: (instance) ->
         super()
+        @ensure_switcher_correct(instance)
         @ensure_version_deployed(instance)
+
+
+    ensure_switcher_correct: (instance) ->
+        switcher_instance = u.retry 30, 1000 ->
+            return @switcher(instance).get_instance()
+        if switcher_instance?.id and switcher_instance.id isnt instance.get('active_instance')
+            instance.set 'active_instance', switcher_instance.id
 
     #Ensures that the version we've set is actually what's deployed
     ensure_version_deployed: (instance) ->
         #make sure that our instance matches our version
         version = instance.version()
         if version
-            active_version = @switcher(instance).get_instance()?.get('software_version')
+            active_version = @get_active_instance(instance)?.get('software_version')
             if active_version isnt version
                 u.announce "#{instance} has a version mismatch: should be #{version} but is #{active_version}.  About to replace it..."
                 u.context().server.run_fiber "Replacing #{instance}", @replace.bind(this, instance)
 
 
-    servers: (instance) -> [@switcher(instance).get_instance()]
+    servers: (instance) -> [@get_active_instance(instance)]
 
     replace: (instance) ->
         build = @ec2build()
         size = @get_size(instance)
-        switcher = @switcher(instance)
 
         #Create the new server
         u.announce 'Building a replacement server for ' + instance
@@ -375,13 +394,13 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             return
 
         #See if there is an old server
-        old_ec2instance = switcher.get_instance()
+        old_ec2instance = @get_active_instance(instance)
 
         #Make sure that the instance is ready to be put into production
         build.pre_make_active new_ec2instance, instance
 
         #Perform the switch
-        switcher.switch new_ec2instance
+        @set_active_instance instance, new_ec2instance
         try
             #Notify the new box that it is active
             build.make_active new_ec2instance
@@ -389,7 +408,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             u.report 'Switched service ' + instance + ' to point to ' + new_ec2instance.id + ', but make_active failed!'
             u.report 'Error was: ' + err.stack ? err
             u.report 'Reverting to old instance (' + old_ec2instance.id + ') and terminating new instance'
-            switcher.switch old_ec2instance
+            @set_active_instance instance, old_ec2instance
             new_ec2instance.terminate()
             return
 
