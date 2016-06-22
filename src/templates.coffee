@@ -363,7 +363,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         old_ec2instance = switcher.get_instance()
 
         #Make sure that the instance is ready to be put into production
-        build.pre_make_active new_ec2instance, this
+        build.pre_make_active new_ec2instance, instance
 
         #Perform the switch
         switcher.switch new_ec2instance
