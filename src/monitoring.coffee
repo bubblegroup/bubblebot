@@ -94,7 +94,10 @@ monitoring.Monitor = class Monitor
 
                                 if within_limit
                                     services[service] = true
-                                    @report_down service, object, downtime, reason
+                                    try
+                                        @report_down service, object, downtime, reason
+                                    catch err
+                                        u.report 'Bug in monitoring reporting down to ' + service + ':\n' + err.stack
 
                         #Wait for a second before checking again
                         u.pause 1000
@@ -109,7 +112,10 @@ monitoring.Monitor = class Monitor
                     @downtime[uid] += downtime
 
                     for service, _ of services
-                        @report_up service, object, downtime
+                        try
+                            @report_up service, object, downtime
+                        catch err
+                            u.report 'Bug in monitoring reporting up to ' + service + ':\n' + err.stack
 
                 #We are now in some non-UNHEALTHY state.  Update our state...
                 @health[uid] = state
