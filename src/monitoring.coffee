@@ -157,7 +157,9 @@ monitoring.Monitor = class Monitor
         else if service is 'replace'
             u.report 'Monitoring: automatically replacing ' + object
             u.announce 'Monitoring: automatically replacing ' + object
-            object.replace()
+            u.SyncRun =>
+                @server.build_context 'monitoring: replacing ' + object
+                object.replace()
         else
             plugin = @get_alerting_plugin(service)
             if plugin
