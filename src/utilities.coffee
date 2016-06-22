@@ -8,19 +8,27 @@ u.create_tarball = (directory) ->
     return tempfile
 
 u.run_local = (cmd, options = {}) ->
-    {can_fail, env} = options
-    u.log 'Running locally: ' + cmd
+    {can_fail, env, return_stderr} = options
+    logger = u.get_logger('log')
+    logger 'Running locally: ' + cmd
     block = u.Block 'run_local ' + cmd
+
     child_process.exec cmd, {encoding: 'utf8', env}, (err, stdout, stderr) ->
-        u.log stdout
-        u.log stderr
+        if stdout
+            logger stdout
+        if stderr
+            logger stderr
+        if return_stderr
+            ret = {stdout, stderr}
+        else
+            ret = stdout
         if err
             if can_fail
-                block.success stdout
+                block.success ret
             else
                 block.fail err
         else
-            block.success stdout
+            block.success ret
     return block.wait()
 
 #Removes all occurrences of val from this array
