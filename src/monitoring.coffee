@@ -243,6 +243,9 @@ monitoring.Monitor = class Monitor
         if protocol in ['http', 'https']
             url = protocol + '://' + policy.endpoint.host
 
+            expected_status = policy.endpoint.expected_status ? 200
+            expected_body = policy.endpoint.expected_body ? null
+
             start = Date.now()
             block = u.Block url
             request url, block.make_cb()
@@ -250,8 +253,11 @@ monitoring.Monitor = class Monitor
                 res = block.wait()
                 latency = Date.now() - start
 
-                result = 200 <= res.statusCode <= 299
-                reason = 'Could not hit ' + url + ': ' + res.statusCode + ' ' + res.body
+                if res.statusCode isnt expected_status or expected_body and res.body.indexOf(expected_body) is -1
+                    result = false
+                    reason = 'Could not hit ' + url + ': ' + res.statusCode + ' ' + res.body
+                else
+                    result = true
             catch err
                 result = false
                 reason = 'Could not hit ' + url + ': ' + err.message
