@@ -2351,7 +2351,9 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     _ssh_expected: (err) ->
         if String(err).indexOf('Timed out while waiting for handshake') isnt -1
             return true
-        if  String(err).indexOf('ECONNREFUSED') isnt -1
+        if String(err).indexOf('ECONNREFUSED') isnt -1
+            return true
+        if String(err).indexOf('All configured authentication methods failed') isnt -1
             return true
         return false
 
