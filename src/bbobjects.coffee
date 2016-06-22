@@ -2097,27 +2097,6 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
                 u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns()
                 ec2instance.test_failed(version)
 
-    #Checks to see if the owner still needs this instance
-    follow_up: ->
-        owner = @owner()
-        if not owner
-            u.report 'Following up on destroying an ec2 instance without an owner: ' + @id
-            return
-
-        still_need = bbserver.do_cast 'boolean', u.ask('Hey, do you still need the server you created called ' + @get('name') + '?  If not, we will delete it for you', owner.id)
-        if still_need
-            params = {
-                type: 'number'
-                validate: bbobjects.validate_destroy_hours
-            }
-            hours = bbserver.do_cast params, u.ask("Great, we will keep it for now.  How many more hours do you think you need it around for?", owner.id)
-            interval = hours * 60 * 60 * 1000
-            @set 'expiration_time', Date.now() + (interval * 2)
-            @schedule_once interval, 'follow_up'
-        else
-            u.message owner.id, "Okay, we are terminating the server now..."
-            @terminate()
-
 
 
 
@@ -2464,6 +2443,28 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         return tags
 
     bubblebot_role: -> @get_tags()[config.get('bubblebot_role_tag')]
+
+    #Checks to see if the owner still needs this instance
+    follow_up: ->
+        owner = @owner()
+        if not owner
+            u.report 'Following up on destroying an ec2 instance without an owner: ' + @id
+            return
+
+        still_need = bbserver.do_cast 'boolean', u.ask('Hey, do you still need the server you created called ' + @get('name') + '?  If not, we will delete it for you', owner.id)
+        if still_need
+            params = {
+                type: 'number'
+                validate: bbobjects.validate_destroy_hours
+            }
+            hours = bbserver.do_cast params, u.ask("Great, we will keep it for now.  How many more hours do you think you need it around for?", owner.id)
+            interval = hours * 60 * 60 * 1000
+            @set 'expiration_time', Date.now() + (interval * 2)
+            @schedule_once interval, 'follow_up'
+        else
+            u.message owner.id, "Okay, we are terminating the server now..."
+            @terminate()
+
 
 #Storage for credentials that we don't store in the bubblebot database
 rds_credentials = {}

@@ -232,6 +232,8 @@ bbserver.Server = class Server
         #Record that we created a new log stream in our list
         @get_sublogger_stream().log JSON.stringify {id, description}
 
+        u.context().get_transcript = -> log_stream.get_tail_url()
+
         return log_stream
 
     #Returns an array of {id, description, timestamp} of recently created subloggers
@@ -391,6 +393,7 @@ bbserver.Server = class Server
         context.server = this
         context.schedule_once = @schedule_once.bind(this)
         context.db = @db
+        u.context().get_transcript = => @get_server_log_stream().get_tail_url()
 
     #Called by our slack client
     new_conversation: (user_id, msg) ->
@@ -420,7 +423,6 @@ bbserver.Server = class Server
                 sub_logger = @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
                 link = sub_logger.get_tail_url()
                 u.reply 'Logging transcript for ' + msg + ': ' + link
-                u.context().get_transcript = -> link
 
             u.log current_user.name() + ': ' + msg
 
