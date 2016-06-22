@@ -191,6 +191,8 @@ monitoring.Monitor = class Monitor
             u.announce 'Monitoring: ' + object + ' is back up.  It was down for ' + u.format_time(downtime)
         else if service is 'report'
             u.report 'Monitoring: ' + object + ' is back up.  It was down for ' + u.format_time(downtime)
+        else if service is 'restart'
+            true
         else if service is 'replace'
             true #no op
         else
