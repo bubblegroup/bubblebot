@@ -14,6 +14,7 @@ monitoring.Monitor = class Monitor
         @health = {}
         @downtime = {}
         @last_service_times = {}
+        @_is_scheduled = {}
 
         @start_time = Date.now()
 
@@ -31,7 +32,7 @@ monitoring.Monitor = class Monitor
         @to_monitor[uid] = object
 
         #Set the initial frequency
-        @frequencies[uid] =  policy.frequency
+        @frequencies[uid] = policy.frequency
         @health[uid] = UNKNOWN
 
         #and schedule the initial check
@@ -40,6 +41,9 @@ monitoring.Monitor = class Monitor
     #Schedules the next monitoring run for this object
     schedule: (object) ->
         uid = @_get_uid object
+        if @_is_scheduled[uid]
+            return
+        @_is_scheduled[uid] = true
         setTimeout @check.bind(this, object), @frequencies[uid]
 
     #Performs a check on this object
@@ -67,6 +71,7 @@ monitoring.Monitor = class Monitor
 
                 #If it is unhealthy, start tracking downtime...
                 if state is UNHEALTHY
+                    u.log 'Monitor: detected unhealthy state for ' + uid
                     @health[uid] = state
                     down = Date.now()
 
@@ -95,6 +100,8 @@ monitoring.Monitor = class Monitor
                         u.pause 1000
                         [state, reason] = @get_state(object)
 
+                    u.log 'Monitor: no longer in unhealthy state for ' + uid
+
                     #We are no longer unhealthy, so update our total downtime, and inform services.
                     downtime = Date.now() - down
 
@@ -107,8 +114,12 @@ monitoring.Monitor = class Monitor
                 #We are now in some non-UNHEALTHY state.  Update our state...
                 @health[uid] = state
 
+            catch err
+                u.report 'Bug in monitoring:\n' + err.stack
+
             #We always want to continue monitoring
             finally
+                @_is_scheduled[uid] = false
                 @schedule object
 
     #Given an object, returns HEALTHY / UNHEALTHY / MAINTENANCE
