@@ -327,13 +327,14 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
     codebase: -> @ec2build().codebase()
 
     get_monitoring_policy: (instance) ->
+        ec2instance = @get_active_instance(instance)
         if not @monitoring_policy
             throw new Error 'service ' + instance + ' does not have a monitoring policy'
         policy = @monitoring_policy instance
         if not policy
             throw new Error 'service ' + instance + ' monitoring policy returned null'
         policy.endpoint ?= {}
-        policy.endpoint.host = @get_active_instance(instance)?.get_address()
+        policy.endpoint.host = ec2instance?.get_address()
         return policy
 
     get_tests: -> (bbobjects.instance 'Test', id for id in @test_ids)
@@ -355,7 +356,9 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             @switcher(instance).switch ec2instance
             instance.set 'active_instance', ec2instance.id
         catch err
+            server = u.context().server
             u.SyncRun =>
+                server.build_context()
                 @ensure_switcher_correct instance
             throw err
 
@@ -364,9 +367,12 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         super()
         @ensure_version_deployed(instance)
 
+        server = u.context().server
+
         ensure_switcher = =>
             u.SyncRun =>
                 try
+                    server.build_context()
                     u.retry 10, 10000, =>
                         @ensure_switcher_correct(instance)
                 catch err
