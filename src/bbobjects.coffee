@@ -2069,12 +2069,19 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
 
     #Runs the given test passing in a test instance.  Handles cleaning up the test
     #instance afterwards
-    run_with_test_instance: (version, test) ->
+    #
+    #size is optional
+    run_with_test_instance: (version, size, test) ->
+        #if size was omitted, shift params over
+        if typeof(size) is 'function'
+            test = size
+            size = null
+
         #Allows injecting a previously failed test
         if u.context().use_this_instance
             ec2instance = u.context().use_this_instance
         else
-            ec2instance = @create_test_instance(version)
+            ec2instance = @create_test_instance(version, size)
 
         try
             result = test ec2instance
