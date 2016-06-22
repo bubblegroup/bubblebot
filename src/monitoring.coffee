@@ -236,49 +236,62 @@ monitoring.Monitor = class Monitor
     hit_endpoint: (object) ->
         policy = object.get_monitoring_policy()
         protocol = policy.endpoint.protocol
+        retries = policy.endpoint.retries ? 2
+        timeout = policy.endpoint.timeout ? 10000
 
-        if protocol in ['http', 'https']
-            url = protocol + '://' + policy.endpoint.host
+        while retries > 0
 
-            expected_status = policy.endpoint.expected_status ? 200
-            expected_body = policy.endpoint.expected_body ? null
+            if protocol in ['http', 'https']
+                url = protocol + '://' + policy.endpoint.host
 
-            start = Date.now()
-            block = u.Block url
-            request url, block.make_cb()
-            try
-                res = block.wait()
-                latency = Date.now() - start
+                expected_status = policy.endpoint.expected_status ? 200
+                expected_body = policy.endpoint.expected_body ? null
 
-                if res.statusCode isnt expected_status or expected_body and res.body.indexOf(expected_body) is -1
-                    result = false
-                    reason = 'Could not hit ' + url + ': ' + res.statusCode + ' ' + res.body
-                else
-                    result = true
-            catch err
-                result = false
-                reason = 'Could not hit ' + url + ': ' + err.message
-
-        else if protocol is 'postgres'
-            db = new databases.Postgres object
-            try
                 start = Date.now()
-                db.query 'select 1'
-                latency = Date.now() - start
-                result = true
-                reason = null
-            catch err
-                result = false
-                reason = err.stack
+                block = u.Block url
+                request url, block.make_cb()
+                timed_out = setTimeout ->
+                    block.fail 'timed out after ' + timeout
+                , timeout
+                try
+                    res = block.wait()
+                    latency = Date.now() - start
+                    clearTimeout timed_out
 
-        else
-            throw new Error 'monitoring: unrecognized protocol ' + protocol
+                    if res.statusCode isnt expected_status or expected_body and res.body.indexOf(expected_body) is -1
+                        result = false
+                        reason = 'Could not hit ' + url + ': ' + res.statusCode + ' ' + res.body
+                    else
+                        result = true
+                catch err
+                    result = false
+                    reason = 'Could not hit ' + url + ': ' + err.message
 
-        #Report the latency to metrics
-        if result
-            for plugin in config.get_plugins('metrics')
-                if typeof(plugin.measure) is 'function'
-                    plugin.measure object.type + '_' + object.id, 'bubblebot_monitor_latency', latency
+            else if protocol is 'postgres'
+                db = new databases.Postgres object
+                try
+                    start = Date.now()
+                    db.query 'select 1'
+                    latency = Date.now() - start
+                    result = true
+                    reason = null
+                catch err
+                    result = false
+                    reason = err.stack
+
+            else
+                throw new Error 'monitoring: unrecognized protocol ' + protocol
+
+            #Report the latency to metrics
+            if result
+                for plugin in config.get_plugins('metrics')
+                    if typeof(plugin.measure) is 'function'
+                        plugin.measure object.type + '_' + object.id, 'bubblebot_monitor_latency', latency
+
+            if result
+                return [result, reason]
+            else
+                retries--
 
         return [result, reason]
 
