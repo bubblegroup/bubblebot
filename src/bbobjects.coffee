@@ -1413,7 +1413,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         my_set = @get_credential_set(set_name)
         their_set = bbobjects.instance('Environment', copy_from_env).get_credential_set(set_name)
         my_keys = my_set.all_credentials()
-        their_keys = my_set.all_credentials()
+        their_keys = their_set.all_credentials()
         overlap = []
         overlap = (key for key in their_keys when key in my_keys)
         if overlap.length > 0
