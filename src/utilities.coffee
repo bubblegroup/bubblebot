@@ -12,13 +12,15 @@ u.run_local = (cmd, options = {}) ->
     u.log 'Running locally: ' + cmd
     block = u.Block 'run_local ' + cmd
     child_process.exec cmd, {encoding: 'utf8', env}, (err, stdout, stderr) ->
+        u.log stdout
+        u.log stderr
         if err
             if can_fail
-                block.success stdout + stderr
+                block.success stdout
             else
                 block.fail err
         else
-            block.success stdout + stderr
+            block.success stdout
     return block.wait()
 
 #Removes all occurrences of val from this array
