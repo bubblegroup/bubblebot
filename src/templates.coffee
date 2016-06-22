@@ -333,7 +333,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         if not policy
             throw new Error 'service ' + instance + ' monitoring policy returned null'
         policy.endpoint ?= {}
-        policy.endpoint.host = @get_active_instance(instance).address()
+        policy.endpoint.host = @get_active_instance(instance).get_address()
         return policy
 
     get_tests: -> (bbobjects.instance 'Test', id for id in @test_ids)
