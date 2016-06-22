@@ -63,9 +63,6 @@ monitoring.Monitor = class Monitor
                 for dependency in policy.dependencies ? []
                     @monitor dependency
 
-                #Mark its health unknown until we get a positive confirmation on its state
-                @health[uid] = UNKNOWN
-
                 #Check its current state and reason
                 [state, reason] = @get_state(object)
 
