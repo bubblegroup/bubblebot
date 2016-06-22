@@ -1732,7 +1732,11 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         version: @version()
         endpoint: @endpoint()
         maintenance: @maintenance()
+        servers: @servers().join(', ')
     }
+
+    #Returns an array of the underlying physical resources backing this service
+    servers: -> @template().servers this
 
     #Returns the template for this service or null if not found
     template: ->

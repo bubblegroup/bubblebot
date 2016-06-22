@@ -221,11 +221,10 @@ monitoring.Monitor = class Monitor
     #if the server is accessible, and reason is a string giving more info on why it's not up
     hit_endpoint: (object) ->
         policy = object.get_monitoring_policy()
-        endpoint = object.endpoint()
         protocol = policy.endpoint.protocol
 
         if protocol in ['http', 'https']
-            url = protocol + '://' + endpoint
+            url = protocol + '://' + policy.endpoint.host
 
             start = Date.now()
             block = u.Block url
@@ -235,10 +234,10 @@ monitoring.Monitor = class Monitor
                 latency = Date.now() - start
 
                 result = 200 <= res.statusCode <= 299
-                reason = res.statusCode + ' ' + res.body
+                reason = 'Could not hit ' + url + ': ' + res.statusCode + ' ' + res.body
             catch err
                 result = false
-                reason = err.stack
+                reason = 'Could not hit ' + url + ': ' + err.message
 
         else if protocol is 'postgres'
             db = new databases.Postgres object

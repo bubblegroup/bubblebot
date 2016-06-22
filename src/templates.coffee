@@ -246,6 +246,8 @@ templates.RDSService = class RDSService extends Service
 
         @codebase().migrate_to @rds_instance(), version
 
+    servers: (instance) -> [@rds_instance(instance)]
+
     #Gets the rds instance
     rds_instance: (instance) ->
         id = instance.get 'rds_instance'
@@ -317,12 +319,22 @@ templates.RDSService = class RDSService extends Service
 #an array of tests, and a switcher function that takes the service instance
 #and returns the switcher that controls where traffic is routed
 templates.SingleBoxService = class SingleBoxService extends templates.Service
-    constructor: (@build_id, @test_ids, @switcher, @get_monitoring_policy) ->
+    constructor: (@build_id, @test_ids, @switcher, @monitoring_policy) ->
 
     #Retrieve the ec2build object for this service
     ec2build: -> bbobjects.instance 'EC2Build', @build_id
 
     codebase: -> @ec2build().codebase()
+
+    get_monitoring_policy: (instance) ->
+        if not @monitoring_policy
+            throw new Error 'service ' + instance + ' does not have a monitoring policy'
+        policy = @monitoring_policy instance
+        if not policy
+            throw new Error 'service ' + instance + ' monitoring policy returned null'
+        policy.endpoint ?= {}
+        policy.endpoint.host = @get_active_instance(instance).address()
+        return policy
 
     get_tests: -> (bbobjects.instance 'Test', id for id in @test_ids)
 
@@ -344,6 +356,9 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             if active_version isnt version
                 u.announce "#{instance} has a version mismatch: should be #{version} but is #{active_version}.  About to replace it..."
                 u.context().server.run_fiber "Replacing #{instance}", @replace.bind(this, instance)
+
+
+    servers: (instance) -> [@switcher(instance).get_instance()]
 
     replace: (instance) ->
         build = @ec2build()
