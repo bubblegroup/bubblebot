@@ -393,7 +393,7 @@ bbserver.Server = class Server
         context.server = this
         context.schedule_once = @schedule_once.bind(this)
         context.db = @db
-        u.context().get_transcript = => @get_server_log_stream().get_tail_url()
+        u.context().get_transcript ?= => @get_server_log_stream().get_tail_url()
 
     #Called by our slack client
     new_conversation: (user_id, msg) ->
