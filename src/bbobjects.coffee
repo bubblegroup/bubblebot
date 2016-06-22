@@ -1846,6 +1846,11 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Replaces the underlying boxes for this service
     replace: -> @template().replace this
 
+    #Restarts the underlying boxes for this service
+    restart: ->
+        for server in @servers()
+            server.restart?()
+
     replace_cmd:
         sublogger: true
         help: 'Replaces the underlying boxes for this service'

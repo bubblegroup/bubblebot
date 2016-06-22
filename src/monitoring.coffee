@@ -168,6 +168,10 @@ monitoring.Monitor = class Monitor
             u.announce 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
         else if service is 'report'
             u.report 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
+        else if service is 'restart'
+            u.SyncRun =>
+                @server.build_context 'monitoring: restarting ' + object
+                object.restart()
         else if service is 'replace'
             u.report 'Monitoring: automatically replacing ' + object
             u.announce 'Monitoring: automatically replacing ' + object
