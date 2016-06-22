@@ -2302,6 +2302,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         help: "Runs the given command on the server."
         params: [{name: 'command', required: true, help: 'The command to run'}]
         groups: constants.ADMIN
+        reply: true
 
     upload_file: (path, remote_dir) ->
         ssh.upload_file @get_address(), @environment().get_private_key(), path, remote_dir
