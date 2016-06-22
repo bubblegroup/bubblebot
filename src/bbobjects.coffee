@@ -1422,7 +1422,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 return
 
         for key in their_keys
-            my_set.set_credential key, their_set.get_credential(key), true
+            my_set.set_credential key, their_set.get_credential(key), true, true
 
         u.reply 'Okay, credentials copied over: ' + their_keys.join(', ')
 
@@ -1591,7 +1591,7 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
         prefix = @environment().id + '-'
         return @id[prefix.length...]
 
-    set_credential: (name, value, overwrite) ->
+    set_credential: (name, value, overwrite, no_log) ->
         if not overwrite
             prev = @get CREDENTIAL_PREFIX  + name
             if prev
@@ -1599,8 +1599,9 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
                 return
         @set CREDENTIAL_PREFIX + name, value
         msg = 'Credential set for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name
-        u.announce msg
-        u.reply msg
+        if not no_log
+            u.announce msg
+            u.reply msg
 
     #Get all the keys in this set as an array
     all_credentials: ->
