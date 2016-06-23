@@ -248,13 +248,22 @@ monitoring.Monitor = class Monitor
         while retries > 0
 
             if protocol in ['http', 'https']
-                url = protocol + '://' + policy.endpoint.host
+                if policy.endpoint.user and policy.endpoint.password
+                    login = user + ':' + password + '@'
+                else
+                    login = ''
+
+                path = policy.endpoint.path ? ''
+
+                #clean url has the login hidden, for reporting purposes
+                clean_url = protocol + '://' + policy.endpoint.host + path
+                url = protocol + '://' + login + policy.endpoint.host + path
 
                 expected_status = policy.endpoint.expected_status ? 200
                 expected_body = policy.endpoint.expected_body ? null
 
                 start = Date.now()
-                block = u.Block url
+                block = u.Block clean_url
                 request url, block.make_cb()
                 timed_out = setTimeout ->
                     block.fail 'timed out after ' + timeout
@@ -266,12 +275,12 @@ monitoring.Monitor = class Monitor
 
                     if res.statusCode isnt expected_status or expected_body and res.body.indexOf(expected_body) is -1
                         result = false
-                        reason = 'Could not hit ' + url + ': ' + res.statusCode + ' ' + res.body
+                        reason = 'Could not hit ' + clean_url + ': ' + res.statusCode + ' ' + res.body
                     else
                         result = true
                 catch err
                     result = false
-                    reason = 'Could not hit ' + url + ': ' + err.message
+                    reason = 'Could not hit ' + clean_url + ': ' + err.message
 
             else if protocol is 'postgres'
                 db = new databases.Postgres object
