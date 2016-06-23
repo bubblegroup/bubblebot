@@ -724,18 +724,19 @@ bbobjects.validate_destroy_hours = (hours) ->
 
 #Retrieves an S3 configuration file as a string, or null if it does not exists
 bbobjects.get_s3_config = (Key) ->
-    try
-        data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key})
-    catch err
-        if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
+    u.retry 3, 1000, ->
+        try
+            data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key})
+        catch err
+            if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
+                return null
+            else
+                throw err
+        if data.DeleteMarker
             return null
-        else
-            throw err
-    if data.DeleteMarker
-        return null
-    if not data.Body
-        throw new Error 'no body: ' + JSON.stringify data
-    return String(data.Body)
+        if not data.Body
+            throw new Error 'no body: ' + JSON.stringify data
+        return String(data.Body)
 
 #Puts an S3 configuration file
 bbobjects.put_s3_config = (Key, Body) ->

@@ -10,6 +10,7 @@ bbserver.Server = class Server
         @root_command = new RootCommand(this)
         @_monitor = new monitoring.Monitor(this)
         @custom_commands = {}
+        @custom_router = express.Router()
 
     _build_bbdb: ->
         #Make sure the database exists.  This will also set u.context().db
@@ -28,6 +29,9 @@ bbserver.Server = class Server
 
     #Adds a custom command to the server
     add_custom_command: (name, command) -> @custom_commands[name] = command
+
+    #Returns the custom express router for handling the /custom endpoint
+    get_custom_router: -> @custom_router
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
@@ -61,6 +65,8 @@ bbserver.Server = class Server
                 server_app.get '/', syncware (req, res) =>
                     res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
                     res.end()
+
+                server_app.use '/custom', @get_custom_router()
 
                 server_app.listen 8080
 
