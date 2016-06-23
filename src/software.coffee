@@ -27,9 +27,9 @@ software.do_once = do_once = (name, fn) ->
 #Sets up sudo and yum and installs GCC
 software.basics = -> do_once 'basics', (instance) ->
     #update yum and install git + development tools
-    instance.run 'sudo yum update -y'
+    instance.run 'sudo yum update -y', {timeout: 5 * 60 * 1000}
     instance.run 'sudo yum -y install git'
-    instance.run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y '
+    instance.run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y ', {timeout: 5 * 60 * 1000}
 
 
 #Installs supervisor and sets it up to run the given command
