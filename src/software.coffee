@@ -12,7 +12,9 @@ software = exports
 #about installing the dependencies multiple times
 software.do_once = do_once = (name, fn) ->
     return (instance) ->
-        dependencies = instance.run 'cat bubblebot_dependencies || echo ""'
+        dependencies = instance.run('cat bubblebot_dependencies || echo "NOTFOUND"').trim()
+        if dependencies.indexOf('NOTFOUND') isnt -1
+            dependencies = ''
         if name in dependencies.split('\n')
             return
 
