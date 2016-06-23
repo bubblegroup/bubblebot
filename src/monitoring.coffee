@@ -81,7 +81,7 @@ monitoring.Monitor = class Monitor
 
                         for service, threshold of policy.thresholds ? {}
                             #If we haven't reported to this service yet and are over the threshold...
-                            if not services[service] and downtime > threshold
+                            if threshold? and not services[service] and downtime > threshold
                                 #If there's a limit on how frequently we can report to this service,
                                 #make sure we are within the limit
                                 if policy.limits?[service] and @last_service_times[uid]?[service]
