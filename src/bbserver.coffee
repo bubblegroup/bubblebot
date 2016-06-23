@@ -45,7 +45,7 @@ bbserver.Server = class Server
                             fn req, res
                         catch err
                             u.report 'Error handling http request:\n' + err.stack
-                            next errr
+                            next err
 
                 server_app.get '/logs/:env_id/:groupname/:name', syncware (req, res) =>
                     {env_id, groupname, name} = req.params
