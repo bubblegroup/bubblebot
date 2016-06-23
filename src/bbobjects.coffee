@@ -1693,8 +1693,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         reply: (entries) ->
             formatted = []
             for {timestamp, reference, properties: {username, deployment_message, rollback}} in entries
-                u.log 'TIMESTAMP: ' + timestamp
-                entry = u.print_date(timestamp) + ' ' + username + ' ' + reference
+                entry = u.print_date(parseInt timestamp) + ' ' + username + ' ' + reference
                 entry += '\n' + (if rollback then '(ROLLBACK) ' else '') + deployment_message
                 formatted.push entry
             return '\nHistory:\n\n' + formatted.join('\n\n')
