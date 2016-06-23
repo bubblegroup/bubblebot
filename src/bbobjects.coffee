@@ -2148,7 +2148,7 @@ bbobjects.Test = class Test extends BubblebotObject
             {name: 'include_skipped', type: 'boolean', default: false, help: 'If set, includes versions where tests were skipped instead of being run'}
         ]
         reply: (entries) ->
-            return entries.join('\n')
+            return 'Passed this test recently:\n' + entries.join('\n')
         groups: constants.BASIC
 
     run_cmd:
