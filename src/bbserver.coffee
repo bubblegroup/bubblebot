@@ -33,6 +33,16 @@ bbserver.Server = class Server
     #Returns the custom express router for handling the /custom endpoint
     get_custom_router: -> @custom_router
 
+    #Runs the function as synchronous middleware
+    syncware: (fn) -> (req, res, next) =>
+        u.SyncRun =>
+            try
+                @build_context('http request ' + req.url)
+                fn req, res
+            catch err
+                u.report 'Error handling http request:\n' + err.stack
+                next err
+
     #should listen on port 8081 for commands such as shutdown
     start: ->
         u.SyncRun =>
@@ -41,28 +51,18 @@ bbserver.Server = class Server
 
                 server_app = express()
 
-                #Runs the function as synchronous middleware
-                syncware = (fn) => (req, res, next) =>
-                    u.SyncRun =>
-                        try
-                            @build_context('http request ' + req.url)
-                            fn req, res
-                        catch err
-                            u.report 'Error handling http request:\n' + err.stack
-                            next err
-
-                server_app.get '/logs/:env_id/:groupname/:name', syncware (req, res) =>
+                server_app.get '/logs/:env_id/:groupname/:name', @syncware (req, res) =>
                     {env_id, groupname, name} = req.params
                     logstream = bbobjects.instance('Environment', env_id).get_log_stream(groupname, name)
                     logstream.tail req, res
 
-                server_app.get '/monitor', syncware (req, res) =>
+                server_app.get '/monitor', @syncware (req, res) =>
                     u.db().exists 'Environment', 'bubblebot'
                     res.statusCode = 200
                     res.write 'Okay!'
                     res.end()
 
-                server_app.get '/', syncware (req, res) =>
+                server_app.get '/', @syncware (req, res) =>
                     res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
                     res.end()
 
