@@ -841,7 +841,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 default: default_size
                 next: => {
                     name: 'name'
-                    help: 'What to call this server'
+                    help: 'Give this server a name'
                 }
             }
 
