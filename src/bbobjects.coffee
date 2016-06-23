@@ -2807,8 +2807,6 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
         }
 
 
-
-
 #Given a region, gets the API configuration
 aws_config = (region) ->
     accessKeyId = config.get 'accessKeyId'

@@ -214,8 +214,6 @@ templates.Service = class Service
     #Returns true if this version has passed all the tests for this service
     is_tested: (version) ->
         tests = @get_tests()
-        if not tests.length
-            throw new Error 'No tests specified!  If this is the desired behavior, should specify one no-op test'
         for test in tests
             if not test.is_tested version
                 return false
@@ -227,6 +225,24 @@ templates.Service = class Service
         u.reply 'Running the following tests: ' + tests.join(', ')
         for test in tests
             test.run version
+
+
+
+#Represents a service that is not managed by Bubblebot (but might be monitored by
+#bubblebot)
+#
+#Children should define get_monitoring_policy and optionally endpoint
+templates.ExternalService = class ExternalService extends Service
+    codebase: -> new BlankCodebase()
+
+    get_tests: -> []
+
+    replace: -> #no-op
+
+    deploy: (instance) -> instance.set 'version', 'blank'
+
+    endpoint: -> 'external service'
+
 
 #Represents a service that's an RDS-managed database
 templates.RDSService = class RDSService extends Service
@@ -492,7 +508,6 @@ templates.Codebase = class Codebase
             return @ensure_version u.ask msg
         else
             return canonical
-
 
 
 #Implements the codebase interface using git.  Should pass in a git repo as in github.coffee
