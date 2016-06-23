@@ -27,6 +27,8 @@
   "dependencies": {
     "@slack/client": "^2.3.0",
     "aws-sdk": "^2.3.3",
+    "eslint": "^2.7.0",
+    "express": "^4.14.0",
     "fibers": "^1.0.10",
     "json-stable-stringify": "^1.0.1",
     "librato-metrics": "0.0.7",
@@ -39,8 +41,7 @@
     "shrinkpack": "^0.10.2",
     "ssh2": "^0.5.0",
     "strip-json-comments": "^2.0.1",
-    "tmp": "0.0.28",
-    "eslint": "^2.7.0"
+    "tmp": "0.0.28"
   },
   "eslintConfig": {
     "rules": {

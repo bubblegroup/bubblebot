@@ -35,44 +35,34 @@ bbserver.Server = class Server
             try
                 @db = @_build_bbdb()
 
-                server = http.createServer (req, res) =>
+                server_app = express()
+
+                #Runs the function as synchronous middleware
+                syncware = (fn) => (req, res, next) =>
                     u.SyncRun =>
                         try
-                            @build_context('http_request')
-                            path = url.parse(req.url ? '').pathname.split('/')[1..]
-                            if path[0] is 'logs'
-                                @show_logs req, res, path[1...]
-
-                            #Endpoint to make it easy to monitor bubblebot via http
-                            #queries BBDB
-                            else if path[0] is 'monitor'
-                                u.SyncRun =>
-                                    try
-                                        @build_context()
-                                        u.db().exists 'Environment', 'bubblebot'
-                                        res.statusCode = 200
-                                        res.write 'Okay!'
-                                        res.end()
-                                    catch err
-                                        res.statusCode = 500
-                                        res.write err.stack
-                                        res.end()
-
-                            else if not path[0]
-                                res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
-                                res.end()
-                            else
-                                res.statusCode = 404
-                                res.write "You have reached Bubblebot, but we don't recognize " + req.url
-                                res.end()
+                            @build_context('http request ' + req.url)
+                            fn req, res
                         catch err
-                            res.statusCode = 500
-                            res.write 'Error processing requests'
-                            res.end()
-                            u.report 'Error loading data from Cloudwatch: ' + (err.stack ? err)
-                            return
+                            u.report 'Error handling http request:\n' + err.stack
+                            next errr
 
-                server.listen 8080
+                server_app.get '/logs/:env_id/:groupname/:name', syncware (req, res) =>
+                    {env_id, groupname, name} = req.params
+                    logstream = bbobjects.instance('Environment', env_id).get_log_stream(groupname, name)
+                    logstream.tail req, res
+
+                server_app.get '/monitor', syncware (req, res) =>
+                    u.db().exists 'Environment', 'bubblebot'
+                    res.statusCode = 200
+                    res.write 'Okay!'
+                    res.end()
+
+                server_app.get '/', syncware (req, res) =>
+                    res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
+                    res.end()
+
+                server_app.listen 8080
 
                 server2 = http.createServer (req, res) =>
                     if req.url is '/shutdown'
@@ -245,12 +235,6 @@ bbserver.Server = class Server
 
     #Returns the URL for accessing logs
     get_logs_url: (env_id, groupname, name) -> @get_server_url() + "/logs/#{env_id}/#{groupname}/#{name}"
-
-    #Displays logs
-    show_logs: (req, res, path) ->
-        [env_id, groupname, name] = path
-        logstream = bbobjects.instance('Environment', env_id).get_log_stream(groupname, name)
-        logstream.tail req, res
 
 
     #Returns an array of all the admin users.  If we don't have any admin users,
@@ -1387,6 +1371,7 @@ monitoring = require './monitoring'
 url = require 'url'
 util = require 'util'
 config = require './config'
+express = require 'express'
 
 #Testing
 if require.main is module
