@@ -425,6 +425,21 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
                 res[k] = v()
         return res
 
+    #Saves the object's data to S3
+    backup: (filename) ->
+        if not filename
+            throw new Error 'must include a filename'
+        body = JSON.stringify @properties(), null, 4
+        key = "#{@type}/#{@id}/#{filename}/#{Date.now()}.json"
+        bbobjects.put_s3_config key, body
+        u.reply 'Saved a backup to ' + key
+
+    backup_cmd:
+        params: [
+            {name: 'filename', default: 'backup', help: 'The name of this backup.  Backups are saved as type/id/filename/timestamp.json'}
+        ]
+        help: "Backs up this objects' properties to S3"
+        groups: constants.BASIC
 
     properties_cmd:
         help: 'Gets all the properties for this object (low-level for admin use only)'
@@ -1349,6 +1364,25 @@ bbobjects.Environment = class Environment extends BubblebotObject
             set.create this
         return set
 
+    #Lists all the credential sets in this environment
+    list_credential_sets: -> @children('CredentialSet')
+
+    list_credential_sets_cmd:
+        help: 'Lists all the credential sets in this environment'
+        groups: constants.BASIC
+        reply: true
+
+    #Destroys the given credential set
+    destroy_credential_set: (set_name) ->
+        @get_credential_set(set_name).destroy()
+
+    destroy_credential_set_cmd:
+        help: 'Destroys a credential set'
+        params: [
+            {name: 'set name', required: true, help: 'The set to destroy'}
+        ]
+        reply: 'Credential set destroyed'
+
     #Retrieves credentials that start with the given key as an object
     get_credential_object: (set_name, key) -> @get_credential_set(set_name).get_credential_object(key)
 
@@ -1587,6 +1621,11 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
         if @id.indexOf(prefix) isnt 0
             throw new Error 'CredentialSet ids should be of the form [environment id]_[set name]'
         super environment.type, environment.id
+
+    #Destroys this credential set
+    destroy: ->
+        @backup 'final'
+        @delete()
 
     set_name: ->
         prefix = @environment().id + '-'
