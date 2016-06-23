@@ -1685,7 +1685,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     #Returns the deployment history for this service
     deploy_history: (n_entries) ->
-        return u.db().recent_history 'deploy', n_entries
+        return @recent_history 'deploy', n_entries
 
     deploy_history_cmd:
         params: [{name: 'n_entries', type: 'number', default: 10, help: 'The number of entries to return'}]
@@ -2138,7 +2138,7 @@ bbobjects.Test = class Test extends BubblebotObject
     #Returns an array of the last n_entries versions that passed the tests.  Does not count tests marked
     #as skip_tests unless include_skipped is set to true
     good_versions: (n_entries, include_skipped) ->
-        versions = u.db().recent_history 'test_passed', n_entries
+        versions = @recent_history 'test_passed', n_entries
         return (reference for {reference, properties} in versions when include_skipped or not properties?.skip_tests)
 
     good_versions_cmd:
