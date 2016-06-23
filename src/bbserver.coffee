@@ -101,7 +101,9 @@ bbserver.Server = class Server
                     reply: wrap_in_log 'Reply', @slack_client.reply.bind(@slack_client)
                     message: wrap_in_log 'Message', @slack_client.message.bind(@slack_client)
                     ask: wrap_in_log 'Ask', (msg, override_user_id) => @slack_client.ask(override_user_id ? u.context().user_id, msg)
-                    confirm: wrap_in_log 'Confirm', (msg, override_user_id) => @slack_client.confirm(override_user_id ? u.context().user_id ? throw new Error 'no current user!', msg)
+                    confirm: wrap_in_log 'Confirm', (msg, override_user_id) =>
+                        user_id = override_user_id ? u.context().user_id ? throw new Error 'no current user!'
+                        @slack_client.confirm(user_id, msg)
                     announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
                     report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
                     report_no_log: @slack_client.report.bind(@slack_client)
