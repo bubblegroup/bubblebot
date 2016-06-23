@@ -1697,6 +1697,31 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
         super environment.type, environment.id
 
+    #Destroys this service (backing its metadata up first)
+    destroy: ->
+        #double-check we want to destroy it...
+        if @is_production()
+            if not u.confirm 'This is a production service... are you really sure you want to destroy it?'
+                u.reply 'Okay, aborting'
+                return
+
+        @backup 'final'
+
+        #Destroy the underlying resources
+        children = @children()
+        for child in children
+            if typeof(child.service_destroyed) isnt 'function'
+                u.expected_error 'aborting because we do not know how to destroy child ' + child
+
+        child.service_destroyed() for child in children
+
+        @delete()
+
+        u.reply 'Service destroyed successfully'
+
+    destroy_cmd:
+        help: 'Destroys this service (backing up its metadata first)'
+
     #Returns a command tree allowing access to each test
     tests: ->
         tree = new bbserver.CommandTree()
@@ -2430,6 +2455,8 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         sublogger: true
         groups: constants.BASIC
 
+    #Called by a parent service that's being destroyed
+    service_destroyed: -> @terminate()
 
     terminate: ->
         u.log 'Terminating server ' + @id
@@ -2762,6 +2789,9 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         endpoint.database = 'postgres'
 
         return endpoint
+
+    #Called by a parent service that's being destroyed
+    service_destroyed: -> @terminate(true)
 
     #Destroys this RDS instance.  As an extra safety layer, we only terminate production
     #instances if terminate prod is true
