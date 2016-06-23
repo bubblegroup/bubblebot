@@ -1666,6 +1666,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
                     u.report msg
                 else
                     u.reply msg
+        else if not from_scheduled
+            u.reply "I don't see any instances that look like they should be cleaned up.  You can also try setting the 'aggressive' parameter to true (but be careful, that can interrupt running operations"
 
     audit_instances_cmd: ->
         autodelete = config.get('audit_instances_autodelete', false)
