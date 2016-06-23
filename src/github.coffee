@@ -123,30 +123,6 @@ github.Repo = class Repo
                 instance.run "cd #{destination} && git checkout #{ref}"
 
 
-
-github_access_token = 'bb3ea1e6f7777a2f07f2efe1846e34dcdb5b8fbc'
-
-github_get = (url, msg404) ->
-    block = u.Block()
-    request 'h' + url, {
-        headers:
-            Authorization: 'token ' + github_access_token
-            Accept: 'application/vnd.github.v3+json'
-            'User-Agent': 'jphaas'
-    }, (err, res) ->
-        if err
-            block.fail err
-        else
-            block.success res
-    res = block.wait()
-    if res.statusCode is 404 and msg404
-        throw new Error msg404
-    if res.statusCode < 200 or res.statusCode > 299
-        throw new Error 'github statusCode ' + res.statusCode + ': ' + JSON.stringify res
-    return JSON.parse res.body
-
-
-
 request = require 'request'
 config = require './config'
 u = require './utilities'
