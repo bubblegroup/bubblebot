@@ -249,7 +249,7 @@ monitoring.Monitor = class Monitor
 
             if protocol in ['http', 'https']
                 if policy.endpoint.user and policy.endpoint.password
-                    login = user + ':' + password + '@'
+                    login = policy.endpoint.user + ':' + policy.endpoint.password + '@'
                 else
                     login = ''
 
