@@ -324,6 +324,8 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
     #Retrieve the ec2build object for this service
     ec2build: -> bbobjects.instance 'EC2Build', @build_id
 
+    ec2build_cmd: 'raw'
+
     codebase: -> @ec2build().codebase()
 
     get_monitoring_policy: (instance) ->
