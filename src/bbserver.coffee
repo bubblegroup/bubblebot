@@ -1067,8 +1067,13 @@ class PS extends Command
                 u.reply 'Could not find a fiber with id ' + fiber_id
             else
                 info = get_fiber_display found
-                if found.current_context?.get_transcript
-                    info += '\n' + found.current_context.get_transcript()
+                context = found.current_context
+                if context?
+                    if context.parsed_message
+                        info += '\nParsed command: ' + ("`" + arg + "`" for arg in context.parsed_message).join(' ')
+                    if context.get_transcript
+                        info += '\n' + found.current_context.get_transcript()
+
                 u.reply info
 
         else
