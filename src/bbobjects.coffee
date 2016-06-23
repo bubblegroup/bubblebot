@@ -1882,7 +1882,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         environment = bbobjects.get_default_dev_environment region
         lowest = null
         for ec2instance in environment.describe_instances({})
-            if ec2instance.template() is this
+            if ec2instance.template() is @template()
                 version = ec2instance.get 'software_version'
                 if version
                     if not lowest? or @codebase().ahead_of lowest, version
