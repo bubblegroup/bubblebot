@@ -55,6 +55,8 @@ monitoring.Monitor = class Monitor
                 @server.build_context()
 
                 policy = object.get_monitoring_policy()
+                if policy.monitor is false
+                    return
 
                 #update the frequency in case it changed
                 @frequencies[uid] = policy.frequency
@@ -223,6 +225,8 @@ monitoring.Monitor = class Monitor
 
         for uid, object of @to_monitor
             policy = object.get_monitoring_policy()
+            if policy.monitor is false
+                continue
             res.push ''
             res.push String(object) + ':'
             res.push '  Frequency: ' + u.format_time(policy.frequency)
@@ -241,6 +245,8 @@ monitoring.Monitor = class Monitor
     #if the server is accessible, and reason is a string giving more info on why it's not up
     hit_endpoint: (object) ->
         policy = object.get_monitoring_policy()
+        if policy.monitor is false
+            return [false, 'monitoring policy no longer exists']
         protocol = policy.endpoint.protocol
         retries = policy.endpoint.retries ? 2
         timeout = policy.endpoint.timeout ? 10000
