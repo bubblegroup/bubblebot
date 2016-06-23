@@ -1385,7 +1385,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         eip_instance.create this, this.id + ' ' + name
 
         #store it for future retrieval
-        @set key, eip_instance.id
+        @set 'elastic_ip_' + name, eip_instance.id
 
         u.reply 'Imported successfully'
 
