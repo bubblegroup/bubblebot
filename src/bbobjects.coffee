@@ -1304,14 +1304,17 @@ bbobjects.Environment = class Environment extends BubblebotObject
             return @is_development()
 
     #Returns the elastic ip for this environment with the given name.  If no such
-    #elastic ip exists, creates it
-    get_elastic_ip: (name) ->
+    #elastic ip exists, creates it (unless do_not_create is true)
+    get_elastic_ip: (name, do_not_create) ->
         key = 'elastic_ip_' + name
 
         #See if we already have it
         eip_id = @get key
         if eip_id
             return bbobjects.instance 'ElasticIPAddress', eip_id
+
+        if do_not_create
+            return null
 
         #If not, create it
         allocation = @ec2 'allocateAddress', {Domain: 'vpc'}
@@ -1324,6 +1327,77 @@ bbobjects.Environment = class Environment extends BubblebotObject
         @set key, eip_instance.id
 
         return eip_instance
+
+    destroy_elastic_ip: (name) ->
+        eip = @get_elastic_ip(name, true)
+        if not eip?
+            u.reply 'Elastic ip ' + name + ' does not exist'
+            return
+
+        msg = 'This will not actually release the elastic ip address, since that is an irreversible operation.  If you really want to release it, do that from the AWS console.  All this does is delete the elastic ip address from the bubblebot database.  You can reverse this via the import_elastic_ip command.  Continue?'
+        if not u.confirm msg
+            u.reply 'Okay, aborting'
+            return
+
+        eip.delete()
+        @set 'elastic_ip_' + name, null
+
+        u.reply 'EIP ' + name + ' deleted'
+
+    destroy_elastic_ip_cmd:
+        help: 'Removes this elastic ip address from the database\nYou can then transfer it to a different environment'
+        params: [
+            {name: 'name', required: true, help: 'The name of the elastic ip address to destroy (not the id or public address)'}
+        ]
+
+    #Imports an elastic ip already in our account and saves it to this name
+    import_elastic_ip: (name) ->
+        #see if we have something stored with this name already
+        eip = @get_elastic_ip(name, true)
+        if eip?
+            u.reply 'We already have an elastic ip named ' + name + ' in this environment'
+            return
+
+        #find the list of available eips
+        data = @environment().ec2 'describeAddresses', {}
+        addresses = data.Addresses ? []
+
+        #Filter out addresses that are already in the database
+        addresses = (address for address in addresses when not bbobjects.instance('ElasticIPAddress', address.AllocationId).exists())
+
+        if addresses.length is 0
+            u.reply "There are no addresses available to import.  If another environment owns the address you want, use destroy_elastic_ip to release that environment's claim on it"
+            return
+
+        #Display the choices to the user
+        listing = (address.AllocationId + ' ' + address.PublicIp + (if address.InstanceId then ' - ' + address.InstanceId else '') for address in addresses)
+        u.reply 'Addresses available for import:\n' + listing.join('\n')
+
+        params = {
+            type: 'list'
+            options: -> (address.AllocationId for address in addresses)
+        }
+        to_import = bbserver.do_cast params, u.ask('Enter the id of the address to import')
+
+        eip_instance = bbobjects.instance 'ElasticIPAddress', to_import
+
+        #add it to the database
+        eip_instance.create this, this.id + ' ' + name
+
+        #store it for future retrieval
+        @set key, eip_instance.id
+
+        u.reply 'Imported successfully'
+
+        return null
+
+    import_elastic_ip_cmd:
+        help: 'Imports an existing elastic ip address into this environment'
+        params: [
+            {name: 'name', required: true, help: 'The name to give to the imported ip address'}
+        ]
+        groups: constants.ADMIN
+
 
     #Returns the service for this environment with the given template name.  If create_on_missing
     #is true, creates it if it does not already exist
@@ -2837,6 +2911,8 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
     create: (parent, name) ->
         super parent.type, parent.id, {name}
+
+    toString: -> "EIP #{@id} #{@get 'name'}"
 
     #fetches the amazon metadata for this address and caches it
     refresh: ->
