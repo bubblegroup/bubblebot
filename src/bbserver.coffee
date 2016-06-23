@@ -1069,6 +1069,7 @@ class PS extends Command
                 info = get_fiber_display found
                 if found.current_context?.get_transcript
                     info += '\n' + found.current_context.get_transcript()
+                u.reply info
 
         else
             res = (get_full_fiber_display fiber for fiber in to_display)
