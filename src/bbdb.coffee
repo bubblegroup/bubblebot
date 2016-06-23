@@ -91,7 +91,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
     #Returns the last n_entries from the given history
     recent_history: (history_type, history_id, n_entries = 10) ->
-        query = "SELECT * FROM history WHERE history_type = $1 AND history_id = $2 LIMIT $3"
+        query = "SELECT * FROM history WHERE history_type = $1 AND history_id = $2 ORDER BY timestamp DESC LIMIT $3"
         result = @query query, history_type, history_id, n_entries
         return result.rows
 
