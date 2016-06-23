@@ -427,6 +427,8 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Saves the object's data to S3
     backup: (filename) ->
+        if not @exists()
+            u.expected_error 'cannot backup: does not exist'
         if not filename
             throw new Error 'must include a filename'
         body = JSON.stringify @properties(), null, 4
@@ -1624,6 +1626,8 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
 
     #Destroys this credential set
     destroy: ->
+        if not @exists()
+            u.expected_error 'no credential set named ' + @id + ' exists'
         @backup 'final'
         @delete()
 
