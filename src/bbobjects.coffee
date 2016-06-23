@@ -1884,7 +1884,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
 
     #Returns a description of how this service should be monitored
-    get_monitoring_policy: -> @template().get_monitoring_policy this
+    get_monitoring_policy: ->
+        if not @exists()
+            return {monitor: false}
+        @template().get_monitoring_policy this
 
     #Returns true if this service is in maintenance mode (and thus should not be monitored)
     maintenance: ->
