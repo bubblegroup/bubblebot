@@ -1042,29 +1042,37 @@ get_full_fiber_display = (fiber) -> String(fiber._fiber_id) + ' ' + get_fiber_us
 
 #Command for listing all ongoing processes
 class PS extends Command
-    help: 'List currently running commands'
+    help: 'List currently running commands\nWith no arguments, shows everything.  Or, type the nubmer of a fiber for more details'
     params: [
-        {name: 'all', type: 'boolean', help: 'If true, lists commands by other users, not just you'}
+        {name: 'fiber id', type: 'number', help: 'The id of the fiber for more info on (including the logs url)'}
     ]
 
-    run: (all) ->
+    run: (fiber_id) ->
         to_display = []
         anonymous = 0
 
+        found = null
         for fiber in u.active_fibers
+            if fiber_id
+                if fiber_id is fiber._fiber_id
+                    found = fiber
+                    break
+
             #only include fibers that have a name
-            if get_fiber_display fiber
-                if all or fiber.current_context.user_id is u.current_user().id
-                    to_display.push fiber
+            else if get_fiber_display fiber
+                to_display.push fiber
+
+        if fiber_id
+            if not found
+                u.reply 'Could not find a fiber with id ' + fiber_id
             else
-                anonymous++
+                info = get_fiber_display found
+                if found.current_context?.get_transcript
+                    info += '\n' + found.current_context.get_transcript()
 
-        res = (get_full_fiber_display fiber for fiber in to_display)
-
-        if all and anonymous > 0
-            res.push 'in addition, there are ' + anonymous + ' anonymous fibers running'
-
-        u.reply 'Currently running:\n' + res.join('\n')
+        else
+            res = (get_full_fiber_display fiber for fiber in to_display)
+            u.reply 'Currently running:\n' + res.join('\n')
 
     groups: constants.BASIC
 
