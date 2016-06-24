@@ -1519,7 +1519,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {name: 'name', required: true, help: 'The name of the credential to retrieve'}
         ]
         help: 'Retrieves a credential for this environment.'
-        dangerous: -> not is_development()
+        dangerous: -> not @is_development()
         groups: ->
             if @is_development()
                 return constants.BASIC
