@@ -461,6 +461,11 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Deletes this object from the database
     delete: ->
+        #make sure children are deleted first
+        children = @children()
+        if children.length > 0
+            throw new Error 'cannot delete ' + @type + ' ' + @id + ', has children: ' + children.join(', ')
+
         u.log 'Deleting from database: ' + @type + ' ' + @id
         u.db().delete_object @type, @id
 
