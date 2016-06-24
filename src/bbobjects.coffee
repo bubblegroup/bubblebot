@@ -744,11 +744,24 @@ bbobjects.validate_destroy_hours = (hours) ->
 
     return hours
 
+bbobjects.get_s3_config_bucket = ->
+    buckets = config.get('bubblebot_s3_bucket').split(',')
+    if buckets.length is 1
+        return buckets[0]
+    else
+        data = bbobjects.bubblebot_environment().s3('listBuckets', {})
+        our_buckets = (bucket.Name for bucket in data.Buckets ? [])
+        for bucket in buckets
+            if bucket in our_buckets
+                return bucket
+        throw new Error 'Could not find any of ' + buckets.join(', ') + ' in ' + our_buckets.join(', ')
+
+
 #Retrieves an S3 configuration file as a string, or null if it does not exists
 bbobjects.get_s3_config = (Key) ->
     u.retry 3, 1000, ->
         try
-            data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: config.get('bubblebot_s3_bucket'), Key})
+            data = bbobjects.bubblebot_environment().s3('getObject', {Bucket: bbobjects.get_s3_config_bucket(), Key})
         catch err
             if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
                 return null
@@ -762,7 +775,7 @@ bbobjects.get_s3_config = (Key) ->
 
 #Puts an S3 configuration file
 bbobjects.put_s3_config = (Key, Body) ->
-    bbobjects.bubblebot_environment().s3 'putObject', {Bucket: config.get('bubblebot_s3_bucket'), Key, Body}
+    bbobjects.bubblebot_environment().s3 'putObject', {Bucket: bbobjects.get_s3_config_bucket(), Key, Body}
 
 
 
