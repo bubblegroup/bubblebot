@@ -964,7 +964,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Lists all the RDS instances in this environment's region
     list_rds_instances_in_region: ->
         data = @rds 'describeDBInstances', {}
-        instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+        instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [] when instance.DBInstanceStatus not in ['deleting', 'deleted'])
         region = @get_region()
         instance.cache_region region for instance in instances
         return instances
