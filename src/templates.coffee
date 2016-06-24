@@ -245,10 +245,28 @@ templates.ExternalService = class ExternalService extends Service
 
 
 #Represents a service that's an RDS-managed database
+#
+#Can instantiate directly, passing codebase id (which should be an RDSCodebase)
+#and monitoring_policy which should be a (service_instance) -> policy function
+#We automatically add the endpoint info to the policy function
 templates.RDSService = class RDSService extends Service
-    constructor: (@codebase_id) ->
+    constructor: (@codebase_id, @monitoring_policy) ->
 
     codebase: -> templates.get 'Codebase', @codebase_id
+
+    get_monitoring_policy: (service_instance) ->
+        rdsinstance = @rds_instance service_instance
+        if not rd2instance
+            return {monitor: false}
+
+        policy = @monitoring_policy service_instance
+        policy.monitor ?= true
+        policy.frequency ?= 2000
+        policy.endpoint ?= {
+            protocol: 'postgres'
+        }
+        return policy
+
 
     #We don't actually replace database boxes since that's generally a bad idea,
     #but when we call replace we make sure they have an RDS instance are up to date with the latest version
