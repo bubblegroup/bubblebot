@@ -132,7 +132,12 @@ bbobjects.get_bbdb_instance = ->
     #If we are creating it, make sure we don't have any old ones hanging around
     for instance in to_delete
         u.log 'DELETING BAD BUBBLEBOT DATABASE: ' + instance.id
-        instance.terminate(true, true, true)
+        try
+            instance.terminate(true, true, true)
+        catch err
+            #We'll generally get an error here because terminate will try to remove the
+            #instance from the database, which will fail...
+            console.log 'Please confirm extra instances were in fact deleted'
 
     u.log 'No bbdb instance found, so creating it'
 
