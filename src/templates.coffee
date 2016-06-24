@@ -256,7 +256,7 @@ templates.RDSService = class RDSService extends Service
 
     get_monitoring_policy: (service_instance) ->
         rdsinstance = @rds_instance service_instance
-        if not rd2instance
+        if not rdsinstance
             return {monitor: false}
 
         policy = @monitoring_policy service_instance
