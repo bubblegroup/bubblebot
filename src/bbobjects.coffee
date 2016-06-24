@@ -529,6 +529,45 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         groups: constants.BASIC
 
 
+    #Code for talking to AWS
+
+    #Calls ec2 and returns the results
+    ec2: (method, parameters) -> @aws 'EC2', method, parameters
+
+    #Calls rds and returns the results
+    rds: (method, parameters) -> @aws 'RDS', method, parameters
+
+    #Calls s3 and returns the results
+    s3: (method, parameters) -> @aws 'S3', method, parameters
+
+    CloudWatchLogs: (method, parameters) -> @aws 'CloudWatchLogs', method, parameters
+
+    #Calls the AWS api
+    aws: (service, method, parameters) ->
+        svc = @get_svc service
+        block = u.Block method
+        svc[method] parameters, block.make_cb()
+        return block.wait()
+
+    #Gets the underlying AWS service object
+    get_svc: (service) -> new AWS[service](aws_config @get_region())
+
+    #If we are in the database, we can get the environment's region.
+    #We also maintain a cache of regions by id, for dealing with objects that
+    #exist in AWS but don't have a region
+    get_region: ->
+        environment = @environment()
+        if environment
+            return environment.get_region()
+        region = region_cache.get(@type + '-' + @id)
+        if region
+            return region
+        throw new Error 'could not find a region for ' + @type + ' ' + @id + '.  Please use cache_region...'
+
+    #Saves a region against this type
+    cache_region: (region) -> region_cache.set @type + '-' + @id, region
+
+
 GROUP_PREFIX = 'group_member_'
 
 #Represents a bubblebot user, ie a Slack user.  User ids are the slack ids
@@ -906,31 +945,29 @@ bbobjects.Environment = class Environment extends BubblebotObject
         #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
         data = @ec2('describeInstances', params)
         res = []
+        region = @get_region()
         for reservation in data.Reservations ? []
             for instance in reservation.Instances ? []
                 id = instance.InstanceId
-                #We save the environment since it can be hard to retrieve it later if
-                #the instance isn't in the database
-                instance._bubblebot_environment = this
                 instance_cache.set id, instance
-                res.push bbobjects.instance 'EC2Instance', id
+
+                ec2instance = bbobjects.instance 'EC2Instance', id
+                ec2instance.cache_region region
+
+                res.push ec2instance
 
         #filter out terminated instances
         res = (instance for instance in res when instance.get_state() not in ['terminated', 'shutting-down'])
 
         return res
 
-    list_rds_instances_by_tag: (key, value) ->
-        data = @rds 'describeDBInstances', {}
-        rds_instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
-
-        #There's no way to list by tag right now, so we find them all then filter
-        return (instance for instance in rds_instances when instance.get_tags()[key] is value)
-
     #Lists all the RDS instances in this environment's region
     list_rds_instances_in_region: ->
         data = @rds 'describeDBInstances', {}
-        return (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+        instances = (bbobjects.instance 'RDSInstance', instance.DBInstanceIdentifier for instance in data.DBInstances ? [])
+        region = @get_region()
+        instance.cache_region region for instance in instances
+        return instances
 
     #Returns the keypair name for this environment, or creates it if it does not exist
     get_keypair_name: ->
@@ -1291,33 +1328,6 @@ bbobjects.Environment = class Environment extends BubblebotObject
             Tags: [{Key, Value}]
         }
 
-    #Gets the user Bubblebot is logged into AWS as
-    get_aws_user: -> @iam('getUser').User
-
-    #Calls ec2 and returns the results
-    ec2: (method, parameters) -> @aws 'EC2', method, parameters
-
-    #Calls rds and returns the results
-    rds: (method, parameters) -> @aws 'RDS', method, parameters
-
-    #Calls s3 and returns the results
-    s3: (method, parameters) -> @aws 'S3', method, parameters
-
-    #Calls iam and returns the results
-    iam: (method, parameters) -> @aws 'IAM', method, parameters
-
-    CloudWatchLogs: (method, parameters) -> @aws 'CloudWatchLogs', method, parameters
-
-    #Calls the AWS api
-    aws: (service, method, parameters) ->
-        svc = @get_svc service
-        block = u.Block method
-        svc[method] parameters, block.make_cb()
-        return block.wait()
-
-    #Gets the underlying AWS service object
-    get_svc: (service) -> new AWS[service](aws_config @get_region())
-
     allow_outside_ssh: ->
         #We allow direct SSH connections to bubblebot to allow for deployments.
         #The security key for connecting should NEVER be saved locally!
@@ -1382,7 +1392,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             return
 
         #find the list of available eips
-        data = @environment().ec2 'describeAddresses', {}
+        data = @ec2 'describeAddresses', {}
         addresses = data.Addresses ? []
 
         #Filter out addresses that are already in the database
@@ -2390,11 +2400,11 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     restart: (aws) ->
         if aws
             u.reply 'Stopping the instance...'
-            @environment().ec2 'stopInstances', {InstanceIds: [@id]}
+            @ec2 'stopInstances', {InstanceIds: [@id]}
             u.log 'Waiting for server to be stopped'
             @wait_for_running(20, 'stopped')
             u.reply 'Starting the instance...'
-            @environment().ec2 'startInstances', {InstanceIds: [@id]}
+            @ec2 'startInstances', {InstanceIds: [@id]}
             u.reply 'Waiting for the instance to be accessible via ssh...'
             @wait_for_ssh()
 
@@ -2422,10 +2432,6 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
         @environment().tag_resource @id, 'Name', @name()
         @template().on_status_change? this, status
-
-    #We check the cache before checking the database, since sometimes we have access
-    #to cached info about the environment, but the instance isn't in the database
-    environment: -> @get_data(false, true)?._bubblebot_environment ? super()
 
     name: ->
         status = @get('status')
@@ -2572,7 +2578,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             @set_status constants.TERMINATING
 
         #then do the termination...
-        data = @environment().ec2 'terminateInstances', {InstanceIds: [@id]}
+        data = @ec2 'terminateInstances', {InstanceIds: [@id]}
         if not data.TerminatingInstances?[0]?.InstanceId is @id
             throw new Error 'failed to terminate! ' + JSON.stringify(data)
 
@@ -2746,7 +2752,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         delete safe_params.MasterUserPassword
         u.log 'Creating new RDS instance: ' + JSON.stringify safe_params
 
-        results = @environment().rds 'createDBInstance', params
+        results = @rds 'createDBInstance', params
 
         u.log 'RDS instance succesfully created with id ' + @id
         return null
@@ -2811,12 +2817,12 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
         u.log 'Resizing RDB ' + @id + ' with params: ' + JSON.stringify params
 
-        @environment().rds 'modifyDBInstance', params
+        @rds 'modifyDBInstance', params
 
         u.log 'Resizing RDB succesful'
 
         if reboot_required
-            @environment().rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
+            @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
 
         #Force a refresh of our cache
         @get_configuration true
@@ -2844,7 +2850,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if not force_refresh and rds_cache.get @id
             return rds_cache.get @id
 
-        data = @environment().rds 'describeDBInstances', {DBInstanceIdentifier: @id}
+        data = @rds 'describeDBInstances', {DBInstanceIdentifier: @id}
         res = data.DBInstances?[0]
         rds_cache.set @id, res
         return res
@@ -2921,7 +2927,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             FinalDBSnapshotIdentifier: if not SkipFinalSnapshot then @id + '-final-snapshot-' + String(Date.now()) else null
             SkipFinalSnapshot: SkipFinalSnapshot
         }
-        @environment().rds 'deleteDBInstance', params
+        @rds 'deleteDBInstance', params
         u.log 'Deleted rds instance ' + @id
 
         #then delete the data if it exists
@@ -2941,7 +2947,7 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
 
     #fetches the amazon metadata for this address and caches it
     refresh: ->
-        data = @environment().ec2 'describeAddresses', {'AllocationIds': [@id]}
+        data = @ec2 'describeAddresses', {'AllocationIds': [@id]}
         eip_cache.set @id, data.Addresses?[0]
 
     describe_keys: -> u.extend super(), {
@@ -2979,7 +2985,7 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
     #Switches this elastic ip to point at a new instance
     switch: (new_instance) ->
         u.log 'Switching eip ' + @id + ' to point to instance ' + new_instance.id
-        @environment().ec2 'associateAddress', {
+        @ec2 'associateAddress', {
             AllocationId: @id
             AllowReassociation: true
             InstanceId: new_instance.id
@@ -3035,7 +3041,7 @@ vpc_to_subnets = new Cache(60 * 60 * 1000)
 log_stream_cache = new Cache(24 * 60 * 60 * 1000)
 rds_subnet_groups = new Cache(60 * 60 * 1000)
 rds_cache = new Cache(60 * 1000)
-
+region_cache = new Cache(24 * 60 * 60 * 1000)
 
 
 config = require './config'
