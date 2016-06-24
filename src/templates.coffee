@@ -323,7 +323,7 @@ templates.RDSService = class RDSService extends Service
         instance.set 'rds_instance', rds_instance.id
 
     #Imports a given rds instance to be this services instance
-    import: (instance_id, MasterUsername, MasterUserPassword) ->
+    import: (instance, instance_id, MasterUsername, MasterUserPassword) ->
         if instance.get 'rds_instance'
             throw new Error 'already have an instance'
 
@@ -331,7 +331,7 @@ templates.RDSService = class RDSService extends Service
 
         #Test the credentials
         try
-            db_tester = new database.Postgres {endpoint: -> rds_instance.endpoint {MasterUsername, MasterUserPassword}}
+            db_tester = new databases.Postgres {endpoint: -> rds_instance.endpoint {MasterUsername, MasterUserPassword}}
             db_tester.query 'SELECT 1'
         catch err
             u.reply 'Could not connect to DB with the given credentials:\n' + err.stack
