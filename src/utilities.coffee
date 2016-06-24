@@ -8,7 +8,7 @@ u.create_tarball = (directory) ->
     return tempfile
 
 u.run_local = (cmd, options = {}) ->
-    {can_fail, env, return_stderr} = options
+    {can_fail, env, return_stderr, timeout} = options
     logger = u.get_logger('log')
     logger 'Running locally: ' + cmd
     block = u.Block 'run_local ' + cmd
@@ -29,7 +29,7 @@ u.run_local = (cmd, options = {}) ->
                 block.fail err
         else
             block.success ret
-    return block.wait()
+    return block.wait(timeout)
 
 #Removes all occurrences of val from this array
 u.array_remove = (array, val) ->
