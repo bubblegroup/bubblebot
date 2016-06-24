@@ -744,17 +744,22 @@ bbobjects.validate_destroy_hours = (hours) ->
 
     return hours
 
+_cached_bucket = null
 bbobjects.get_s3_config_bucket = ->
-    buckets = config.get('bubblebot_s3_bucket').split(',')
-    if buckets.length is 1
-        return buckets[0]
-    else
-        data = bbobjects.bubblebot_environment().s3('listBuckets', {})
-        our_buckets = (bucket.Name for bucket in data.Buckets ? [])
-        for bucket in buckets
-            if bucket in our_buckets
-                return bucket
-        throw new Error 'Could not find any of ' + buckets.join(', ') + ' in ' + our_buckets.join(', ')
+    if not _cached_bucket
+        buckets = config.get('bubblebot_s3_bucket').split(',')
+        if buckets.length is 1
+            _cached_bucket = buckets[0]
+        else
+            data = bbobjects.bubblebot_environment().s3('listBuckets', {})
+            our_buckets = (bucket.Name for bucket in data.Buckets ? [])
+            for bucket in buckets
+                if bucket in our_buckets
+                    _cached_bucket = bucket
+                    break
+            if not _cached_bucket
+                throw new Error 'Could not find any of ' + buckets.join(', ') + ' in ' + our_buckets.join(', ')
+    return _cached_bucket
 
 
 #Retrieves an S3 configuration file as a string, or null if it does not exists
