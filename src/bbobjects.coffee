@@ -1906,12 +1906,16 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #down the service itself
     should_delete_rdsinstance: (rds_instance, aggressive) -> false
 
-    describe_keys: -> u.extend super(), {
-        version: @version()
-        endpoint: @endpoint()
-        maintenance: @maintenance()
-        servers: @servers().join(', ')
-    }
+    describe_keys: ->
+        endpoint = @endpoint()
+        if typeof(endpoint) is 'object'
+            endpoint = (endpoint.hostname ? endpoint.host) + (if endpoint.port then ':' + endpoint.port else '')
+        u.extend super(), {
+            version: @version()
+            endpoint: @endpoint()
+            maintenance: @maintenance()
+            servers: @servers().join(', ')
+        }
 
     #Returns an array of the underlying physical resources backing this service
     servers: -> @template().servers this
