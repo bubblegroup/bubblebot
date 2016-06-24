@@ -21,6 +21,8 @@ monitoring.Monitor = class Monitor
     _get_uid: (object) -> object.type + '_' + object.id
 
     monitor: (object) ->
+        if not object
+            return
         policy = object.get_monitoring_policy()
 
         uid = @_get_uid object
