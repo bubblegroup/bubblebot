@@ -380,10 +380,10 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     #we want to use @is_development() rather than (not @is_production()) for things
     #involving credentials, since we want to treat QA credentials like production
     #credentials.
-    is_development: -> @environment().is_development()
+    is_development: -> @environment()?.is_development() ? false
 
     #Returns true if this object is production.  See comment on is_development
-    is_production: -> @environment().is_production()
+    is_production: -> @environment()?.is_production() ? false
 
     environment_cmd:
         help: 'Returns the environment that this is in'
@@ -1501,9 +1501,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {name: 'key', required: true, help: 'The key of the object'}
         ]
         help: 'Retrieves dot-seperated credentials starting with the given key as an object'
-        dangerous: -> not @environment().is_development()
+        dangerous: -> not @is_development()
         groups: ->
-            if @environment().is_development()
+            if @is_development()
                 return constants.BASIC
             else
                 return constants.ADMIN
@@ -1519,9 +1519,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {name: 'name', required: true, help: 'The name of the credential to retrieve'}
         ]
         help: 'Retrieves a credential for this environment.'
-        dangerous: -> not @environment().is_development()
+        dangerous: -> not is_development()
         groups: ->
-            if @environment().is_development()
+            if @is_development()
                 return constants.BASIC
             else
                 return constants.ADMIN
@@ -1547,7 +1547,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         groups: (set_name, name, value, overwrite) ->
             if not value?
                 throw new Error 'assertion error: ' + JSON.stringify({set_name, name, value, overwrite})
-            if overwrite and @environment().is_development()
+            if overwrite and @is_development()
                 return constants.ADMIN
             else
                 return constants.BASIC
