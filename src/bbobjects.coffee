@@ -2309,8 +2309,14 @@ bbobjects.Test = class Test extends BubblebotObject
 
     is_tested: (version) -> @find_entries('test_passed', version).length > 0
 
+    #Can be null! Codebase is not required, it is optional (to expose the canonicalize function)
+    codebase: -> @template().codebase()
+
     #Runs the tests against this version
     run: (version) ->
+        codebase = @codebase()
+        if codebase
+            version = codebase.ensure_version version
         u.reply 'Running test ' + @id + ' on version ' + version
         try
             u.context().currently_running_test = @id
@@ -2349,6 +2355,10 @@ bbobjects.Test = class Test extends BubblebotObject
 
     #Marks this version as tested without actually running the tests
     skip_tests: (version) ->
+        codebase = @codebase()
+        if codebase
+            version = codebase.ensure_version version
+
         @add_history 'test_passed', version, {skip_tests: true}
         u.report 'User ' + u.current_user() + ' called skip tests on ' + @id + ', version ' + version
 
@@ -2392,6 +2402,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             u.expected_error 'Cannot rebuild instances in production -- this is for development purposes only'
         if not @template()
             u.expected_error 'This ec2 instance does not have a template set'
+        version = @template().codebase().ensure_version version
         @template().software(version, @parent()) this
         u.reply 'Rebuild complete'
 

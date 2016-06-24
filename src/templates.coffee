@@ -8,7 +8,7 @@ interfaces =
     Environment: ['initialize']
     Service: ['codebase', 'get_tests', 'deploy', 'get_monitoring_policy']
     Codebase: ['canonicalize', 'ahead_of', 'ahead_of_msg', 'merge', 'debug_version']
-    Test: ['run']
+    Test: ['run', 'codebase']
     EC2Build: ['codebase', 'verify', 'software', 'ami_software', 'termination_delay', 'default_size', 'get_replacement_interval', 'restart']
 
 
@@ -1043,6 +1043,8 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
 #
 #Then, saves both the rollback and migration to S3
 templates.add 'Test', 'RDS_migration_try_and_save', {
+    codebase: -> null
+
     run: (version) ->
         [codebase_id, migration] = extract_rds_version_pieces version
         codebase = templates.get 'Codebase', codebase_id
