@@ -2029,7 +2029,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         u.reply 'Maintenance mode is ' + (if turn_on then 'on' else 'off')
 
     set_maintenance_cmd:
-        params: {name: 'on', type: 'boolean', required: true, help: 'If true, turns maintenance mode on, if false, turns it off'}
+        params: [{name: 'on', type: 'boolean', required: true, help: 'If true, turns maintenance mode on, if false, turns it off'}]
         help: 'Turns maintenance mode on or off'
         groups: constants.BASIC
 
