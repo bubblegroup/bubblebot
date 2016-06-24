@@ -69,8 +69,8 @@ commands.publish = (access_key, secret_access_key) ->
                 failure = true
 
             if not failure
-                u.log 'Waiting a few seconds to see if it is still running...'
-                u.pause 5000
+                u.log 'Waiting thirty seconds to see if it is still running...'
+                u.pause 30 * 1000
                 res = bbserver.run('supervisorctl status bubblebot')
                 if res.indexOf('RUNNING') is -1
                     failure = true
