@@ -350,7 +350,7 @@ templates.RDSService = class RDSService extends Service
         params: [
             {name: 'instance_id', required: true, help: 'The instance to import'}
             {name: 'username', required: true, help: 'The master username for this database'}
-            {name: 'password', requried: true, help: 'The master password for this database'}
+            {name: 'password', required: true, help: 'The master password for this database'}
         ]
 
     #S3 key we use to store credentials
