@@ -318,7 +318,7 @@ templates.RDSService = class RDSService extends Service
 
         {permanent_options, sizing_options, credentials} = @get_params_for_creating_instance instance
 
-        rds_instance.create this, permanent_options, sizing_options, credentials
+        rds_instance.create instance, permanent_options, sizing_options, credentials
 
         instance.set 'rds_instance', rds_instance.id
 
@@ -337,7 +337,7 @@ templates.RDSService = class RDSService extends Service
             u.reply 'Could not connect to DB with the given credentials:\n' + err.stack
             return
 
-        rds_instance.create this, null, null, null, 'just_write'
+        rds_instance.create instance, null, null, null, 'just_write'
 
         rds_instance.set 'MasterUsername', MasterUsername
         rds_instance.set 'MasterUserPassword', MasterUserPassword
