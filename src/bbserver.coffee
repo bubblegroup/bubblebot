@@ -146,6 +146,7 @@ bbserver.Server = class Server
                 msg = 'Error starting bubblebot server, permanently quitting.  Error is:\n' + (err.stack ? err)
                 console.log '(DUPLICATE) ' + msg
                 u.log msg
+                return
 
             #Tell the various objects to start themselves up
             u.SyncRun =>
