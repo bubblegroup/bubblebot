@@ -322,6 +322,36 @@ templates.RDSService = class RDSService extends Service
 
         instance.set 'rds_instance', rds_instance.id
 
+    #Imports a given rds instance to be this services instance
+    import: (instance_id, MasterUsername, MasterUserPassword) ->
+        if instance.get 'rds_instance'
+            throw new Error 'already have an instance'
+
+        rds_instance = bbobjects.instance 'RDSInstance', instance_id
+
+        #Test the credentials
+        try
+            db_tester = new database.Postgres {endpoint: -> rds_instance.endpoint {MasterUsername, MasterUserPassword}}
+            db_tester.query 'SELECT 1'
+        catch err
+            u.reply 'Could not connect to DB with the given credentials:\n' + err.stack
+            return
+
+        rds_instance.create this, null, null, null, 'just_write'
+
+        rds_instance.set 'MasterUsername', MasterUsername
+        rds_instance.set 'MasterUserPassword', MasterUserPassword
+
+        instance.set 'rds_instance', rds_instance.id
+
+
+    import_cmd:
+        help: 'Imports a given rds instance to be this services instance'
+        params: [
+            {name: 'instance_id', required: true, help: 'The instance to import'}
+            {name:
+        ]
+
     #S3 key we use to store credentials
     _get_credentials_key: (instance) -> 'RDSService_' + instance.id + '_credentials'
 
