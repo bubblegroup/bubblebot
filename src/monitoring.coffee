@@ -22,8 +22,6 @@ monitoring.Monitor = class Monitor
 
     monitor: (object) ->
         policy = object.get_monitoring_policy()
-        if policy.monitor is false
-            return
 
         uid = @_get_uid object
         if @to_monitor[uid]
@@ -32,7 +30,7 @@ monitoring.Monitor = class Monitor
         @to_monitor[uid] = object
 
         #Set the initial frequency
-        @frequencies[uid] = policy.frequency
+        @frequencies[uid] = policy.frequency ? 30 * 1000
         @health[uid] = UNKNOWN
 
         #and schedule the initial check
