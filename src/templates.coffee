@@ -352,6 +352,7 @@ templates.RDSService = class RDSService extends Service
             {name: 'username', required: true, help: 'The master username for this database'}
             {name: 'password', required: true, help: 'The master password for this database'}
         ]
+        reply: 'Import successful'
 
     #S3 key we use to store credentials
     _get_credentials_key: (instance) -> 'RDSService_' + instance.id + '_credentials'
