@@ -1908,7 +1908,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     describe_keys: ->
         endpoint = @endpoint()
-        if typeof(endpoint) is 'object'
+        if endpoint and typeof(endpoint) is 'object'
             endpoint = (endpoint.hostname ? endpoint.host) + (if endpoint.port then ':' + endpoint.port else '')
         u.extend super(), {
             version: @version()
