@@ -5,6 +5,10 @@
 
     //The bucket we use to store secure bubblebot resources in. MAKE SURE THIS IS LOCKED DOWN
     //TO JUST THE BUBBLEBOT ACCOUNT -- we save secure things like private keys here.
+    //
+    //If you are using this configuration with multiple accounts, can include the buckets
+    //for the various accounts by comma-seperating a list of strings.  Will use the
+    //first bucket in the list that the active account owns.
     "bubblebot_s3_bucket": "MY_BUBBLEBOT_BUCKET",
     
      //The region we run the bubblebot server in
