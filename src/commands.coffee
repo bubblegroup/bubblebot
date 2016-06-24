@@ -66,18 +66,15 @@ commands.publish = (access_key, secret_access_key) ->
             #start bubblebot
             res = bbserver.run('supervisorctl start bubblebot')
             if res.indexOf('ERROR (abnormal termination)') isnt -1
-                failure = true
-
-            if not failure
-                u.log 'Waiting thirty seconds to see if it is still running...'
-                u.pause 30 * 1000
-                res = bbserver.run('supervisorctl status bubblebot')
-                if res.indexOf('RUNNING') is -1
-                    failure = true
-
-            if failure
                 console.log 'Error starting supervisor, tailing logs:'
                 bbserver.run('tail -n 100 /tmp/bubblebot*')
+
+            else
+                u.log 'Waiting twenty seconds to see if it is still running...'
+                try
+                    software.verify_supervisor bbserver, 'bubblebot', 20
+                catch err
+                    console.log err.message
 
         process.exit()
 
