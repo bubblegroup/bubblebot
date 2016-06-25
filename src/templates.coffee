@@ -441,7 +441,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             u.SyncRun =>
                 try
                     server.build_context()
-                    u.retry 10, 10000, =>
+                    u.retry 3, 10000, =>
                         @ensure_switcher_correct(instance)
                 catch err
                     u.report 'Error in ensure_switcher_correct:\n' + err.stack
@@ -455,7 +455,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         db_instance = @get_active_instance(instance)
         if db_instance and db_instance.id isnt switcher_instance?.id
             u.report 'Switcher mismatch for ' + instance + '; in database: ' + db_instance + ' and in switcher: ' + switcher_instance + '.  Attempting to fix..'
-            @switcher(instance).switch db_instance.id
+            @switcher(instance).switch db_instance
 
 
     ensure_switcher_correct_cmd:
