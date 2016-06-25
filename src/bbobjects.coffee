@@ -539,6 +539,28 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     #Calls ec2 and returns the results
     ec2: (method, parameters) -> @aws 'EC2', method, parameters
 
+    #Calls describe instances on the given set of instances / parameters, and returns an array of
+    #Instance objects
+    describe_instances: (params) ->
+        #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
+        data = @ec2('describeInstances', params)
+        res = []
+        region = @get_region()
+        for reservation in data.Reservations ? []
+            for instance in reservation.Instances ? []
+                id = instance.InstanceId
+                instance_cache.set id, instance
+
+                ec2instance = bbobjects.instance 'EC2Instance', id
+                ec2instance.cache_region region
+
+                res.push ec2instance
+
+        #filter out terminated instances
+        res = (instance for instance in res when instance.get_state() not in ['terminated', 'shutting-down'])
+
+        return res
+
     #Calls rds and returns the results
     rds: (method, parameters) -> @aws 'RDS', method, parameters
 
@@ -943,28 +965,6 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Given a key, value pair, returns a list of RDB databases that match that pair
     get_dbs_by_tag: (key, value) -> throw new Error 'not implemented'
-
-    #Calls describe instances on the given set of instances / parameters, and returns an array of
-    #Instance objects
-    describe_instances: (params) ->
-        #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
-        data = @ec2('describeInstances', params)
-        res = []
-        region = @get_region()
-        for reservation in data.Reservations ? []
-            for instance in reservation.Instances ? []
-                id = instance.InstanceId
-                instance_cache.set id, instance
-
-                ec2instance = bbobjects.instance 'EC2Instance', id
-                ec2instance.cache_region region
-
-                res.push ec2instance
-
-        #filter out terminated instances
-        res = (instance for instance in res when instance.get_state() not in ['terminated', 'shutting-down'])
-
-        return res
 
     #Lists all the RDS instances in this environment's region
     list_rds_instances_in_region: ->
@@ -2504,7 +2504,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         ssh.write_file @get_address(), @environment().get_private_key(), remote_path, data
 
     #Makes sure we have fresh metadata for this instance
-    refresh: -> @environment().describe_instances({InstanceIds: [@id]})
+    refresh: -> @describe_instances({InstanceIds: [@id]})
 
     #Gets the amazon metadata for this instance, refreshing if it is null or if force_refresh is true
     #if no_refresh is true, returns null if we don't have data yet
