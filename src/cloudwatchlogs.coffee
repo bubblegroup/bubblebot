@@ -62,7 +62,7 @@ cloudwatchlogs.LogStream = class LogStream
             @queue = []
 
             try
-                res = @environment.CloudWatchLogs.putLogEvents {
+                res = @environment.CloudWatchLogs 'putLogEvents', {
                     logGroupName: @groupname
                     logStreamName: @name
                     sequenceToken: @uploadSequenceToken
