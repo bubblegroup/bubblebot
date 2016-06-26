@@ -57,25 +57,28 @@ cloudwatchlogs.LogStream = class LogStream
 
     #do an actual upload
     do_put: ->
-        logEvents = @queue
-        @queue = []
+        u.SyncRun =>
+            logEvents = @queue
+            @queue = []
 
-        @environment.get_svc('CloudWatchLogs').putLogEvents {
-            logGroupName: @groupname
-            logStreamName: @name
-            sequenceToken: @uploadSequenceToken
-            logEvents
-        }, (err, res) =>
-            if err
+            try
+                res = @environment.CloudWatchLogs.putLogEvents {
+                    logGroupName: @groupname
+                    logStreamName: @name
+                    sequenceToken: @uploadSequenceToken
+                    logEvents
+                }
+                if res.rejectedLogEventsInfo?
+                    console.log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
+                    u.report_no_log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
+
+                @uploadSequenceToken = res.nextSequenceToken
+
+
+            catch err
                 u.report_no_log 'Error writing to cloud watch logs: ' + (err.stack ? err)
                 console.log 'Error writing to cloud watch logs: ' + (err.stack ? err)
-                return
 
-            if res.rejectedLogEventsInfo?
-                console.log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
-                u.report_no_log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
-
-            @uploadSequenceToken = res.nextSequenceToken
 
             #If more logs have come in in the interim, schedule another put,
             #otherwise indicate that we are no longer scheduled
@@ -83,6 +86,8 @@ cloudwatchlogs.LogStream = class LogStream
                 setTimeout @do_put.bind(this), 200
             else
                 @put_scheduled = false
+
+
 
     #Returns a url that a user can view to tail the logs
     get_tail_url: ->

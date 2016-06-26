@@ -577,7 +577,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return block.wait()
 
     #Gets the underlying AWS service object
-    get_svc: (service) -> new AWS[service](aws_config @get_region())
+    get_svc: (service) -> get_aws_service service, @get_region()
 
     #If we are in the database, we can get the environment's region.
     #We also maintain a cache of regions by id, for dealing with objects that
@@ -3019,12 +3019,28 @@ aws_config = (region) ->
     accessKeyId = config.get 'accessKeyId'
     secretAccessKey = config.get 'secretAccessKey'
     res = {region}
-    if accessKeyId
+    if accessKeyId or secretAccessKey
         res.accessKeyId = accessKeyId
-    if secretAccessKey
         res.secretAccessKey = secretAccessKey
+    else
+        res.credentials = new AWS.EC2MetadataCredentials {
+            httpOptions: { timeout: 20000 }
+        }
     return res
 
+
+#Loads the AWS service given the region.  We cache it since there can be issues
+#with loading it fresh each time...
+#
+#https://github.com/aws/aws-sdk-js/issues/692
+get_aws_service = (name, region) ->
+    key = name + ' ' + region
+    if not aws_service_cache.get(key)
+        svc = u.retry 20, 2000, =>
+            config = aws_config region
+            return new AWS[name] config
+        aws_service_cache.set key, svc
+    return aws_service_cache.get(key)
 
 
 #We keep a cache of AWS data in memory to avoid constantly pinging the API
@@ -3055,6 +3071,7 @@ class Cache
         @data = new_data
         @last_access = new_last_access
 
+
 instance_cache = new Cache(60 * 1000)
 eip_cache = new Cache(60 * 1000)
 key_cache = new Cache(60 * 60 * 1000)
@@ -3064,6 +3081,8 @@ log_stream_cache = new Cache(24 * 60 * 60 * 1000)
 rds_subnet_groups = new Cache(60 * 60 * 1000)
 rds_cache = new Cache(60 * 1000)
 region_cache = new Cache(24 * 60 * 60 * 1000)
+aws_service_cache = new Cache(2 * 60 * 60 * 1000)
+
 
 
 config = require './config'
