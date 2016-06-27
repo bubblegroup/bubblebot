@@ -425,7 +425,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             instance.set 'active_instance', ec2instance.id
         catch err
             server = u.context().server
-            u.SyncRun =>
+            u.SyncRun 'ensure_switcher_correct', =>
                 server.build_context()
                 @ensure_switcher_correct instance
             throw err
@@ -438,7 +438,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         server = u.context().server
 
         ensure_switcher = =>
-            u.SyncRun =>
+            u.SyncRun 'ensure_switcher', =>
                 try
                     server.build_context()
                     @ensure_switcher_correct(instance)

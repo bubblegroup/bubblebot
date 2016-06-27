@@ -10,12 +10,12 @@ build = ->
 
 
 commands.build = ->
-    u.SyncRun ->
+    u.SyncRun 'build', ->
         build()
         process.exit()
 
 commands.publish = (access_key, secret_access_key) ->
-    u.SyncRun ->
+    u.SyncRun 'publish', ->
         #Load the local configuration from disk
         config.init()
 
@@ -84,7 +84,7 @@ commands.publish = (access_key, secret_access_key) ->
 commands.install = (force) ->
     force = force is "force"
 
-    u.SyncRun ->
+    u.SyncRun 'install', ->
         for name in ['run.js', 'configuration.json']
             u.log 'Creating ' + name
             data = fs.readFileSync __dirname + '/../templates/' + name
@@ -105,18 +105,18 @@ update = ->
 
 
 commands.update = ->
-    u.SyncRun ->
+    u.SyncRun 'update', ->
         update()
         build()
         process.exit()
 
 commands.dev = ->
-    u.SyncRun ->
+    u.SyncRun 'dev', ->
         u.log u.run_local 'coffee -o node_modules/bubblebot/lib -c node_modules/bubblebot/src/*.coffee && node node_modules/bubblebot/node_modules/eslint/bin/eslint.js node_modules/bubblebot/lib'
         process.exit()
 
 commands.set_config = (name, value) ->
-    u.SyncRun ->
+    u.SyncRun 'set_config', ->
         config.init()
         config.set 'command_line', true
         config.init_account_specific()

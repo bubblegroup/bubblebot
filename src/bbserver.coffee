@@ -35,7 +35,7 @@ bbserver.Server = class Server
 
     #Runs the function as synchronous middleware
     syncware: (fn) -> (req, res, next) =>
-        u.SyncRun =>
+        u.SyncRun 'http_request', =>
             try
                 @build_context('http request ' + req.url)
                 fn req, res
@@ -45,7 +45,7 @@ bbserver.Server = class Server
 
     #should listen on port 8081 for commands such as shutdown
     start: ->
-        u.SyncRun =>
+        u.SyncRun 'start', =>
             try
                 @db = @_build_bbdb()
 
@@ -73,7 +73,7 @@ bbserver.Server = class Server
                 server2 = http.createServer (req, res) =>
                     if req.url is '/shutdown'
                         res.end bbserver.SHUTDOWN_ACK
-                        u.SyncRun =>
+                        u.SyncRun 'shutdown', =>
                             @build_context()
                             @graceful_shutdown()
                     else
@@ -149,7 +149,7 @@ bbserver.Server = class Server
                 return
 
             #Tell the various objects to start themselves up
-            u.SyncRun =>
+            u.SyncRun 'startup', =>
                 @build_context('startup')
 
                 u.log 'Running startup'
@@ -174,7 +174,7 @@ bbserver.Server = class Server
 
     #Starts a long operation on its own fiber
     run_fiber: (name, fn) ->
-        u.SyncRun =>
+        u.SyncRun 'run_fiber', =>
             @build_context(name)
             sub_logger = @create_sub_logger name
             try
@@ -293,7 +293,7 @@ bbserver.Server = class Server
     start_task_engine: ->
         @owner_id = null
 
-        u.SyncRun =>
+        u.SyncRun 'task_engine', =>
             @build_context('task engine')
 
             #exponential backoff if we are having trouble retrieving tasks
@@ -307,7 +307,7 @@ bbserver.Server = class Server
                     {@owner_id, task_data} = u.db().get_next_task @owner_id
 
                     if task_data?
-                        u.SyncRun =>
+                        u.SyncRun 'run_task', =>
                             @run_task task_data
 
                     else
@@ -1077,6 +1077,30 @@ class PS extends Command
 
     groups: constants.BASIC
 
+
+class CPU extends Command
+    help: 'Shows CPU usage breakdown'
+
+    run: ->
+        data = u.get_cpu_usage()
+
+        #Calculate the total on-fiber time
+        total = 0
+        for k, v of data
+            total += v
+
+        #Sort by usage
+        sorted = ([k, v] for k, v of data)
+        sorted.sort (a, b) -> b[1] - a[1]
+
+        res = 'Total on fiber: ' + u.format_percent(total) + '\n\n'
+        res += (entry[k] + ': ' + u.format_percent(v) for [k, v] in sorted[0...10]).join('\n')
+
+        u.reply res
+
+    groups: constants.BASIC
+
+
 #Command for listing recent loggers
 class Logs extends Command
     help: 'Show recent logging streams'
@@ -1270,6 +1294,7 @@ class RootCommand extends CommandTree
         @commands.update = new Update @server
         @commands.shutdown = new Shutdown @server
         @commands.console = new Console @server
+        @commands.cpu = new CPU()
         @commands.sudo = new Sudo()
 
 

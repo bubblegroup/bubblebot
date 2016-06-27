@@ -57,7 +57,7 @@ cloudwatchlogs.LogStream = class LogStream
 
     #do an actual upload
     do_put: ->
-        u.SyncRun =>
+        u.SyncRun 'cloudwatch_put', =>
             logEvents = @queue
             @queue = []
 

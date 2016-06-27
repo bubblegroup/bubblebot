@@ -15,7 +15,7 @@ bubblebot.initialize_configuration = (options, cb) ->
         cb = options
         options = null
 
-    u.SyncRun ->
+    u.SyncRun 'initialize_configuration', ->
         if options?
             config.init options
         else

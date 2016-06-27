@@ -48,7 +48,7 @@ monitoring.Monitor = class Monitor
 
     #Performs a check on this object
     check: (object) ->
-        u.SyncRun =>
+        u.SyncRun 'monitor_check', =>
             try
                 uid = @_get_uid object
 
@@ -171,13 +171,13 @@ monitoring.Monitor = class Monitor
         else if service is 'report'
             u.report 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
         else if service is 'restart'
-            u.SyncRun =>
+            u.SyncRun 'monitor_restart', =>
                 @server.build_context 'monitoring: restarting ' + object
                 object.restart()
         else if service is 'replace'
             u.report 'Monitoring: automatically replacing ' + object
             u.announce 'Monitoring: automatically replacing ' + object
-            u.SyncRun =>
+            u.SyncRun 'monitor_replace', =>
                 @server.build_context 'monitoring: replacing ' + object
                 object.replace()
         else

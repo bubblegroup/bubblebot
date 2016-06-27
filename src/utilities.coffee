@@ -335,6 +335,7 @@ class Block
             start_fiber_timeout()
 
             @yielded = true
+            record_stop @my_fiber
             Fiber.yield()
             @yielded = false
 
@@ -375,6 +376,45 @@ class Block
             start_fiber_run @my_fiber
 
 
+#Keep track of how much time we spend in each fiber
+fiber_timing = {}
+current_fiber_name = null
+current_fiber_start = null
+current_server_start = null
+last_fiber_stop = null
+
+#Indicate that we have left the execution thread of this fiber
+record_stop = (fiber) ->
+    if not current_fiber_name
+        throw new Error 'record_stop with no fiber name!'
+
+    cur = Date.now()
+    run_time = cur - current_fiber_start
+    last_fiber_stop = cur
+    fiber_timing[current_fiber_name] ?= 0
+    fiber_timing[current_fiber_name] += run_time
+    current_fiber_name = null
+    current_fiber_start = null
+
+
+#Indicate that we are beginning the execution thread of this fiber
+record_start = (fiber) ->
+    if current_fiber_name?
+        throw new Error 'already on ' + current_fiber_name
+    current_fiber_name = fiber.cpu_name
+    cur = Date.now()
+    current_fiber_start = cur
+    current_server_start ?= cur
+
+#Returns data about which fibers have been consuming CPU cycles.
+u.get_cpu_usage = ->
+    total_time = last_fiber_stop - current_server_start
+    res = {}
+    for k, v of fiber_timing
+        res[k] = v / total_time
+    return res
+
+
 #Starts the given fiber running, and records the timestamp on the fiber.
 #Use instead of fiber.run()
 start_fiber_run = (my_fiber) ->
@@ -382,6 +422,7 @@ start_fiber_run = (my_fiber) ->
     if my_fiber.fiber_is_finished
         throw new Error 'Trying to resume finished fiber!'
 
+    record_start fiber
     my_fiber.run()
 
 
@@ -390,7 +431,7 @@ u.ensure_fiber = (fn) ->
     if Fiber.current?
         fn()
     else
-        u.SyncRun fn
+        u.SyncRun 'ensure_fiber', fn
 
 #Runs a function in a fiber that shares a context with the parent fiber.
 #This allows running things in parallel from the same process.
@@ -402,7 +443,7 @@ u.ensure_fiber = (fn) ->
 u.sub_fiber = (fn) ->
     shared_context = u.context()
     block = u.Block 'running sub-fiber'
-    u.SyncRun ->
+    u.SyncRun 'sub_fiber', ->
         try
             Fiber.current.current_context = u.extend {}, shared_context
             if Fiber.current.current_context.original_message
@@ -429,7 +470,9 @@ u.fiber_id = -> Fiber.current._fiber_id
 #
 #If ignore_fiber_lock is true, this makes the fiber run regardless of whether there's
 #a fiber lock
-u.SyncRun = SyncRun = (cb) ->
+#
+#cpu_name is what we name the fiber for cpu usage monitoring purposes
+u.SyncRun = SyncRun = (cpu_name, cb) ->
     go = ->
         f = null
         run_fn = ->
@@ -443,6 +486,7 @@ u.SyncRun = SyncRun = (cb) ->
             catch err
                 throw err
             finally
+                record_stop f
                 f.fiber_is_finished = true #fibers will restart if run is called after they finished!
 
                 u.array_remove u.active_fibers, f
@@ -451,6 +495,7 @@ u.SyncRun = SyncRun = (cb) ->
                 f = null
 
         f = Fiber run_fn
+        f.cpu_name = cpu_name
         f._u_fiber_timeout = 90 * 1000 #we set a default timeout, since accidentally not setting a timeout can lead to memory leaks
         start_fiber_run f
 
