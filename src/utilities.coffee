@@ -54,7 +54,7 @@ u.json_deep_copy = (obj) -> JSON.parse JSON.stringify obj
 
 #converts a duration in ms to something human readable
 u.format_time = (ms) ->
-    seconds = Math.round(ms / 100) / 10
+    seconds = Math.floor(ms / 1000)
     minutes = Math.floor(seconds / 60)
     hours = Math.floor(minutes / 60)
     days = Math.floor(hours / 24)
@@ -62,14 +62,18 @@ u.format_time = (ms) ->
     minutes = minutes % 60
     seconds = seconds % 60
     hours = hours % 24
+    tenths = Math.floor(ms / 100) % 10
 
     add = (name, amt) -> if amt is 1 then "1 #{name}, " else if amt > 0 then "#{amt} #{name}s, " else ""
 
-    return add('day', days) + add('hour', hours) + add('minute', minutes) + seconds + ' seconds'
+    return add('day', days) + add('hour', hours) + add('minute', minutes) + seconds + '.' + tenths + ' seconds'
 
 #converts 0.0234 -> 2.3%
 u.format_percent = (decimal) ->
     return String(Math.floor(decimal * 1000) / 10) + '%'
+
+#Converts 12.567 into 12.6
+u.format_decimal = (decimal) -> String(Math.round(decimal / 10) * 10)
 
 
 #Returns {private_key, public_key}

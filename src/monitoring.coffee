@@ -6,6 +6,8 @@ UNKNOWN = 'unknown'
 UNHEALTHY = 'unhealthy'
 MAINTENANCE = 'maintenance'
 
+total_checks = 0
+
 #Monitoring and alerting provider
 monitoring.Monitor = class Monitor
     constructor: (@server) ->
@@ -49,6 +51,7 @@ monitoring.Monitor = class Monitor
     #Performs a check on this object
     check: (object) ->
         u.SyncRun 'monitor_check', =>
+            total_checks++
             try
                 uid = @_get_uid object
                 @do_check uid, object
@@ -82,7 +85,7 @@ monitoring.Monitor = class Monitor
         u.cpu_checkpoint 'monitor_check.' + uid + '.check_state'
 
         #Check its current state and reason
-        [state, reason] = @get_state(object)
+        [state, reason] = @get_state(object, policy)
 
         u.cpu_checkpoint 'monitor_check.' + uid + '.handle_state'
 
@@ -138,7 +141,7 @@ monitoring.Monitor = class Monitor
         @health[uid] = state
 
     #Given an object, returns HEALTHY / UNHEALTHY / MAINTENANCE
-    get_state: (object) ->
+    get_state: (object, policy) ->
         #first, see if the object thinks it is in maintenance mode
         if object.maintenance()
             return [MAINTENANCE, 'self-report']
@@ -146,11 +149,11 @@ monitoring.Monitor = class Monitor
         #Then, see if any of its dependencies are unhealthy / unknown / in maintenance.
         #
         #If so, we consider this in maintenance mode
-        if @unhealthy_dependencies(object)
+        if policy.dependencies?.length and @unhealthy_dependencies(policy)
             return [MAINTENANCE, 'dependency is down']
 
         #Then try to hit it
-        [up, reason] = @hit_endpoint object
+        [up, reason] = @hit_endpoint object, policy
         if up
             return [HEALTHY]
         else
@@ -158,8 +161,8 @@ monitoring.Monitor = class Monitor
 
 
     #Returns true if we have any dependencies who don't have a confirmed health
-    unhealthy_dependencies: (object) ->
-        for dep in object.get_monitoring_policy().dependencies ? []
+    unhealthy_dependencies: (policy) ->
+        for dep in policy.dependencies
             if @health[@_get_uid(dep)] isnt HEALTHY
                 return true
 
@@ -227,6 +230,8 @@ monitoring.Monitor = class Monitor
             else
                 res.push String(object) + ': ' + @health[uid]
 
+        res.push '\n\nChecks per second: ' + u.format_decimal(total_checks / (total_time / 1000))
+
         return res.join '\n'
 
     #Returns a description of the monitoring policies of all monitored objects
@@ -253,8 +258,7 @@ monitoring.Monitor = class Monitor
 
     #Tries to access the server, returns [up, reason] where up is a boolean inicating
     #if the server is accessible, and reason is a string giving more info on why it's not up
-    hit_endpoint: (object) ->
-        policy = object.get_monitoring_policy()
+    hit_endpoint: (object, policy) ->
         if policy.monitor is false
             return [false, 'monitoring policy no longer exists']
         protocol = policy.endpoint.protocol
