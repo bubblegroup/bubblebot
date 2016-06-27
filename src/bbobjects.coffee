@@ -2045,6 +2045,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         sublogger: true
         help: 'Replaces the underlying boxes for this service'
         groups: constants.BASIC
+        reply: 'Replacement complete'
 
 
 #Represents the AMI and software needed to build an ec2 instance
