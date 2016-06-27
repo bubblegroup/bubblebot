@@ -47,6 +47,8 @@ bbobjects.get_bbserver = ->
         #manually set environment in case database is not built yet
         instance.environment = -> environment
 
+        startup_bbserver instance
+
         return instance
 
     #We didn't find it, so create it...
@@ -76,14 +78,20 @@ bbobjects.get_bbserver = ->
 
     software.supervisor('bubblebot', command, config.get('install_directory')) instance
     software.node('4.4.5') instance
-    software.metrics() instance
     software.pg_dump95() instance
 
     environment.tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
 
     u.log 'bubblebot server has base software installed'
 
+    startup_bbserver instance
+
     return instance
+
+#Code that we run each time on startup to make sure bbserver is up to date.  Should
+#be idempotent
+startup_bbserver = (instance) ->
+    software.metrics() instance
 
 _cached_bbdb_instance = null
 #Returns or creates and returns the rds instance for bbdb
