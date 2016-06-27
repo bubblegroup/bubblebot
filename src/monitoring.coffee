@@ -12,7 +12,9 @@ total_checks = 0
 monitoring.Monitor = class Monitor
     constructor: (@server) ->
         @to_monitor = {}
-        @frequencies = {}
+        @policies = {}
+
+
         @health = {}
         @downtime = {}
         @last_service_times = {}
@@ -20,22 +22,35 @@ monitoring.Monitor = class Monitor
 
         @start_time = Date.now()
 
+        setTimeout @update_policies.bind(this), 60000
+
     _get_uid: (object) -> object.type + '_' + object.id
+
+    #Goes through everything we are monitoring, and updates policies
+    update_policies: ->
+        u.SyncRun 'update_policies', =>
+            for uid, object of @to_monitor
+                try
+                    @policies[uid] = object.get_monitoring_policy()
+                catch err
+                    u.report 'Bug updating policy for ' + object + ':\n' + err.stack
+
+            setTimeout @update_policies.bind(this), 60000
+
 
     monitor: (object) ->
         if not object
             return
         uid = @_get_uid object
+
         if @to_monitor[uid]
             return
-
-        policy = object.get_monitoring_policy()
-
-        u.log 'Monitor: monitoring ' + object + ' (' + uid + ')'
         @to_monitor[uid] = object
 
-        #Set the initial frequency
-        @frequencies[uid] = policy.frequency ? 30 * 1000
+        u.log 'Monitor: monitoring ' + object + ' (' + uid + ')'
+
+        #Set the initial policy
+        @policies[uid] = object.get_monitoring_policy()
         @health[uid] = UNKNOWN
 
         #and schedule the initial check
@@ -47,7 +62,7 @@ monitoring.Monitor = class Monitor
         if @_is_scheduled[uid]
             return
         @_is_scheduled[uid] = true
-        setTimeout @check.bind(this, object), @frequencies[uid]
+        setTimeout @check.bind(this, object), @policies[uid]?.frequency ? 30 * 1000
 
     #Performs a check on this object
     check: (object) ->
@@ -72,12 +87,9 @@ monitoring.Monitor = class Monitor
 
         u.cpu_checkpoint 'monitor_check.' + uid + '.generate_metadata'
 
-        policy = object.get_monitoring_policy()
+        policy = @policies[uid]
         if policy.monitor is false
             return
-
-        #update the frequency in case it changed
-        @frequencies[uid] = policy.frequency
 
         u.cpu_checkpoint 'monitor_check.' + uid + '.check_state'
 
@@ -244,7 +256,7 @@ monitoring.Monitor = class Monitor
         res = []
 
         for uid, object of @to_monitor
-            policy = object.get_monitoring_policy()
+            policy = @policies[uid]
             if policy.monitor is false
                 continue
             res.push ''
