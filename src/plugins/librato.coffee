@@ -4,12 +4,10 @@ librato = exports
 
 get_agent_token = -> config.get 'plugins.librato.agent_token'
 
-librato.get_server_metrics_software = ->
-    return (instance) ->
-        token = get_agent_token()
+librato.get_server_metrics_software = -> software.do_once 'librato_server_metrics_software',  (instance) ->
+    token = get_agent_token()
 
-        instance.run 'curl -s https://metrics-api.librato.com/agent_installer/' + token
-
+    instance.run 'curl -s https://metrics-api.librato.com/agent_installer/' + token
 
 
 measures = {}

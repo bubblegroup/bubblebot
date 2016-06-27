@@ -77,8 +77,8 @@ software.node = (version) -> do_once 'node ' + version, (instance) ->
     instance.run 'rm -rf n'
 
 
-#Installs the server metrics plugin
-software.metrics = -> do_once 'metrics_plugin', (instance) ->
+#Installs the server metrics plugin.  Plugins are responsible for calling do_once.
+software.metrics = -> (instance) ->
     metrics_plugins = config.get_plugins 'metrics'
 
     if metrics_plugins.length is 0
