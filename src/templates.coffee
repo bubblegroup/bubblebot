@@ -566,7 +566,7 @@ templates.Codebase = class Codebase
             if not u.current_user()
                 u.expected_error @debug_version version, default_version
             msg = @debug_version(version, default_version) + '\nPlease enter a valid version (or type "cancel" to abort)'
-            return @ensure_version(u.ask msg), default_version
+            return @ensure_version u.ask(msg), default_version
         else
             return canonical
 
