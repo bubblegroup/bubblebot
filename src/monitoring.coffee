@@ -118,7 +118,7 @@ monitoring.Monitor = class Monitor
 
                 #Wait for a second before checking again
                 u.pause 1000
-                [state, reason] = @get_state(object)
+                [state, reason] = @get_state(object, policy)
 
             u.log 'Monitor: no longer in unhealthy state for ' + uid
 
