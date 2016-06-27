@@ -25,11 +25,12 @@ monitoring.Monitor = class Monitor
     monitor: (object) ->
         if not object
             return
-        policy = object.get_monitoring_policy()
-
         uid = @_get_uid object
         if @to_monitor[uid]
             return
+
+        policy = object.get_monitoring_policy()
+
         u.log 'Monitor: monitoring ' + object + ' (' + uid + ')'
         @to_monitor[uid] = object
 
@@ -77,10 +78,6 @@ monitoring.Monitor = class Monitor
 
         #update the frequency in case it changed
         @frequencies[uid] = policy.frequency
-
-        #If we have any upstream dependencies, make sure we are monitoring them
-        for dependency in policy.dependencies ? []
-            @monitor dependency
 
         u.cpu_checkpoint 'monitor_check.' + uid + '.check_state'
 
@@ -163,8 +160,16 @@ monitoring.Monitor = class Monitor
     #Returns true if we have any dependencies who don't have a confirmed health
     unhealthy_dependencies: (policy) ->
         for dep in policy.dependencies
-            if @health[@_get_uid(dep)] isnt HEALTHY
+            dep_uid = @_get_uid(dep)
+            if @health[dep_uid] isnt HEALTHY
+                #make sure we are monitoring...
+                if not @health[dep_uid]
+                    @monitor dep
                 return true
+
+        #If we have any upstream dependencies, make sure we are monitoring them
+        for dependency in policy.dependencies ? []
+            @monitor dependency
 
         return false
 
