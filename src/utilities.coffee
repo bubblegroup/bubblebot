@@ -73,7 +73,7 @@ u.format_percent = (decimal) ->
     return String(Math.floor(decimal * 1000) / 10) + '%'
 
 #Converts 12.567 into 12.6
-u.format_decimal = (decimal) -> String(Math.round(decimal / 10) * 10)
+u.format_decimal = (decimal) -> String(Math.round(decimal * 10) / 10)
 
 
 #Returns {private_key, public_key}
