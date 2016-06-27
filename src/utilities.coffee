@@ -150,9 +150,14 @@ u.set_default_loggers = (loggers) -> u.default_loggers = loggers
 
 #Gets the global environment for the current fiber, or null
 #if we are off-fiber
-u.context = ->
-    Fiber.current?.current_context ?= {}
-    return Fiber.current?.current_context ? null
+#
+#If we pass in a fiber, returns that fibers' context instead of the current one
+#
+#If we are not on any fiber, returns null
+u.context = (fiber) ->
+    fiber ?= Fiber.current
+    fiber?.current_context ?= {}
+    return fiber?.current_context ? null
 
 #Shortcut for getting the current context's databse
 u.db = -> u.context()?.db

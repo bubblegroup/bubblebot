@@ -461,7 +461,9 @@ bbserver.Server = class Server
         else
             u.announce 'A request to restart bubblebot has been received.  Will restart once everything else is stopped...'
 
-        my_id = u.fiber_id()
+        #Mark this as a graceful shutdown fiber... we don't want multiple graceful
+        #shutdown requests blocking each other
+        u.context().graceful_shutdown = true
 
         @shutting_down = true
 
@@ -469,7 +471,7 @@ bbserver.Server = class Server
         while true
             can_shutdown = true
             for fiber in u.active_fibers ? []
-                if get_fiber_display(fiber) and fiber._fiber_id isnt my_id
+                if get_fiber_display(fiber) and not u.context(fiber).graceful_shutdown
                     can_shutdown = false
                     break
             if can_shutdown
