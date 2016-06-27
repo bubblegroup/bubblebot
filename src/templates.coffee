@@ -39,7 +39,6 @@ templates.list = (iface) ->
 
 #Retrieves a template
 templates.get = (iface, id) ->
-    templates.verify iface, id
     return templates.templates[iface][id]
 
 #Extend this to build environment templates
