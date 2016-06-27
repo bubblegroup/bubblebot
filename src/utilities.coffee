@@ -54,7 +54,7 @@ u.json_deep_copy = (obj) -> JSON.parse JSON.stringify obj
 
 #converts a duration in ms to something human readable
 u.format_time = (ms) ->
-    seconds = Math.floor(ms / 1000)
+    seconds = Math.round(ms / 100) / 10
     minutes = Math.floor(seconds / 60)
     hours = Math.floor(minutes / 60)
     days = Math.floor(hours / 24)
