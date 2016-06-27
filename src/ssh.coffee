@@ -100,7 +100,9 @@ ssh.run = (host, private_key, cmd, options) ->
     output = output.join ''
 
     if exit_code isnt 0 and not can_fail
-        throw new Error 'call "' + cmd + '" failed with non-zero exit code ' + exit_code
+        error = new Error 'call "' + cmd + '" failed with non-zero exit code ' + exit_code
+        error.output = output
+        throw error
 
     return output
 
