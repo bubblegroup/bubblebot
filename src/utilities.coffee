@@ -429,8 +429,15 @@ start_fiber_run = (my_fiber) ->
     if my_fiber.fiber_is_finished
         throw new Error 'Trying to resume finished fiber!'
 
-    record_start my_fiber
-    my_fiber.run()
+    do_it = ->
+        record_start my_fiber
+        my_fiber.run()
+
+    #if we are on a fiber right now, we want to wait until this fiber yields
+    if Fiber.current
+        setImmediate do_it
+    else
+        do_it()
 
 
 #Makes sure we are in a fiber to run the given function; if not, creates a new one
