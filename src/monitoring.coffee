@@ -50,7 +50,8 @@ monitoring.Monitor = class Monitor
     check: (object) ->
         u.SyncRun 'monitor_check', =>
             try
-                @do_check object
+                uid = @_get_uid object
+                @do_check uid, object
             catch err
                 u.report 'Bug in monitoring:\n' + err.stack
 
@@ -60,9 +61,7 @@ monitoring.Monitor = class Monitor
                 @schedule object
 
     #The inner body of check (we break it out because this is performance critical)
-    do_check: (object) ->
-        uid = @_get_uid object
-
+    do_check: (uid, object) ->
         u.cpu_checkpoint 'monitor_check.' + uid + '.build_context'
 
         @server.build_context()
