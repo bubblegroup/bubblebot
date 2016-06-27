@@ -368,7 +368,7 @@ bbserver.Server = class Server
             else if err.reason is u.EXPECTED
                 u.log err.message
             else
-                u.report 'Unexpected error running task ' + JSON.stringify(task_data) + '.  Error was: ' + (err.stack ? err)
+                u.report 'Unexpected error running task ' + friendly + '.  Error was: ' + (err.stack ? err) + '\nTranscript:' + u.context().get_transcript()
 
         finally
             #We always want to make sure scheduled tasks get rescheduled
