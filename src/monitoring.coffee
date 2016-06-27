@@ -50,75 +50,7 @@ monitoring.Monitor = class Monitor
     check: (object) ->
         u.SyncRun 'monitor_check', =>
             try
-                uid = @_get_uid object
-
-                @server.build_context()
-
-                policy = object.get_monitoring_policy()
-                if policy.monitor is false
-                    return
-
-                #update the frequency in case it changed
-                @frequencies[uid] = policy.frequency
-
-                #If we have any upstream dependencies, make sure we are monitoring them
-                for dependency in policy.dependencies ? []
-                    @monitor dependency
-
-                #Check its current state and reason
-                [state, reason] = @get_state(object)
-
-                #If it is unhealthy, start tracking downtime...
-                if state is UNHEALTHY
-                    u.log 'Monitor: detected unhealthy state for ' + uid
-                    @health[uid] = state
-                    down = Date.now()
-
-                    #Track which services we've notified
-                    services = {}
-
-                    #Loop while we are still unhealthy
-                    while state is UNHEALTHY
-                        downtime = Date.now() - down
-
-                        for service, threshold of policy.thresholds ? {}
-                            #If we haven't reported to this service yet and are over the threshold...
-                            if threshold? and not services[service] and downtime > threshold
-                                #If there's a limit on how frequently we can report to this service,
-                                #make sure we are within the limit
-                                if policy.limits?[service] and @last_service_times[uid]?[service]
-                                    within_limit = (Date.now() - @last_service_times[uid][service]) > policy.limits[service]
-                                else
-                                    within_limit = true
-
-                                if within_limit
-                                    services[service] = true
-                                    try
-                                        @report_down service, object, downtime, reason
-                                    catch err
-                                        u.report 'Bug in monitoring reporting down to ' + service + ':\n' + err.stack
-
-                        #Wait for a second before checking again
-                        u.pause 1000
-                        [state, reason] = @get_state(object)
-
-                    u.log 'Monitor: no longer in unhealthy state for ' + uid
-
-                    #We are no longer unhealthy, so update our total downtime, and inform services.
-                    downtime = Date.now() - down
-
-                    @downtime[uid] ?= 0
-                    @downtime[uid] += downtime
-
-                    for service, _ of services
-                        try
-                            @report_up service, object, downtime
-                        catch err
-                            u.report 'Bug in monitoring reporting up to ' + service + ':\n' + err.stack
-
-                #We are now in some non-UNHEALTHY state.  Update our state...
-                @health[uid] = state
-
+                @do_check object
             catch err
                 u.report 'Bug in monitoring:\n' + err.stack
 
@@ -126,6 +58,85 @@ monitoring.Monitor = class Monitor
             finally
                 @_is_scheduled[uid] = false
                 @schedule object
+
+    #The inner body of check (we break it out because this is performance critical)
+    do_check: (object) ->
+        uid = @_get_uid object
+
+        u.cpu_checkpoint 'monitor_check.' + uid + '.build_context'
+
+        @server.build_context()
+
+        u.cpu_checkpoint 'monitor_check.' + uid + '.generate_metadata'
+
+        policy = object.get_monitoring_policy()
+        if policy.monitor is false
+            return
+
+        #update the frequency in case it changed
+        @frequencies[uid] = policy.frequency
+
+        #If we have any upstream dependencies, make sure we are monitoring them
+        for dependency in policy.dependencies ? []
+            @monitor dependency
+
+        u.cpu_checkpoint 'monitor_check.' + uid + '.check_state'
+
+        #Check its current state and reason
+        [state, reason] = @get_state(object)
+
+        u.cpu_checkpoint 'monitor_check.' + uid + '.handle_state'
+
+        #If it is unhealthy, start tracking downtime...
+        if state is UNHEALTHY
+            u.log 'Monitor: detected unhealthy state for ' + uid
+            @health[uid] = state
+            down = Date.now()
+
+            #Track which services we've notified
+            services = {}
+
+            #Loop while we are still unhealthy
+            while state is UNHEALTHY
+                downtime = Date.now() - down
+
+                for service, threshold of policy.thresholds ? {}
+                    #If we haven't reported to this service yet and are over the threshold...
+                    if threshold? and not services[service] and downtime > threshold
+                        #If there's a limit on how frequently we can report to this service,
+                        #make sure we are within the limit
+                        if policy.limits?[service] and @last_service_times[uid]?[service]
+                            within_limit = (Date.now() - @last_service_times[uid][service]) > policy.limits[service]
+                        else
+                            within_limit = true
+
+                        if within_limit
+                            services[service] = true
+                            try
+                                @report_down service, object, downtime, reason
+                            catch err
+                                u.report 'Bug in monitoring reporting down to ' + service + ':\n' + err.stack
+
+                #Wait for a second before checking again
+                u.pause 1000
+                [state, reason] = @get_state(object)
+
+            u.log 'Monitor: no longer in unhealthy state for ' + uid
+
+            #We are no longer unhealthy, so update our total downtime, and inform services.
+            downtime = Date.now() - down
+
+            @downtime[uid] ?= 0
+            @downtime[uid] += downtime
+
+            for service, _ of services
+                try
+                    @report_up service, object, downtime
+                catch err
+                    u.report 'Bug in monitoring reporting up to ' + service + ':\n' + err.stack
+
+        #We are now in some non-UNHEALTHY state.  Update our state...
+        @health[uid] = state
 
     #Given an object, returns HEALTHY / UNHEALTHY / MAINTENANCE
     get_state: (object) ->

@@ -335,7 +335,7 @@ class Block
             start_fiber_timeout()
 
             @yielded = true
-            record_stop @my_fiber
+            record_stop()
             Fiber.yield()
             @yielded = false
 
@@ -383,8 +383,15 @@ current_fiber_start = null
 current_server_start = null
 last_fiber_stop = null
 
+#Breaks up a fiber run into multiple named segments (for u.get_cpu_usage)
+u.cpu_checkpoint = (name) ->
+    record_stop()
+    Fiber.current.cpu_name = name
+    record_start Fiber.current
+
+
 #Indicate that we have left the execution thread of this fiber
-record_stop = (fiber) ->
+record_stop = ->
     if not current_fiber_name
         throw new Error 'record_stop with no fiber name!'
 
@@ -486,7 +493,7 @@ u.SyncRun = SyncRun = (cpu_name, cb) ->
             catch err
                 throw err
             finally
-                record_stop f
+                record_stop()
                 f.fiber_is_finished = true #fibers will restart if run is called after they finished!
 
                 u.array_remove u.active_fibers, f
