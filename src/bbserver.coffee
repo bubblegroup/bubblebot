@@ -1094,7 +1094,7 @@ class CPU extends Command
         sorted.sort (a, b) -> b[1] - a[1]
 
         res = 'Total on fiber: ' + u.format_percent(total) + '\n\n'
-        res += (entry[k] + ': ' + u.format_percent(v) for [k, v] in sorted[0...10]).join('\n')
+        res += (k + ': ' + u.format_percent(v) for [k, v] in sorted[0...10]).join('\n')
 
         u.reply res
 

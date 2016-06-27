@@ -422,7 +422,7 @@ start_fiber_run = (my_fiber) ->
     if my_fiber.fiber_is_finished
         throw new Error 'Trying to resume finished fiber!'
 
-    record_start fiber
+    record_start my_fiber
     my_fiber.run()
 
 
