@@ -72,7 +72,7 @@ templates.Service = class Service
         codebase = @codebase()
 
         #Get the canonical version
-        version = codebase.ensure_version version
+        version = codebase.ensure_version version, instance.version()
 
         #Don't redeploy the version that is already deployed
         if instance.version() is version
@@ -556,17 +556,17 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
 
 #Base class for codebases
 templates.Codebase = class Codebase
-    debug_version: (version) -> return 'Not a valid version: ' + version
+    debug_version: (version, default_version) -> return 'Not a valid version: ' + version
 
     #If this version is not valid, prompts the user for a valid one
-    ensure_version: (version) ->
-        canonical = @canonicalize version
+    ensure_version: (version, default_version) ->
+        canonical = @canonicalize version, default_version
         if not canonical
             #if there is no current user, abort
             if not u.current_user()
-                u.expected_error @debug_version version
-            msg = @debug_version(version) + '\nPlease enter a valid version (or type "cancel" to abort)'
-            return @ensure_version u.ask msg
+                u.expected_error @debug_version version, default_version
+            msg = @debug_version(version, default_version) + '\nPlease enter a valid version (or type "cancel" to abort)'
+            return @ensure_version(u.ask msg), default_version
         else
             return canonical
 
@@ -596,15 +596,21 @@ templates.GitCodebase = class GitCodebase extends Codebase
     pretty_print: (version) -> @repo.display_commit version
 
 #Implements the codebase interface using multiple git repositories.  A version is defined
-#as a dash-separated list of commits in the order that the repos are passed in to the constructor
+#as a dash-separated list of commits in the order that the repos are passed in to the constructor.
+#
+#You can omit a commit like so when calling canonicalize: commit1 or -commit2 instead of commit1-commit2,
+#assuming that canonicalize is called with a default version that is used to fill in the blanks.
 templates.MultiGitCodebase = class MultiGitCodebase extends Codebase
-    constructor: (@repos) ->
+    constructor: (@repos, @get_default_version) ->
 
-    canonicalize: (version) ->
+    canonicalize: (version, default_version) ->
         commits = version.split('-')
         results = []
         for repo, idx in @repos
-            canonical = repo.resolve_commit commits[idx]?.trim()
+            commit = commits[idx]?.trim()
+            if not commit and default_version
+                commit = default_version.split('-')[idx]
+            canonical = repo.resolve_commit commit
             #if any commit can't be resolved, the overall version can't be resolved so return null
             if not canonical?
                 return null
@@ -612,15 +618,23 @@ templates.MultiGitCodebase = class MultiGitCodebase extends Codebase
 
         return results.join '-'
 
-    debug_version: (version) ->
+    debug_version: (version, default_version) ->
         if String(version).indexOf('-') is '-1'
             format_string = ('[commit ' + i + 1 for repo, i in @repos).join('-')
             return 'Bad version: '  + version + '.  Format should be ' + format_string + ' (hyphen-seperated)'
         commits = version.split('-')
         for repo, idx in @repos
-            canonical = repo.resolve_commit commits[idx]?.trim()
+            commit = commits[idx]?.trim()
+            if not commit and default_version
+                used_default = true
+                commit = default_version.split('-')[idx]
+            else
+                used_default = false
+            if not commit
+                return 'No commit given for ' + String(repo) + ', and we do not have a default version in this context'
+            canonical = repo.resolve_commit commit
             if not canonical
-                return 'Could not find commit ' + commits[idx] + ' in ' + String(repo)
+                return 'Could not find commit ' + commit + ' in ' + String(repo) + ' (this was from the default version: ' + default_version + ')'
 
         throw new Error 'debug_version could not figure out what was wrong with ' + version
 
