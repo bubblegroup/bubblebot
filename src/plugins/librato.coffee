@@ -7,7 +7,7 @@ get_agent_token = -> config.get 'plugins.librato.agent_token'
 librato.get_server_metrics_software = -> software.do_once 'librato_server_metrics_software1',  (instance) ->
     token = get_agent_token()
 
-    instance.run 'curl -s https://metrics-api.librato.com/agent_installer/' + token + ' | sudo bash'
+    instance.run 'curl -s https://metrics-api.librato.com/agent_installer/' + token + ' | sudo bash', {timeout: 5 * 60 * 1000}
 
 
 measures = {}
