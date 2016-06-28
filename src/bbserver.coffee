@@ -68,8 +68,7 @@ bbserver.Server = class Server
 
                 server_app.use '/custom', @get_custom_router()
 
-                server_app.listen 8080
-                @server_app = server_app
+                @server1 = server_app.listen 8080
 
                 server2 = http.createServer (req, res) =>
                     if req.url is '/shutdown'
@@ -512,7 +511,7 @@ bbserver.Server = class Server
 
                     #Disconnect from everything
                     @slack_client.disconnect()
-                    @server_app?.close()
+                    @server1?.close()
                     @server2?.close()
 
                     #Cancel all anonymous fibers
