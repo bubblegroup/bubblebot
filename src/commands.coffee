@@ -10,7 +10,7 @@ build = ->
 
 
 #For testing stuff
-commands.temp = (access_key) ->
+commands.temp = (access_key, secret_access_key) ->
     u.SyncRun 'temp', ->
         config.init()
         config.set 'command_line', true
@@ -18,6 +18,10 @@ commands.temp = (access_key) ->
         if access_key
             u.log 'Got access key from command line: ' + access_key
             config.set('accessKeyId', access_key)
+        if secret_access_key
+            u.log 'Got secret from command line'
+            config.set('secretAccessKey', secret_access_key)
+
         config.init_account_specific()
 
         #DO WHATEVER TESTING HERE
