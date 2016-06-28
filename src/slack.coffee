@@ -108,6 +108,9 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Sends a message to the current user
     reply: (msg) ->
+        if @_got_disconnect
+            return
+
         user_id = u.context()?.user_id
         if not user_id?
             @announce msg
@@ -212,6 +215,8 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
     #Sends a PM to admin users.  We rate-limit this to avoid spamming admins if
     #something goes wrong
     report: (msg) ->
+        if @_got_disconnect
+            return
         u.ensure_fiber =>
 
             #Enforce rate limit
