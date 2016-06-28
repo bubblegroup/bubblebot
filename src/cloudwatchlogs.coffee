@@ -160,15 +160,15 @@ cloudwatchlogs.LogStream = class LogStream
 
         reverse = build_link (not startFromHead)
 
-        link_html = (text, link) -> '<div class="navlink"><a href="' + link + '">' + text + '</a></div>\n'
-        navigation = '<div class="navsection">\n'
+        link_html = (text, link) -> '\n<div class="navlink"><a href="' + link + '">' + text + '</a></div>\n'
+        navigation = '\n<div class="navsection">\n'
         navigation += link_html 'Refresh', refresh
         if older
             navigation += link_html 'Older events', older
         if newer
             navigation += link_html 'Newer events', newer
         navigation += link_html 'Reverse order', reverse
-        navigation += '</div>'
+        navigation += '\n</div>\n'
 
         #Write the body
         res.write """
@@ -193,7 +193,7 @@ cloudwatchlogs.LogStream = class LogStream
         </style>
         </head>
         """
-        res.write '<body>'
+        res.write '\n<body>'
         res.write navigation
 
         response.events ?= []
@@ -201,12 +201,12 @@ cloudwatchlogs.LogStream = class LogStream
 
         if response.events.length > 0
             for {timestamp, message} in response.events
-                res.write '<div class="log_entry"><div class="timestamp">' + u.print_date(new Date(timestamp)) + '</div><pre class="message">' + message + '</pre></div>'
+                res.write '\n<div class="log_entry"><div class="timestamp">' + u.print_date(new Date(timestamp)) + '</div><pre class="message">' + escape_html(message) + '</pre></div>'
             res.write navigation
         else
-            res.write '<div class="log_entry">No more events</div>'
+            res.write '\n<div class="log_entry">No more events</div>'
 
-        res.write '</body></html>'
+        res.write '\n</body></html>'
         res.end()
 
 
@@ -215,3 +215,4 @@ u = require './utilities'
 bbobjects = require './bbobjects'
 url = require 'url'
 querystring = require 'querystring'
+escape_html = require 'escape-html'
