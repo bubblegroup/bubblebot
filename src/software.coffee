@@ -43,6 +43,9 @@ software.supervisor = (name, command, pwd) -> (instance) ->
 
 #Make sure ports are exposed and starts supervisord
 software.supervisor_start = (can_fail) -> (instance) ->
+    #If supervisord is already running, kills it.
+    instance.run "sudo killall supervisord", {can_fail: true}
+
     #Redirects 80 -> 8080 so that don't have to run things as root
     instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080", {can_fail}
     #And 443 -> 8043
