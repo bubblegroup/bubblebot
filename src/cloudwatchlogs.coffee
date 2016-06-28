@@ -140,7 +140,13 @@ cloudwatchlogs.LogStream = class LogStream
         }
 
         #Generate the navigation links
-        build_link = (startFromHead, nextToken) => @get_tail_url() + '?' + querystring.stringify({startFromHead, nextToken})
+        build_link = (startFromHead, nextToken) =>
+            data = {}
+            if startFromHead
+                data.startFromHead = startFromHead
+            if nextToken
+                data.nextToken = nextToken
+            @get_tail_url() + '?' + querystring.stringify(data)
 
         refresh = build_link startFromHead
 
