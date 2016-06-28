@@ -14,6 +14,7 @@ monitoring.Monitor = class Monitor
         @to_monitor = {}
         @policies = {}
 
+        @in_maintenance = {}
 
         @health = {}
         @downtime = {}
@@ -22,22 +23,34 @@ monitoring.Monitor = class Monitor
 
         @start_time = Date.now()
 
-        setTimeout @update_policies.bind(this), 60000
+        @schedule_update_policies()
 
     _get_uid: (object) -> object.type + '_' + object.id
 
+    schedule_update_policies: ->
+        if @_update_scheduled
+            return
+        @_update_scheduled = true
+
+        setTimeout =>
+            @_update_scheduled = false
+            u.SyncRun 'update_policies', =>
+                @server.build_context()
+
+                @update_policies
+
+                @schedule_update_policies()
+
+        , 60000
+
     #Goes through everything we are monitoring, and updates policies
     update_policies: ->
-        u.SyncRun 'update_policies', =>
-            @server.build_context()
-            for uid, object of @to_monitor
-                try
-                    @policies[uid] = object.get_monitoring_policy()
-                catch err
-                    u.report 'Bug updating policy for ' + object + ':\n' + err.stack
-
-            setTimeout @update_policies.bind(this), 60000
-
+        for uid, object of @to_monitor
+            try
+                @policies[uid] = object.get_monitoring_policy()
+                @in_maintenance[uid] = object.maintenance()
+            catch err
+                u.report 'Bug updating policy for ' + object + ':\n' + err.stack
 
     monitor: (object) ->
         if not object
@@ -89,7 +102,7 @@ monitoring.Monitor = class Monitor
             return
 
         #Check its current state and reason
-        [state, reason] = @get_state(object, policy)
+        [state, reason] = @get_state(uid, object, policy)
 
         #If it is unhealthy, start tracking downtime...
         if state is UNHEALTHY
@@ -123,7 +136,7 @@ monitoring.Monitor = class Monitor
 
                 #Wait for a second before checking again
                 u.pause 1000
-                [state, reason] = @get_state(object, policy)
+                [state, reason] = @get_state(uid, object, policy)
 
             u.log 'Monitor: no longer in unhealthy state for ' + uid
 
@@ -143,9 +156,9 @@ monitoring.Monitor = class Monitor
         @health[uid] = state
 
     #Given an object, returns HEALTHY / UNHEALTHY / MAINTENANCE
-    get_state: (object, policy) ->
+    get_state: (uid, object, policy) ->
         #first, see if the object thinks it is in maintenance mode
-        if object.maintenance()
+        if @in_maintenance[uid]
             return [MAINTENANCE, 'self-report']
 
         #Then, see if any of its dependencies are unhealthy / unknown / in maintenance.
