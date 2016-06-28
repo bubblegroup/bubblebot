@@ -29,6 +29,7 @@ monitoring.Monitor = class Monitor
     #Goes through everything we are monitoring, and updates policies
     update_policies: ->
         u.SyncRun 'update_policies', =>
+            @server.build_context()
             for uid, object of @to_monitor
                 try
                     @policies[uid] = object.get_monitoring_policy()
