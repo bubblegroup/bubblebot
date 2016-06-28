@@ -37,7 +37,7 @@ monitoring.Monitor = class Monitor
             u.SyncRun 'update_policies', =>
                 @server.build_context()
 
-                @update_policies
+                @update_policies()
 
                 @schedule_update_policies()
 
