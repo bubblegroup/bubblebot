@@ -115,13 +115,15 @@ cloudwatchlogs.LogStream = class LogStream
             throw new Error 'no server in this context'
         return u.context().server.get_logs_url @environment.id, @groupname, @name
 
-    #Returns the most recent events
+    #Returns the most recent events.  Sorted newest to oldest
     get_events: ->
         response = @environment.CloudWatchLogs 'getLogEvents', {
             logGroupName: @groupname
             logStreamName: @name
         }
-        return response.events ? []
+        res = response.events ? []
+        res.sort (a, b) -> (parseInt(a.timestamp) - parseInt(b.timestamp)) * -1
+        return res
 
     #Does the actual tail, given a web request
     tail: (req, res) ->
@@ -138,7 +140,7 @@ cloudwatchlogs.LogStream = class LogStream
         }
 
         #Generate the navigation links
-        build_link = (startFromHead, nextToken) => @get_tail_url() ? '?' + querystring.stringify({startFromHead, nextToken})
+        build_link = (startFromHead, nextToken) => @get_tail_url() + '?' + querystring.stringify({startFromHead, nextToken})
 
         refresh = build_link startFromHead
 

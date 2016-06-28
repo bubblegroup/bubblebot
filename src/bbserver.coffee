@@ -160,7 +160,6 @@ bbserver.Server = class Server
                 #we see a graceful shutdown, or we don't see a graceful shutdown in the last
                 #1000 events, it was probably a crash
                 evts = @get_server_log_stream().get_events()
-                evts.reverse() #make it newest to oldest
                 found_gc = false
                 for {message} in evts
                     if message.indexOf('STARTUP') is 0
