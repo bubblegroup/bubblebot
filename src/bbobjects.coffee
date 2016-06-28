@@ -2043,7 +2043,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         groups: constants.BASIC
 
     #Replaces the underlying boxes for this service
-    replace: -> @template().replace this
+    replace: ->
+        @template().replace this
+        #Make sure we update monitoring policies since endpoints may have changed
+        u.context().server._monitor.update_policies()
 
     #Restarts the underlying boxes for this service
     restart: ->

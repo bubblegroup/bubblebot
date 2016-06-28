@@ -133,7 +133,7 @@ templates.Service = class Service
 
         #Replace the existing servers with the new version
         u.retry 3, 30000, =>
-            @replace instance
+            instance.replace()
 
         #Let the user know we are finished
         u.reply 'We are finished rolling out the new version'
@@ -481,7 +481,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             active_version = @get_active_instance(instance)?.get('software_version')
             if active_version isnt version
                 u.announce "#{instance} has a version mismatch: should be #{version} but is #{active_version}.  About to replace it..."
-                u.context().server.run_fiber "Replacing #{instance}", @replace.bind(this, instance)
+                u.context().server.run_fiber "Replacing #{instance}", instance.replace.bind(instance)
 
 
     servers: (instance) -> [@get_active_instance(instance)]
