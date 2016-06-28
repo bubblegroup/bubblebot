@@ -69,7 +69,7 @@ bbserver.Server = class Server
                 server_app.use '/custom', @get_custom_router()
 
                 server_app.listen 8080
-                @server_app = @server_app
+                @server_app = server_app
 
                 server2 = http.createServer (req, res) =>
                     if req.url is '/shutdown'
@@ -512,12 +512,13 @@ bbserver.Server = class Server
 
                     #Disconnect from everything
                     @slack_client.disconnect()
-                    @server_app.close()
-                    @server2.close()
+                    @server_app?.close()
+                    @server2?.close()
 
                     #Cancel all anonymous fibers
                     for fiber in [].concat(u.active_fibers ? [])
-                        u.cancel_fiber fiber
+                        if u.fiber_id() isnt u.fiber_id(fiber)
+                            u.cancel_fiber fiber
 
                     #Make sure all logs make it...
                     cloudwatchlogs.wait_for_flushed()
