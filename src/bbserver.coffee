@@ -51,6 +51,13 @@ bbserver.Server = class Server
 
                 server_app = express()
 
+                #Stop handling new requests once shutdown begins
+                server_app.use (req, res, next) =>
+                    if @close_everything
+                        res.end 'shutting down'
+                    else
+                        next()
+
                 server_app.get '/logs/:env_id/:groupname/:name', @syncware (req, res) =>
                     {env_id, groupname, name} = req.params
                     logstream = bbobjects.instance('Environment', env_id).get_log_stream(groupname, name)
@@ -68,9 +75,13 @@ bbserver.Server = class Server
 
                 server_app.use '/custom', @get_custom_router()
 
-                @server1 = server_app.listen 8080
+                server_app.listen 8080
 
                 server2 = http.createServer (req, res) =>
+                    if @close_everything
+                        res.end 'shutting down'
+                        return
+
                     if req.url is '/shutdown'
                         res.end bbserver.SHUTDOWN_ACK
                         u.SyncRun 'shutdown', =>
@@ -80,7 +91,6 @@ bbserver.Server = class Server
                         res.end 'unrecognized command'
 
                 server2.listen 8081
-                @server2 = server2
 
                 @slack_client = new slack.SlackClient(this)
                 @slack_client.on 'new_conversation', @new_conversation.bind(this)
@@ -410,7 +420,10 @@ bbserver.Server = class Server
 
     #Called by our slack client
     new_conversation: (user_id, msg) ->
-        u.ensure_fiber =>
+        if @close_everything
+            return
+
+        u.SyncRun 'new_conversation', =>
             context = u.context()
             @build_context(msg)
             context.user_id = user_id
@@ -495,6 +508,8 @@ bbserver.Server = class Server
                     can_shutdown = false
                     break
             if can_shutdown
+                @close_everything = true
+
                 if no_restart
                     msg = 'Shutting down bubblebot now!'
                     code = 0
@@ -507,17 +522,6 @@ bbserver.Server = class Server
                 u.announce msg
 
                 try
-
-                    #Disconnect from everything
-                    @slack_client.disconnect()
-                    @server1?.close()
-                    @server2?.close()
-
-                    #Cancel all anonymous fibers
-                    for fiber in [].concat(u.active_fibers ? [])
-                        if u.fiber_id() isnt u.fiber_id(fiber)
-                            u.cancel_fiber fiber
-
                     #Make sure all logs make it...
                     cloudwatchlogs.wait_for_flushed()
 
