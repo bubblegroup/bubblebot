@@ -88,9 +88,13 @@ bbobjects.get_bbserver = ->
 
     return instance
 
+_startup_ran = false
 #Code that we run each time on startup to make sure bbserver is up to date.  Should
 #be idempotent
 startup_bbserver = (instance) ->
+    if _startup_ran
+        return
+    _startup_ran = true
     software.metrics() instance
 
 _cached_bbdb_instance = null
