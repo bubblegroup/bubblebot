@@ -69,6 +69,7 @@ bbserver.Server = class Server
                 server_app.use '/custom', @get_custom_router()
 
                 server_app.listen 8080
+                @server_app = @server_app
 
                 server2 = http.createServer (req, res) =>
                     if req.url is '/shutdown'
@@ -80,6 +81,7 @@ bbserver.Server = class Server
                         res.end 'unrecognized command'
 
                 server2.listen 8081
+                @server2 = server2
 
                 @slack_client = new slack.SlackClient(this)
                 @slack_client.on 'new_conversation', @new_conversation.bind(this)
@@ -152,12 +154,31 @@ bbserver.Server = class Server
             u.SyncRun 'startup', =>
                 @build_context('startup')
 
-                u.log 'Running startup'
-
                 @create_sub_logger 'startup'
 
                 #Make sure we have at least one user who is an admin
                 @get_admins()
+
+                #See if it looks like we crashed.  If we see a startup before
+                #we see a graceful shutdown, or we don't see a graceful shutdown in the last
+                #1000 events, it was probably a crash
+                evts = @get_server_log_stream().get_events()
+                evts.reverse() #make it newest to oldest
+                found_gc = false
+                for {message} in evts
+                    if message.index('STARTUP') is 0
+                        break
+                    else if message.index('GRACEFUL_SHUTDOWN') is 0
+                        found_gc = true
+                        break
+
+                if not found_gc
+                    for user in bbobjects.list_users()
+                        if user.is_in_group constants.BASIC
+                            u.message user.id, 'Uh oh, it looks like we crashed.  If you were in the middle of something, like deploying code, you may need to restart it.'
+
+                #log startup.
+                u.log 'STARTUP'
 
                 #Make a list of each type that has a startup function
                 for typename, cls of bbobjects
@@ -481,9 +502,24 @@ bbserver.Server = class Server
                 else
                     msg = 'Restarting bubblebot now!'
                     code = 1
+                u.log 'GRACEFUL_SHUTDOWN'
                 if u.current_user()
                     u.reply msg
                 u.announce msg
+
+                #Disconnect from everything
+                @slack_client.disconnect()
+                @server_app.close()
+                @server2.close()
+
+                #Cancel all anonymous fibers
+                for fiber in [].concat(u.active_fibers ? [])
+                    u.cancel_fiber fiber
+
+                #Make sure all logs make it...
+                cloudwatchlogs.wait_for_flushed()
+
+                #And exit
                 process.exit(code)
             else
                 u.pause(500)
@@ -1408,6 +1444,7 @@ url = require 'url'
 util = require 'util'
 config = require './config'
 express = require 'express'
+cloudwatchlogs = require './cloudwatchlogs'
 
 #Testing
 if require.main is module

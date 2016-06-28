@@ -36,9 +36,19 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
                 throw err
 
         @api.on 'disconnect', =>
+            #if we're the ones that disconnected, this is okay
+            if @_got_disconnect
+                return
+
             @shutdown 'SLACK CLIENT DISCONNECTED.  SHUTTING DOWN THE SERVER IN 30 SECONDS...'
 
         ready.wait()
+
+    #Tells us to disconnect from slack
+    disconnect: ->
+        @_got_disconnect = true
+
+        @api.disconnect()
 
     #If our slack client becomes broken, we want to kill bubblebot because we can't communicate.
     #We log to the default logger and to the console, wait 30 seconds to give logs a chance to flow

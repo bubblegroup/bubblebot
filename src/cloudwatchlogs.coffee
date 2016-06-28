@@ -1,5 +1,13 @@
 cloudwatchlogs = exports
 
+not_flushed = {}
+
+
+#Waits until all logs are flushed
+cloudwatchlogs.wait_for_flushed = ->
+    while (key for k, nf of not_flushed when nf).length > 0
+        u.pause 500
+
 #Class for managing a log stream
 cloudwatchlogs.LogStream = class LogStream
     constructor: (@environment, @groupname, @name) ->
@@ -53,7 +61,18 @@ cloudwatchlogs.LogStream = class LogStream
         if @put_scheduled
             return
         @put_scheduled = true
+        @not_flushed()
         setTimeout @do_put.bind(this), 200
+
+    #Indicates that we have unflushed logs
+    not_flushed: ->
+        key = String(@environment) + '_' + @groupname + '_' + @name
+        not_flushed[key] = true
+
+    #Indicates that all our logs are flushed
+    flushed: ->
+        key = String(@environment) + '_' + @groupname + '_' + @name
+        not_flushed[key] = false
 
     #do an actual upload
     do_put: ->
@@ -86,6 +105,7 @@ cloudwatchlogs.LogStream = class LogStream
                 setTimeout @do_put.bind(this), 200
             else
                 @put_scheduled = false
+                @flushed()
 
 
 
@@ -96,7 +116,7 @@ cloudwatchlogs.LogStream = class LogStream
         return u.context().server.get_logs_url @environment.id, @groupname, @name
 
     #Returns the most recent events
-    get_events: (cb) ->
+    get_events: ->
         response = @environment.CloudWatchLogs 'getLogEvents', {
             logGroupName: @groupname
             logStreamName: @name
