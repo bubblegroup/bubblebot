@@ -521,18 +521,11 @@ bbserver.Server = class Server
                     u.reply msg
                 u.announce msg
 
-                try
-                    #Make sure all logs make it...
-                    cloudwatchlogs.wait_for_flushed()
+                #Make sure all logs make it...
+                cloudwatchlogs.wait_for_flushed()
 
-                    #And exit
-                    process.exit(code)
-                catch err
-                    u.log 'Error trying to do a graceful shutdown:\n' + err.stack
-                    setTimeout ->
-                        process.exit(code)
-                    , 10000
-
+                #And exit
+                process.exit(code)
             else
                 u.pause(500)
 
