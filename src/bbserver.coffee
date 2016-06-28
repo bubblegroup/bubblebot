@@ -166,9 +166,9 @@ bbserver.Server = class Server
                 evts.reverse() #make it newest to oldest
                 found_gc = false
                 for {message} in evts
-                    if message.index('STARTUP') is 0
+                    if message.indexOf('STARTUP') is 0
                         break
-                    else if message.index('GRACEFUL_SHUTDOWN') is 0
+                    else if message.indexOf('GRACEFUL_SHUTDOWN') is 0
                         found_gc = true
                         break
 
