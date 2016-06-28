@@ -287,7 +287,7 @@ class BBDBService extends templates.RDSService
 
     get_monitoring_policy: -> {
         monitor: true
-        frequency: 2000
+        frequency: 10000
         dependencies: []
         thresholds: {
             announce: 0
