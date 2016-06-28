@@ -152,7 +152,7 @@ cloudwatchlogs.LogStream = class LogStream
         }
         .timestamp {
             font-family: monospace;
-            color: gray;
+            color: #03A9F4;
             margin-top: 20px;
         }
         .navsection {
