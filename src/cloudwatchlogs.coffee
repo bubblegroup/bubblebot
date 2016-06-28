@@ -5,7 +5,7 @@ not_flushed = {}
 
 #Waits until all logs are flushed
 cloudwatchlogs.wait_for_flushed = ->
-    while (key for k, nf of not_flushed when nf).length > 0
+    while (k for k, nf of not_flushed when nf).length > 0
         u.pause 500
 
 #Class for managing a log stream
