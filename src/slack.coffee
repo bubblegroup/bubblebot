@@ -228,7 +228,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
     report: (msg) ->
         if @_got_disconnect
             return
-        u.ensure_fiber =>
+        u.SyncRun 'report', =>
 
             #Enforce rate limit
             if @rate_limit_on
@@ -256,7 +256,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
             catch err
                 #If we can't successfully contact the admins, shut down
-                @shutdown 'Failed to contact admins: ' + err.stack ? err
+                @shutdown 'Failed to contact admins, so shutting down: ' + err.stack ? err
 
         return null
 
