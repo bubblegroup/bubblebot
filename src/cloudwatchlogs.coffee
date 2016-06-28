@@ -138,10 +138,29 @@ cloudwatchlogs.LogStream = class LogStream
         }
 
         #Generate the navigation links
-        older = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextBackwardToken) + '&startFromHead=' + String(startFromHead)
-        newer = @get_tail_url() + '?nextToken=' + encodeURIComponent(response.nextForwardToken) + '&startFromHead=' + String(startFromHead)
-        reverse = @get_tail_url() + '?startFromHead=' + String(not startFromHead)
-        navigation = '<div class="navsection"><div class="navlink"><a href="' + older + '">Older events</a></div><div class="navlink"><a href="' + newer + '">Newer events</a></div><div class="navlink"><a href="' + reverse + '">Reverse order</a></div></navsection>'
+        build_link = (startFromHead, nextToken) -> @get_tail_url() ? '?' + querystring.stringify({startFromHead, nextToken})
+
+        refresh = build_link startFromHead
+
+        #Include an older link unless we are at the beginning of start from head
+        if (not startFromHead) or nextToken
+            older = build_link startFromHead, response.nextBackwardToken
+
+        #Include a newer link unless we are the beginning of normal
+        if startFromHead or nextToken
+            newer = build_link startFromHead, response.nextForwardToken
+
+        reverse = build_link (not startFromHead)
+
+        link_html = (text, link) -> '<div class="navlink"><a href="' + link + '">' + text + '</a></div>\n'
+        navigation = '<div class="navsection">\n'
+        navigation += link_html 'Refresh', refresh
+        if older
+            navigation += link_html 'Older events', older
+        if newer
+            navigation += link_html 'Newer events', newer
+        navigation += link_html 'Reverse order', reverse
+        navigation += '</div>'
 
         #Write the body
         res.write """
@@ -170,8 +189,7 @@ cloudwatchlogs.LogStream = class LogStream
         res.write navigation
 
         response.events ?= []
-        if not startFromHead
-            response.events.reverse()
+        response.events.sort (a, b) -> (parseInt(a.timestamp) - parseInt(b.timestamp)) * (if startFromHead then 1 else -1)
 
         if response.events.length > 0
             for {timestamp, message} in response.events
@@ -188,3 +206,4 @@ cloudwatchlogs.LogStream = class LogStream
 u = require './utilities'
 bbobjects = require './bbobjects'
 url = require 'url'
+querystring = require 'querystring'

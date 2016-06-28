@@ -9,6 +9,21 @@ build = ->
     u.log 'Build complete'
 
 
+#For testing stuff
+commands.temp = (access_key) ->
+    u.SyncRun 'temp', ->
+        config.init()
+        config.set 'command_line', true
+
+        if access_key
+            u.log 'Got access key from command line: ' + access_key
+            config.set('accessKeyId', access_key)
+        config.init_account_specific()
+
+        #DO WHATEVER TESTING HERE
+
+        process.exit()
+
 commands.build = ->
     u.SyncRun 'build', ->
         build()
