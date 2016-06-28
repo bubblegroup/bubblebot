@@ -82,22 +82,14 @@ monitoring.Monitor = class Monitor
 
     #The inner body of check (we break it out because this is performance critical)
     do_check: (uid, object) ->
-        u.cpu_checkpoint 'monitor_check.' + uid + '.build_context'
-
         @server.build_context()
-
-        u.cpu_checkpoint 'monitor_check.' + uid + '.generate_metadata'
 
         policy = @policies[uid]
         if policy.monitor is false
             return
 
-        u.cpu_checkpoint 'monitor_check.' + uid + '.check_state'
-
         #Check its current state and reason
         [state, reason] = @get_state(object, policy)
-
-        u.cpu_checkpoint 'monitor_check.' + uid + '.handle_state'
 
         #If it is unhealthy, start tracking downtime...
         if state is UNHEALTHY
