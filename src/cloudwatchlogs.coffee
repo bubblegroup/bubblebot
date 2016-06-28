@@ -167,7 +167,7 @@ cloudwatchlogs.LogStream = class LogStream
             navigation += link_html 'Older events', older
         if newer
             navigation += link_html 'Newer events', newer
-        navigation += link_html 'Reverse order', reverse
+        navigation += link_html (if startFromHead then 'Switch to newest first' else 'Switch to oldest first'), reverse
         navigation += '\n</div>\n'
 
         #Write the body
