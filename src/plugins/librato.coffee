@@ -5,7 +5,7 @@ librato = exports
 librato.get_server_metrics_software = -> software.do_once 'librato_server_metrics_software1',  (instance) ->
     #Write the yum config.  We first write it to a temporary file, then as root we move
     #it into the correct location
-    config = """
+    yumconfig = """
 [librato_librato-amazonlinux-collectd]
 name=librato_librato-amazonlinux-collectd
 baseurl=https://packagecloud.io/librato/librato-amazonlinux-collectd/el/6/x86_64
@@ -17,7 +17,7 @@ gpgkey=https://packagecloud.io/gpg.key
 sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 """
-    cmd = 'cat > /tmp/librato_librato-amazonlinux-collectd.repo <<EOF\n' + config + '\nEOF'
+    cmd = 'cat > /tmp/librato_librato-amazonlinux-collectd.repo <<EOF\n' + yumconfig + '\nEOF'
     instance.run cmd
 
     instance.run "sudo runuser -l root -c 'mv /tmp/librato_librato-amazonlinux-collectd.repo /etc/yum.repos.d/librato_librato-amazonlinux-collectd.repo'"
