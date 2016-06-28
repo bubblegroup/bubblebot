@@ -136,6 +136,9 @@ monitoring.Monitor = class Monitor
 
                 #Wait for a second before checking again
                 u.pause 1000
+                #make sure the policy is up to date...
+                policy = @policies[uid] = object.get_monitoring_policy()
+                #and check again
                 [state, reason] = @get_state(uid, object, policy)
 
             u.log 'Monitor: no longer in unhealthy state for ' + uid
@@ -207,6 +210,8 @@ monitoring.Monitor = class Monitor
         else if service is 'report'
             u.report 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
         else if service is 'restart'
+            u.report 'Monitoring: automatically restarting ' + object
+            u.announce 'Monitoring: automatically restarting ' + object
             u.SyncRun 'monitor_restart', =>
                 @server.build_context 'monitoring: restarting ' + object
                 object.restart()
