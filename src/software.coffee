@@ -52,9 +52,9 @@ software.supervisor_start = (can_fail) -> (instance) ->
     instance.run "sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8043", {can_fail}
     #Start supervisord
     instance.run "supervisord -c /etc/supervisord.conf", {can_fail}
-    u.pause 2000
+    u.pause 5000
     u.log 'Started supervisord, checking status...'
-    instance.run "supervisorctl status"
+    instance.run "supervisorctl status", {can_fail: true}
 
 #Verifies that the given supervisor process is running for the given number of seconds
 #
