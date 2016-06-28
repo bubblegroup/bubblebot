@@ -154,8 +154,6 @@ bbserver.Server = class Server
             u.SyncRun 'startup', =>
                 @build_context('startup')
 
-                @create_sub_logger 'startup'
-
                 #Make sure we have at least one user who is an admin
                 @get_admins()
 
@@ -177,8 +175,11 @@ bbserver.Server = class Server
                         if user.is_in_group constants.BASIC
                             u.message user.id, 'Uh oh, it looks like we crashed.  If you were in the middle of something, like deploying code, you may need to restart it.'
 
-                #log startup.
+                #log startup (see crash code above)
                 u.log 'STARTUP'
+
+                #Run the remainder of this on a fresh logger
+                @create_sub_logger 'startup'
 
                 #Make a list of each type that has a startup function
                 for typename, cls of bbobjects
@@ -507,20 +508,28 @@ bbserver.Server = class Server
                     u.reply msg
                 u.announce msg
 
-                #Disconnect from everything
-                @slack_client.disconnect()
-                @server_app.close()
-                @server2.close()
+                try
 
-                #Cancel all anonymous fibers
-                for fiber in [].concat(u.active_fibers ? [])
-                    u.cancel_fiber fiber
+                    #Disconnect from everything
+                    @slack_client.disconnect()
+                    @server_app.close()
+                    @server2.close()
 
-                #Make sure all logs make it...
-                cloudwatchlogs.wait_for_flushed()
+                    #Cancel all anonymous fibers
+                    for fiber in [].concat(u.active_fibers ? [])
+                        u.cancel_fiber fiber
 
-                #And exit
-                process.exit(code)
+                    #Make sure all logs make it...
+                    cloudwatchlogs.wait_for_flushed()
+
+                    #And exit
+                    process.exit(code)
+                catch err
+                    u.log 'Error trying to do a graceful shutdown:\n' + err.stack
+                    setTimeout ->
+                        process.exit(code)
+                    , 10000
+
             else
                 u.pause(500)
 
