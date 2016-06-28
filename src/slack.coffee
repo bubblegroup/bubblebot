@@ -100,6 +100,9 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Sends a message to the indicated user
     message: (user_id, msg) ->
+        if @_got_disconnect
+            return
+
         @rate_limit()
         block = u.Block 'sending message'
         @send_im user_id, msg, block.make_cb()
@@ -130,6 +133,9 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Sends an im to the given user
     send_im: (user_id, msg, cb) ->
+        if @_got_disconnect
+            return
+
         if not user_id
             throw new Error 'trying to send im with missing user id: ' + user_id
         user = @api.dataStore.getUserById(user_id)
@@ -145,6 +151,9 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Asks the given user a question, and returns their reply
     ask: (user_id, msg, dont_cancel) ->
+        if @_got_disconnect
+            return
+
         if not user_id
             throw new Error 'no user id!'
         if not msg
@@ -202,6 +211,8 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
 
     #Sends a message to the announcements channel
     announce: (msg) ->
+        if @_got_disconnect
+            return
         u.ensure_fiber =>
             channel = @get_announcement_channel()
             @rate_limit()
