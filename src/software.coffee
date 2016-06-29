@@ -60,6 +60,15 @@ software.supervisor_start = (can_fail) -> (instance) ->
 #
 #If not, logs the tail and throws an error
 software.verify_supervisor = (server, name, seconds) ->
+    #Loop til we see it running initially
+    retries = 0
+    while (status = server.run('supervisorctl status ' + name, {can_fail: true})).indexOf('RUNNING') isnt -1
+        retries++
+        if retries > 5
+            throw new Error 'supervisor not reporting running after 20 seconds:\n' + status
+        u.pause 4000
+
+    #Then wait and see if it is still running
     u.pause (seconds + 2) * 1000
     status = server.run 'supervisorctl status ' + name
     if status.indexOf('RUNNING') isnt -1
