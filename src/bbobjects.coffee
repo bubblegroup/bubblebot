@@ -2318,8 +2318,8 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
                 u.log 'Tests pass, so terminating test server'
                 ec2instance.terminate()
             else
-                u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns() + '\nTest server id is ' + ec2instance.id
                 ec2instance.test_failed(version)
+                u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns() + '\nTest server id is ' + ec2instance.id
 
 
 
