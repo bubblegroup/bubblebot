@@ -2127,6 +2127,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         catch err
             #if we had an error building it, set the status to build failed
             ec2instance.set_status constants.BUILD_FAILED
+            err.failed_build = ec2instance
             throw err
 
     #Creates a server with the given size owned by the given parent, and with the
@@ -2297,7 +2298,14 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         if u.context().use_this_instance
             ec2instance = u.context().use_this_instance
         else
-            ec2instance = @create_test_instance(version, size)
+            try
+                ec2instance = @create_test_instance(version, size)
+            catch err
+                if err.failed_build
+                    u.log err.stack ? err
+                    throw new Error 'there was an error starting the test server.  error logged above.  the test server id is ' + err.failed_build.id
+                else
+                    throw err
 
         try
             result = test ec2instance
@@ -2310,7 +2318,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
                 u.log 'Tests pass, so terminating test server'
                 ec2instance.terminate()
             else
-                u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns()
+                u.log 'Tests failed.  Test server can be inspected here: ' + ec2instance.get_public_dns() + '\nTest server id is ' + ec2instance.id
                 ec2instance.test_failed(version)
 
 
