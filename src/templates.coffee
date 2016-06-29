@@ -203,7 +203,6 @@ templates.Service = class Service
     ensure_tested: (instance, version) ->
         if not @is_tested version
             u.reply 'Version ' + version + ' has not been tested, running tests now...'
-            u.announce (u.current_user()?.name() ? '<automated>') + ' is trying to deploy to ' + instance
             @run_tests version
             if not @is_tested version
                 return false
