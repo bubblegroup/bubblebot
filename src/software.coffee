@@ -72,15 +72,22 @@ software.verify_supervisor = (server, name, seconds) ->
     u.pause (seconds + 2) * 1000
     status = server.run 'supervisorctl status ' + name
     if status.indexOf('RUNNING') isnt -1
-        uptime = status.split('uptime ')[1]
+        uptime = status.split('uptime')[1].trim()
         uptime_seconds = parseInt(uptime.split(':')[2])
         uptime_minutes = parseInt(uptime.split(':')[1])
-        if (uptime_minutes * 60) + uptime_seconds >= seconds
+        uptime_hours = parseInt(uptime.split(':')[0])
+        uptime_time = (uptime_minutes * 60) + uptime_seconds + (uptime_hours + 3600)
+        if uptime_time >= seconds
             return
+        else
+            reason = 'up for ' + uptime_time + ' < ' + seconds
+    else
+        reason = 'not running'
 
     server.run 'tail -n 100 /tmp/' + name + '*'
 
-    throw new Error 'Supervisor not running for at least ' + seconds + ' seconds: ' + status + '.  See tailed logs below'
+    throw new Error 'Supervisor not staying up ' + reason + '.\n' + status + '\nSee tailed logs below'
+
 
 #Installs node
 software.node = (version) -> do_once 'node ' + version, (instance) ->
