@@ -25,6 +25,8 @@ commands.temp = (access_key, secret_access_key) ->
         config.init_account_specific()
 
         #DO WHATEVER TESTING HERE
+        bbserver = bbobjects.get_bbserver()
+        software.verify_supervisor bbserver, 'bubblebot', 20
 
         process.exit()
 
