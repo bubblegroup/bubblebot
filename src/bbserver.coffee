@@ -489,6 +489,8 @@ bbserver.Server = class Server
                             u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
 
     graceful_shutdown: (no_restart) ->
+        user = u.current_user()
+
         #We always want to run this on its own fiber
         u.SyncRun 'graceful_shutdown', =>
             @build_context('graceful shutdown')
@@ -521,8 +523,8 @@ bbserver.Server = class Server
                         msg = 'Restarting bubblebot now!'
                         code = 1
                     u.log 'GRACEFUL_SHUTDOWN'
-                    if u.current_user()
-                        u.reply msg
+                    if user
+                        u.message user.id, msg
                     u.announce msg
 
                     #Make sure all logs make it...
