@@ -1654,15 +1654,15 @@ bbobjects.Environment = class Environment extends BubblebotObject
     audit_instances: (aggressive, auto_delete_mode, from_scheduled) ->
         #if we are in autodelete mode, we want to do this hourly, if we are in report
         #mode we want to do it daily.  we abort if the mode doesn't match our autodelete setting
+        autodelete = if config.get('audit_instances_autodelete', false) then true else false
+        auto_delete_mode ?= false
         if from_scheduled
-            autodelete = if config.get('audit_instances_autodelete', false) then true else false
-            auto_delete_mode ?= false
             if autodelete isnt auto_delete_mode
                 u.log "Aborting: autodelete #{autodelete} does not match auto_delete_mode #{auto_delete_mode}"
                 return
         else
             #If the user called it, we trust what they passed in
-            autodelete = auto_delete_mode
+            autodelete = autodelete or auto_delete_mode
 
         all_instances = bbobjects.get_all_instances()
         u.log 'Found the following instances: ' + (String(instance) for instance in all_instances).join(', ')
