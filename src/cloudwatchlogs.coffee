@@ -23,6 +23,11 @@ cloudwatchlogs.LogStream = class LogStream
             #create it...
             @environment.CloudWatchLogs 'createLogGroup', {logGroupName: @groupname}
 
+        @queue = []
+
+        @refresh_sequence_token()
+
+    refresh_sequence_token: ->
         #Retrieve the uploadSequenceToken
         response = @environment.CloudWatchLogs 'describeLogStreams', {logGroupName: @groupname, logStreamNamePrefix: @name}
         for stream in response.logStreams ? []
@@ -39,7 +44,6 @@ cloudwatchlogs.LogStream = class LogStream
                 @environment.CloudWatchLogs 'createLogStream', {logGroupName: @groupname, logStreamName: @name}
 
 
-        @queue = []
 
     #logs a message to this stream
     log: (message) ->
@@ -74,6 +78,22 @@ cloudwatchlogs.LogStream = class LogStream
         key = String(@environment) + '_' + @groupname + '_' + @name
         not_flushed[key] = false
 
+
+    #Low-level helper for do_put: just writes the logs
+    put_to_cloudwatch: (logEvents) ->
+        res = @environment.CloudWatchLogs 'putLogEvents', {
+            logGroupName: @groupname
+            logStreamName: @name
+            sequenceToken: @uploadSequenceToken
+            logEvents
+        }
+        if res.rejectedLogEventsInfo?
+            console.log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
+            u.report_no_log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
+
+        @uploadSequenceToken = res.nextSequenceToken
+
+
     #do an actual upload
     do_put: ->
         u.SyncRun 'cloudwatch_put', =>
@@ -81,22 +101,19 @@ cloudwatchlogs.LogStream = class LogStream
             @queue = []
 
             try
-                res = @environment.CloudWatchLogs 'putLogEvents', {
-                    logGroupName: @groupname
-                    logStreamName: @name
-                    sequenceToken: @uploadSequenceToken
-                    logEvents
-                }
-                if res.rejectedLogEventsInfo?
-                    console.log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
-                    u.report_no_log 'Rejected logs: ' + JSON.stringify res.rejectedLogEventsInfo
-
-                @uploadSequenceToken = res.nextSequenceToken
-
+                @put_to_cloudwatch logEvents
 
             catch err
-                u.report_no_log 'Error writing to cloud watch logs: ' + (err.stack ? err)
-                console.log 'Error writing to cloud watch logs: ' + (err.stack ? err)
+                #recover from the token getting out of sequence
+                if String(err).indexOf('InvalidSequenceTokenException') isnt -1
+                    #Refresh the token
+                    @refresh_sequence_token()
+
+                    #And try again
+                    @put_to_cloudwatch logEvents
+                else
+                    u.report_no_log 'Error writing to cloud watch logs: ' + (err.stack ? err)
+                    console.log 'Error writing to cloud watch logs: ' + (err.stack ? err)
 
 
             #If more logs have come in in the interim, schedule another put,
