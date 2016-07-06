@@ -5,6 +5,18 @@ constants = require './constants'
 #Schedule name for one-time tasks
 ONCE = 'once'
 
+#Turning a task into something friendly
+friendly_task_name = (task_data) ->
+    {interval, type, id, method, params} = task_data.properties
+    schedule_name = task_data.task
+
+    if schedule_name is ONCE
+        return "(#{type} #{id}).#{method})"
+    else
+        return schedule_name
+
+
+
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand(this)
@@ -358,10 +370,7 @@ bbserver.Server = class Server
             schedule_name = task_data.task
 
             #build a human friendly name for the task
-            if schedule_name is ONCE
-                friendly = "(#{type} #{id}).#{method})"
-            else
-                friendly = schedule_name
+            friendly = friendly_task_name task_data
 
             #Create the server context and a fresh sub-logger for running the task under
             @build_context('running task ' + friendly)
@@ -993,7 +1002,11 @@ bbserver.Command = class Command
 
 
 
+
+
 class Tasks extends Command
+    constructor: (@server) ->
+
     help: 'Lists / deletes tasks'
 
     params: [
@@ -1006,8 +1019,19 @@ class Tasks extends Command
             u.reply 'Deleted all tasks named ' + to_delete
         else
             table = []
-            for {task, count} in u.db().list_tasks()
-                table.push [task, String(count)]
+            for task_data in u.db().list_tasks()
+                friendly = friendly_task_name task_data
+                interval = task_data.timestamp - Date.now()
+                if interval < 0
+                    timing = 'now'
+                else
+                    timing = u.format_time interval
+                if task_data.owner is @server.owner_id
+                    friendly += ' (CLAIMED BY US)'
+                else if task_data.owner?
+                    friendly += ' (CLAIMED BY ' + task_data.owner + ')'
+                table.push [timing, friendly]
+
             u.reply 'Tasks:\n' + u.make_table(table)
 
     dangerous: (to_delete) -> to_delete
@@ -1337,7 +1361,7 @@ class RootCommand extends CommandTree
         @commands.ps = new PS()
         @commands.cancel = new Cancel()
         @commands.monitor = new Monitor(@server)
-        @commands.tasks = new Tasks()
+        @commands.tasks = new Tasks(@server)
         @commands.users = new UsersTree()
         @commands.security_groups = new SecurityGroupsTree()
         @commands.logs = new Logs()

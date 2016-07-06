@@ -137,9 +137,9 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
             return null
 
-    #Returns tasks by taskname and count
+    #Returns task information
     list_tasks: ->
-        query = 'SELECT task, count(*) FROM scheduler GROUP BY task'
+        query = 'SELECT * FROM scheduler ORDER BY timestamp'
         result = @query query
         return result.rows
 
