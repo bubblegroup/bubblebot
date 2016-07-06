@@ -290,15 +290,17 @@ class BBDBService extends templates.RDSService
         frequency: 10000
         dependencies: []
         actions: {
-            announce:
+            announce: {
                 action: 'announce'
-                threshold: 2 * SECOND
-                limit: MINUTE
+                threshold: 2000
+                limit: 60000
+            }
 
-            report:
+            report: {
                 action: 'report'
-                threshold: 5 * SECOND
-                limit: MINUTE
+                threshold: 5000
+                limit: 60000
+            }
         }
         endpoint: {
             protocol: 'postgres'
