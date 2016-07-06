@@ -18,7 +18,7 @@ monitoring.Monitor = class Monitor
 
         @health = {}
         @downtime = {}
-        @last_service_times = {}
+        @last_action_times = {}
         @_is_scheduled = {}
 
         @start_time = Date.now()
@@ -110,29 +110,29 @@ monitoring.Monitor = class Monitor
             @health[uid] = state
             down = Date.now()
 
-            #Track which services we've notified
-            services = {}
+            #Track which actions we've notified
+            actions = {}
 
             #Loop while we are still unhealthy
             while state is UNHEALTHY
                 downtime = Date.now() - down
 
-                for service, threshold of policy.thresholds ? {}
-                    #If we haven't reported to this service yet and are over the threshold...
-                    if threshold? and not services[service] and downtime > threshold
-                        #If there's a limit on how frequently we can report to this service,
+                for action_name, action of policy.actions ? {}
+                    #If we haven't reported to this action yet and are over the threshold...
+                    if action.threshold? and not actions[action_name] and downtime > action.threshold
+                        #If there's a limit on how frequently we can report to this action,
                         #make sure we are within the limit
-                        if policy.limits?[service] and @last_service_times[uid]?[service]
-                            within_limit = (Date.now() - @last_service_times[uid][service]) > policy.limits[service]
+                        if action.limit? and @last_action_times[uid]?[action]
+                            within_limit = (Date.now() - @last_action_times[uid][action]) > action.limit
                         else
                             within_limit = true
 
                         if within_limit
-                            services[service] = true
+                            actions[action_name] = true
                             try
-                                @report_down service, object, downtime, reason
+                                @report_down action_name, action, object, downtime, reason
                             catch err
-                                u.report 'Bug in monitoring reporting down to ' + service + ':\n' + err.stack
+                                u.report 'Bug in monitoring reporting down to ' + action_name + ':\n' + err.stack
 
                 #Wait for a second before checking again
                 u.pause 1000
@@ -143,17 +143,17 @@ monitoring.Monitor = class Monitor
 
             u.log 'Monitor: no longer in unhealthy state for ' + uid
 
-            #We are no longer unhealthy, so update our total downtime, and inform services.
+            #We are no longer unhealthy, so update our total downtime, and inform any actions.
             downtime = Date.now() - down
 
             @downtime[uid] ?= 0
             @downtime[uid] += downtime
 
-            for service, _ of services
+            for action_name, _ of actions
                 try
-                    @report_up service, object, downtime
+                    @report_up action_name, action, object, downtime
                 catch err
-                    u.report 'Bug in monitoring reporting up to ' + service + ':\n' + err.stack
+                    u.report 'Bug in monitoring reporting up to ' + action_name + ':\n' + err.stack
 
         #We are now in some non-UNHEALTHY state.  Update our state...
         @health[uid] = state
@@ -194,56 +194,66 @@ monitoring.Monitor = class Monitor
 
         return false
 
-    get_alerting_plugin: (service) ->
+    get_alerting_plugin: (plugin_name) ->
         for plugin in config.get_plugins('alerting')
-            if plugin.name() is service
+            if plugin.name() is plugin_name
                 return plugin
 
-    report_down: (service, object, downtime, reason) ->
-        #Record that we've reported down to this service
+    report_down: (action_name, action, object, downtime, reason) ->
+        #Record that we've reported down for this action
         uid = @_get_uid(object)
-        @last_service_times[uid] ?= {}
-        @last_service_times[uid][service] = Date.now()
+        @last_action_times[uid] ?= {}
+        @last_action_times[uid][action_name] = Date.now()
 
-        if service is 'announce'
-            u.announce 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
-        else if service is 'report'
-            u.report 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
-        else if service is 'restart'
-            u.report 'Monitoring: automatically restarting ' + object
-            u.announce 'Monitoring: automatically restarting ' + object
-            u.SyncRun 'monitor_restart', =>
-                @server.build_context 'monitoring: restarting ' + object
-                object.restart()
-        else if service is 'replace'
-            u.report 'Monitoring: automatically replacing ' + object
-            u.announce 'Monitoring: automatically replacing ' + object
-            u.SyncRun 'monitor_replace', =>
-                @server.build_context 'monitoring: replacing ' + object
-                object.replace()
-        else
-            plugin = @get_alerting_plugin(service)
-            if plugin
-                plugin.report_down object, downtime, reason
-            else
-                u.report 'Monitoring: unrecognized reporting service ' + service
+        #Log / announce that we are calling this, if appropriate
+        msg = 'Monitoring: calling ' + action_name + ' on ' + object
+        if action.report
+            u.report msg
+        if action.announce
+            u.announce msg
+        u.log msg
+
+        #Perform the action
+        switch action.action
+            when 'announce'
+                u.announce 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
+
+            when 'report'
+                u.report 'Monitoring: ' + object + ' has been down for ' + u.format_time(downtime) + ':\n' + reason
+
+            when 'method'
+                params = action.params ? []
+                method = action.method
+                if not object[method]
+                    u.report 'Monitoring: method call failed, could not find ' + method + ' on ' + object
+                    return
+
+                u.SyncRun 'monitor_method_call', =>
+                    @server.build_context msg
+                    object[method] params...
+
+            when 'plugin'
+                plugin = @get_alerting_plugin(action.plugin)
+                if plugin
+                    plugin.report_down object, downtime, reason
+                else
+                    u.report 'Monitoring: unrecognized reporting plugin ' + action.plugin
 
 
-    report_up: (service, object, downtime) ->
-        if service is 'announce'
-            u.announce 'Monitoring: ' + object + ' is back up.  It was down for ' + u.format_time(downtime)
-        else if service is 'report'
-            u.report 'Monitoring: ' + object + ' is back up.  It was down for ' + u.format_time(downtime)
-        else if service is 'restart'
-            true
-        else if service is 'replace'
-            true #no op
-        else
-            plugin = @get_alerting_plugin(service)
-            if plugin
-                plugin.report_up object, downtime
-            else
-                u.report 'Monitoring: unrecognized reporting service ' + service
+    report_up: (action_name, action, object, downtime) ->
+        switch action.action
+            when 'announce'
+                u.announce 'Monitoring: ' + object + ' is back up.  It was down for ' + u.format_time(downtime)
+            when 'report'
+                u.report 'Monitoring: ' + object + ' is back up.  It was down for ' + u.format_time(downtime)
+            when 'method'
+                true #no-op for now, though we could let the user specify an up message
+            when 'plugin'
+                plugin = @get_alerting_plugin(action.plugin)
+                if plugin
+                    plugin.report_up object, downtime
+                else
+                    u.report 'Monitoring: unrecognized reporting plugin ' + action.plugin
 
     #Returns a description of the current status of all monitored objects
     statuses: ->
@@ -274,12 +284,7 @@ monitoring.Monitor = class Monitor
             res.push String(object) + ':'
             res.push '  Frequency: ' + u.format_time(policy.frequency)
             res.push '  Upstream: ' + (String(dep) for dep in policy.dependencies ? []).join(', ')
-            for service, threshold in policy.thresholds ? {}
-                if policy.limits?[service]
-                    limit_text = '  (limit every ' + u.format_time(policy.limits[service]) + ')'
-                else
-                    limit_text = ''
-                res.push '  ' + service + ': ' + threshold + ' ms' + limit_text
+            res.push bbserver.pretty_print(policy.actions)
 
         return res.join '\n'
 
@@ -363,3 +368,4 @@ u = require './utilities'
 config = require './config'
 request = require 'request'
 databases = require './databases'
+bbserver = require './bbserver'

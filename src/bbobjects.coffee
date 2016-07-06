@@ -2053,9 +2053,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         u.context().server._monitor.update_policies()
 
     #Restarts the underlying boxes for this service
-    restart: ->
+    restart: (hard) ->
         for server in @servers()
-            server.restart?()
+            server.restart?(hard)
 
     replace_cmd:
         sublogger: true

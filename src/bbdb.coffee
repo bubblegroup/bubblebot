@@ -289,13 +289,16 @@ class BBDBService extends templates.RDSService
         monitor: true
         frequency: 10000
         dependencies: []
-        thresholds: {
-            announce: 0
-            report: 5000
-        }
-        limits: {
-            announce: 30000
-            report: 30000
+        actions: {
+            announce:
+                action: 'announce'
+                threshold: 2 * SECOND
+                limit: MINUTE
+
+            report:
+                action: 'report'
+                threshold: 5 * SECOND
+                limit: MINUTE
         }
         endpoint: {
             protocol: 'postgres'

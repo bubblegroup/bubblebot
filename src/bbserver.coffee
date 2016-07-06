@@ -386,7 +386,7 @@ bbserver.Server = class Server
             u.log 'Task completed successfully'
 
         catch err
-            #If the user cancels this task, or times out replying, reschedule it if it is a one time taskin 12 hours
+            #If the user cancels this task, or times out replying, reschedule it if it is a one time task in 12 hours
             if err.reason in [u.CANCEL, u.USER_TIMEOUT]
                 if schedule_name is ONCE
                     u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
