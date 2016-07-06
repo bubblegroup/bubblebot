@@ -182,7 +182,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
                 UPDATE scheduler SET owner = $1 WHERE id in
                 (SELECT id FROM scheduler
                 LEFT JOIN scheduler_owners ON scheduler_owners.owner_id = scheduler.owner
-                WHERE scheduler_owners.owner_id is null AND timestamp < $2 AND scheduler.owner != $1
+                WHERE scheduler_owners.owner_id is null AND timestamp < $2
                 ORDER by timestamp LIMIT 1) RETURNING *
                 "
             result = t.query query, owner_id, Date.now()
