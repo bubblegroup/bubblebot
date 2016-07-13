@@ -2063,6 +2063,13 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         groups: constants.BASIC
         reply: 'Replacement complete'
 
+    restart_cmd:
+        sublogger: true
+        help: 'Restarts the underlying boxes for this service'
+        groups: constants.BASIC
+        reply: 'Restart complete'
+        dangerous: true
+
 
 #Represents the AMI and software needed to build an ec2 instance
 #
