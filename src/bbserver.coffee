@@ -321,6 +321,7 @@ bbserver.Server = class Server
 
     #Schedules a task to run at a future time
     schedule_once: (timeout, type, id, method, params...) ->
+        u.log 'Scheduling a task to run in ' + u.format_time(timeout) + ': ' + type + ' ' + method + ' ' + id + ' ' + JSON.stringify(params)
         @_check_valid_schedule type, id, method
         u.db().schedule_task Date.now() + timeout, ONCE, {type, id, method, params}
 
@@ -328,6 +329,7 @@ bbserver.Server = class Server
     #
     #If a task with the same schedule_name is already scheduled, does nothing
     schedule_recurring: (interval, schedule_name, type, id, method, params...) ->
+        u.log 'Scheduling a recurring task to run every ' + u.format_time(interval) + ', schedule named ' + schedule_name + ': ' + type + ' ' + id + ' ' + method + ' ' + JSON.stringify(params)
         @_check_valid_schedule type, id, method
         u.db().upsert_task schedule_name, {interval, type, id, method, params}
 
@@ -399,7 +401,7 @@ bbserver.Server = class Server
             if err.reason in [u.CANCEL, u.USER_TIMEOUT]
                 if schedule_name is ONCE
                     u.log 'User cancelled task, rescheduling: ' + JSON.stringify(task_data)
-                    u.db().schedule_task Date.now() + 12 * 60 * 60 * 1000, schedule_name, task_data.properties
+                    u.db().reschedule_task Date.now() + 12 * 60 * 60 * 1000, task_data.id
                 else
                     u.log 'User cancelled recurring task: ' + schedule_name
             #If the task was cancelled externally, just log it
@@ -413,12 +415,13 @@ bbserver.Server = class Server
                 u.report 'Unexpected error running task ' + friendly + '.  Error was: ' + (err.stack ? err) + '\nTranscript:' + u.context().get_transcript()
 
         finally
-            #We always want to make sure scheduled tasks get rescheduled
+            #If it is a recurring task, reschedule it
             if schedule_name isnt ONCE
-                u.db().schedule_task Date.now() + task_data.properties.interval, schedule_name, task_data.properties
+                u.db().reschedule_task Date.now() + task_data.properties.interval, task_data.id
 
-            #Mark the task as complete.
-            u.db().complete_task task_data.id
+            #Otherwise, mark it complete
+            else
+                u.db().complete_task task_data.id
 
 
     #Adds things to the current context.

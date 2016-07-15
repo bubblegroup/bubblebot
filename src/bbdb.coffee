@@ -116,6 +116,12 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
         @query query, timestamp, task, JSON.stringify(properties)
         return null
 
+    #Sets the given task to run at a future time, and relinquishes ownership of it
+    reschedule_task: (timestamp, id) ->
+        query = 'UPDATE scheduler SET timestamp = $1, owner = null WHERE id = $2'
+        @query query, timestamp, id
+        return null
+
     #If there is a task with the same name already in the scheduler, update the properties.
     #Otherwise, insert a new task scheduled to run now.
     upsert_task: (task, properties) ->
