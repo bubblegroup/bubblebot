@@ -662,7 +662,7 @@ templates.MultiGitCodebase = class MultiGitCodebase extends Codebase
         head = head.split('-')
         results = []
         for repo, idx in @repos
-            res = @repo.merge base[idx], head[idx]
+            res = repo.merge base[idx], head[idx]
             if not res.success
                 return null
             results.push res.commit
