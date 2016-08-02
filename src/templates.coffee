@@ -941,6 +941,100 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
     compare_schema: (rds_instance, s1, s2) -> @get_migration_manager(rds_instance).compare_schema(s1, s2)
 
 
+#Represents an RDSCodebase where the migrations are stored in an external git repository.
+#
+#We expect inheritors to define @repo(), @commit() and @folder_path() functions.  @repo() should return
+#an object with the same interface as github.Repo, and @folder_path() should return an array
+#of folder names within the repository to a folder that has 0.sql, 1.sql, 0_rollback.sql, 1_rollback.sql, etc.
+#@commit() should return the commit / branch to use, which should probably be the latest deployed version,
+#master, or similar.
+#
+#We support a simple templating language for including one file within another.  Lines that
+#start with "--INCLUDE filename" will be replaced with that filename
+#
+#Inheritors should also define the following (same as RDSCodebase inheritors):
+#  rds_options
+#  get_sizing
+#  get_additional_tests
+templates.GithubRDSCodebase extends templates.RDSCodebase
+    #Retrieves the contents of the github folder that contains our migrations.
+    #
+    #Returns a {filename: blob_sha} mapping.
+    list_folder: ->
+        repo = @repo()
+        commit = @commit()
+        path = @folder_path()
+
+        tree = repo.get_tree commit
+        for piece in path
+            found = false
+            for entry in repo.list tree
+                if entry.path is piece
+                    if entry.type isnt 'tree'
+                        throw new Error 'Expected a folder but got a ' + entry.type + ' for ' + piece + ' in ' + path.join('/')
+                    found = tree
+                    tree = entry.sha
+                    break
+            if not found
+                throw new Error 'Could not find component ' + piece + ' in ' + path.join('/')
+
+        res = {}
+        for entry repo.list tree
+            if entry.type is 'blob'
+                res[entry.path] = entry.sha
+
+
+    #Used by RDSCodebase to get the array of migrations
+    get_migrations: ->
+        contents = @list_folder()
+
+        num = @_get_max_migrations contents
+
+        return (@_build_migration contents, String(num) + '.sql' for num in [0...num])
+
+    #Given the contents of our folder and a filename, builds a migration from that filename
+    _build_migration: (contents, filename) ->
+        repo = @repo()
+
+        #Implement an include templating language
+        INCLUDE = '--INCLUDE'
+
+        process_line = (line) ->
+            if line[0...INCLUDE.length] is INCLUDE
+                filename = line[INCLUDE.length..].trim()
+                file = process_file filename
+                if not file?
+                    return 'ERROR COULD NOT PROCESS INCLUDE ' + filename
+                else
+                    return file
+            else
+                return line
+
+        process_file = (filename) ->
+            sha = contents[filename]
+            if not sha
+                return null
+            return (process_line line for line in repo.get_blob(sha).split('\n')).join('\n')
+
+        return process_file filename
+
+    #Find number of migrations we have
+    _get_max_migrations: (contents) ->
+        num = 0
+        while contents[String(num) + '.sql']
+            num++
+        return num
+
+    #Used by RDSCodebase to get the array of rollbacks
+    get_rollbacks: ->
+        contents = @list_folder()
+
+        num = @_get_max_migrations contents
+
+        return (@_build_migration contents, String(num) + '_rollback.sql' for num in [0...num])
+
+
+
 databases = require './databases'
 
 migration_managers = {}

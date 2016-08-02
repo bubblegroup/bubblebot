@@ -122,6 +122,32 @@ github.Repo = class Repo
             if ref
                 instance.run "cd #{destination} && git checkout #{ref}", {timeout: 5*60*1000}
 
+    #READING A REPO
+
+    #Given a commit, returns the SHA of the folder tree
+    get_tree: (commit) ->
+        url = @commit_url commit
+        res = @_request url
+        return @extract(res, url).tree.sha
+
+
+    #Given an SHA of a tree, returns an array of it's sub-entries (blobs + more tree)
+    list: (tree) ->
+        url = @repo_url() + '/trees/' + tree
+        res = @_request url
+        return @extract(res, url).tree
+
+    #Given a SHA of a blob, fetches the raw data.  If raw = true, returns the base64 encoded
+    #string, otherwise we try to interpret it as utf8 text
+    get_blob: (blob, raw) ->
+        url = @repo_url() + '/blobs/' + blob
+        res = @_request url
+        data = @extract(res, url).content
+        if raw
+            return data
+        else
+            return Buffer.from(data, 'base64').toString('utf8')
+
 
 request = require 'request'
 config = require './config'
