@@ -956,7 +956,7 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
 #  rds_options
 #  get_sizing
 #  get_additional_tests
-templates.GithubRDSCodebase extends templates.RDSCodebase
+templates.GithubRDSCodebase = class GithubRDSCodebase extends templates.RDSCodebase
     #Retrieves the contents of the github folder that contains our migrations.
     #
     #Returns a {filename: blob_sha} mapping.
@@ -979,7 +979,7 @@ templates.GithubRDSCodebase extends templates.RDSCodebase
                 throw new Error 'Could not find component ' + piece + ' in ' + path.join('/')
 
         res = {}
-        for entry repo.list tree
+        for entry in repo.list tree
             if entry.type is 'blob'
                 res[entry.path] = entry.sha
 
