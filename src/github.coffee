@@ -15,6 +15,14 @@ github.Repo = class Repo
             return null
         return @extract(res, url).sha[..@abbrev]
 
+    #Returns the full 40 character sha for a commit
+    full_commit_sha: (commit) ->
+        url = @commit_url commit
+        res = @_request url
+        if res.statusCode is 404
+            return null
+        return @extract(res, url).sha
+
     #Returns true if second can be fast-forwarded to first
     ahead_of: (first, second) ->
         res = @request @compare_url first, second
@@ -67,7 +75,7 @@ github.Repo = class Repo
     create_branch: (name, commit) ->
         @request @repo_url() + '/git/refs', 'POST', {
             ref: 'refs/heads/' + name
-            sha: commit
+            sha: @full_commit_sha(commit) #github requires 40 characters for this
         }
 
     #Deletes the given branch
