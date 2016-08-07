@@ -134,21 +134,23 @@ github.Repo = class Repo
 
     #Given a commit, returns the SHA of the folder tree
     get_tree: (commit) ->
-        url = @commit_url commit
+        commit = @full_commit_sha commit
+
+        url = @repo_url() + '/git/commits/' + commit
         res = @_request url
         return @extract(res, url).tree.sha
 
 
     #Given an SHA of a tree, returns an array of it's sub-entries (blobs + more tree)
     list: (tree) ->
-        url = @repo_url() + '/trees/' + tree
+        url = @repo_url() + '/git/trees/' + tree
         res = @_request url
         return @extract(res, url).tree
 
     #Given a SHA of a blob, fetches the raw data.  If raw = true, returns the base64 encoded
     #string, otherwise we try to interpret it as utf8 text
     get_blob: (blob, raw) ->
-        url = @repo_url() + '/blobs/' + blob
+        url = @repo_url() + '/git/blobs/' + blob
         res = @_request url
         data = @extract(res, url).content
         if raw
