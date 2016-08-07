@@ -982,6 +982,7 @@ templates.GithubRDSCodebase = class GithubRDSCodebase extends templates.RDSCodeb
         for entry in repo.list tree
             if entry.type is 'blob'
                 res[entry.path] = entry.sha
+        return res
 
 
     #Used by RDSCodebase to get the array of migrations
