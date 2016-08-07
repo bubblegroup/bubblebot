@@ -10,8 +10,8 @@ databases.Postgres = class Postgres
         if not endpoint?
             throw new Error 'endpoint not available!'
 
-        {username, password, address, port, database} = endpoint
-        conn_string = "postgres://#{username}:#{password}@#{address}:#{port}/#{database}"
+        {user, password, host, port, database} = endpoint
+        conn_string = "postgres://#{user}:#{password}@#{host}:#{port}/#{database}"
         return conn_string
 
     #Returns [client, done]
@@ -33,8 +33,8 @@ databases.Postgres = class Postgres
 
     #Calls pg_dump and returns the result
     pg_dump: (options) ->
-        {username, password, address, port, database} = @rds_instance.endpoint()
-        command = "pg_dump -h #{address} -p #{port} -U #{username} -w #{options} #{database}"
+        {user, password, host, port, database} = @rds_instance.endpoint()
+        command = "pg_dump -h #{host} -p #{port} -U #{user} -w #{options} #{database}"
 
         return u.run_local command, {env: {PGPASSWORD: password}}
 
