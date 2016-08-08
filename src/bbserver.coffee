@@ -111,7 +111,7 @@ bbserver.Server = class Server
                     failureRedirect: '/failed'
                     successRedirect: '/succeeded'
                 }
-                server_app.get '/auth/slack/callback', passport.authenticate('slack', options)
+                server_app.get '/auth/slack/callback', passport.authenticate('slack', opts)
                 server_app.get '/auth/slack/test', passport.authenticate('slack'), @syncware (req, res) =>
                     try
                         message = 'User: ' + String(req.user)
