@@ -79,13 +79,25 @@ bbserver.Server = class Server
 
                 server_app = express()
 
+                server_app.configure ->
+                    server_app.use session { secret: config.get('slack_client_secret') + 'asdf23asd', secure: true }
+                    server_app.use passport.initialize()
+                    server_app.use passport.session()
+
                 passport.use new passport_slack.Strategy {
                     clientID: config.get('slack_client_id')
                     clientSecret: config.get('slack_client_secret')
+                    callbackURL: '/auth/slack/callback'
                     scope: 'users:read'
                 }, (accessToken, refreshToken, profile, done) ->
                     user = bbobjects.instance 'User', profile.id
                     done null, user
+
+                passport.serializeUser (user, done) ->
+                    done null, user.id
+
+                passport.deserializeUser (id, done) ->
+                    done null, bbobjects.instance 'User', profile.id
 
                 #Stop handling new requests once shutdown begins
                 server_app.use (req, res, next) =>
@@ -1537,6 +1549,7 @@ cloudwatchlogs = require './cloudwatchlogs'
 https = require 'https'
 passport = require 'passport'
 passport_slack = require 'passport-slack'
+session = require 'express-session'
 
 #Testing
 if require.main is module
