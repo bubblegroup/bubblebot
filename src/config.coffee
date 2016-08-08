@@ -178,6 +178,10 @@ DEFAULTS =
 
     run_file: 'run.js'
 
+    bubblebot_domain: ''
+
+    bubblebot_use_https: false
+
 
 
 

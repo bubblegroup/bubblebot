@@ -61,6 +61,21 @@ bbserver.Server = class Server
             try
                 @db = @_build_bbdb()
 
+                if config.get('bubblebot_use_https')
+                    cert = config.get_secure 'ssl_cert'
+                    key = config.get_secure 'ssl_key'
+                    if not cert
+                        setTimeout ->
+                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a cert.  Use the set_secure command with key "ssl_cert" to set a cert'
+                        , 20000
+                    else if not key
+                        setTimeout ->
+                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a key.  Use the set_secure command with key "ssl_key" to set a key'
+                        , 20000
+
+                    else
+                        @using_ssl = true
+
                 server_app = express()
 
                 #Stop handling new requests once shutdown begins
@@ -87,7 +102,11 @@ bbserver.Server = class Server
 
                 server_app.use '/custom', @get_custom_router()
 
-                server_app.listen 8080
+                if @using_ssl
+                    options = {key, cert}
+                    https.createServer(options, app).listen(8083)
+                else
+                    server_app.listen 8080
 
                 server2 = http.createServer (req, res) =>
                     if @close_everything
@@ -239,10 +258,15 @@ bbserver.Server = class Server
 
     #Returns the url bubblebot server is accessible at
     get_server_url: ->
+        protocol = if @using_ssl then 'https' else 'http'
+
+        if config.get('bubblebot_domain')
+            return protocol + '://' + config.get('bubblebot_domain')
+
         eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
         if eip.get_instance()?.id isnt bbobjects.get_bbserver().id
             eip.switch bbobjects.get_bbserver()
-        return 'http://' + eip.endpoint()
+        return protocol + '://' + eip.endpoint()
 
     #Gets the master server log stream
     get_server_log_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')

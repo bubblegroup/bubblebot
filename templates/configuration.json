@@ -42,6 +42,11 @@
     //OVERRIDABLE DEFAULTS
     //
 
+    //If true, uses this domain bubblebot links instead of the ip address
+    //"bubblebot_domain": "my_domain.com"
+
+    //Turns on or off https
+    "bubblebot_use_https": false,
 
     //Override the repo that contains the bubblebot code
     //If not set, checks the current working directory

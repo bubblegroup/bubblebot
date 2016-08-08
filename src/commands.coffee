@@ -142,6 +142,9 @@ commands.set_config = (name, value) ->
         config.set 'command_line', true
         config.init_account_specific()
 
+        if value.indexOf('file:') is 0
+            value = fs.readFileSync value[0...6], 'utf8'
+
         config.set_secure name, value
         u.log 'config set successfully'
         process.exit()
@@ -154,7 +157,7 @@ commands.print_help = ->
     u.log '  publish -- deploys bubblebot to a remote repository'
     u.log '  update  -- updates the bubblebot code (npm update bubblebot)'
     u.log '  dev -- builds bubblebot assuming a development symlink'
-    u.log '  set_config [name] [value] -- stores a secure config option in s3'
+    u.log '  set_config [name] [value] -- stores a secure config option in s3.  Pass file:/path/to/file for value to read in a file.'
     process.exit()
 
 
