@@ -82,6 +82,7 @@ bbserver.Server = class Server
                 passport.use new passport_slack.Strategy {
                     clientID: config.get('slack_client_id')
                     clientSecret: config.get('slack_client_secret')
+                    scope: 'users:read'
                 }, (accessToken, refreshToken, profile, done) ->
                     user = bbobjects.instance 'User', profile.id
                     done null, user
