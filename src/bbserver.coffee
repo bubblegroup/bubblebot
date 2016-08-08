@@ -105,7 +105,7 @@ bbserver.Server = class Server
 
                 if @using_ssl
                     options = {key, cert, ca}
-                    https.createServer(options, server_app).listen(8083)
+                    https.createServer(options, server_app).listen(8043)
                 else
                     server_app.listen 8080
 
