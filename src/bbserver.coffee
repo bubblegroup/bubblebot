@@ -50,7 +50,11 @@ bbserver.Server = class Server
         u.SyncRun 'http_request', =>
             try
                 @build_context('http request ' + req.url)
-                u.context().user_id = req.user?.id
+                context = u.context()
+                context.user_id = req.user?.id
+                context.current_user = ->
+                    if context.user_id
+                        bbobjects.instance 'User', context.user_id
                 fn req, res
             catch err
                 u.report 'Error handling http request:\n' + err.stack
