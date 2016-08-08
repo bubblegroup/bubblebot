@@ -79,10 +79,9 @@ bbserver.Server = class Server
 
                 server_app = express()
 
-                server_app.configure ->
-                    server_app.use session { secret: config.get('slack_client_secret') + 'asdf23asd', secure: true }
-                    server_app.use passport.initialize()
-                    server_app.use passport.session()
+                server_app.use session { secret: config.get('slack_client_secret') + 'asdf23asd', secure: true }
+                server_app.use passport.initialize()
+                server_app.use passport.session()
 
                 passport.use new passport_slack.Strategy {
                     clientID: config.get('slack_client_id')
