@@ -16,6 +16,118 @@ friendly_task_name = (task_data) ->
         return schedule_name
 
 
+_web_sessions = {}
+_web_session_id_counter = 0
+
+#Creates and returns a new interactive web session
+#
+#Sessions have a .id parameter that can be used to retrieve them from get_web_session.
+#
+#They emit 'input' events when the user types something, and 'timeout' events if the user
+#seems to have disconnected
+create_web_session = (name) ->
+    id = _web_session_id_counter++
+    _web_sessions[id] = new WebSession id, u.current_user().id, name
+    return _web_sessions[id]
+
+#Retrieves a web session, or null if it cannot be found
+get_web_session = (id) -> _web_sessions[id]
+
+#Creates an interactive web session for talking to some bubblebot component
+class WebSession extends events.EventEmitter
+    constructor: (@id, @user_id, @name) ->
+        @open_res = null
+
+        @queue = []
+
+        @restart_timeout()
+
+
+    #Schedule a timeout to make sure the client is still connected
+    restart_timeout: ->
+        if @my_timeout
+            clearTimeout @my_timeout
+
+        @my_timeout = setTimeout =>
+            #if there's currently a request open, close it and restart the timeout
+            if @open_res
+                @_send ''
+                @restart_timeout()
+            else
+                #if we haven't heard from the client in ten minutes, consider it a timeout
+                @emit 'timeout'
+                @close 'Client timed out -- looks like they closed the window'
+
+        , 10 * 60 * 1000
+
+    #Tell the session that the user typed something
+    user_input: (message) -> @emit 'input', message
+
+    #Close the web session, with an optional message
+    close: (message) ->
+        if @_closed
+            return
+        @write '\n\n' + (message ? 'Session closed')
+        @_closed = true
+
+        #Wait 30 seconds, then delete the reference to it
+        setTimeout =>
+            delete _web_sessions[@id]
+        , 30000
+
+    #Replies to a client's open, waiting request
+    _send: (message) ->
+        res = @open_res
+        @open_res = null
+
+        res.statusCode = 200
+        res.end message
+
+    #Write data back to the user
+    write: (message) ->
+        if @_closed
+            return
+
+        #if we have a request waiting, send it immediately
+        if @open_res
+            @_send message
+            return
+
+        #Otherwise, queue it
+        @queue.push message
+
+    get_latest: (req, res) ->
+        if req.user?.id isnt @user_id
+            res.statusCode = 401
+            res.end 'Not authorized'
+            return
+
+        #Client is still alive
+        @restart_timeout()
+
+        #If we have stuff, send it immediately
+        if @queue.length > 0
+            to_send = @queue
+            @queue = []
+
+            res.statusCode = 200
+            res.end to_send.join ''
+            return
+
+        #otherwise, hold onto this res until we have more data to write
+        if not @_closed
+            @open_res = res
+
+    #Returns the html for interacting with this session
+    build_html: -> """
+    <html>
+    <head><title>Bubblebot: #{@name}</title></head>
+    <body>
+    <h2>#{@name}</h2>
+    </body>
+    </html>
+    """
+
 
 bbserver.Server = class Server
     constructor: ->
@@ -83,7 +195,8 @@ bbserver.Server = class Server
                         @using_ssl = true
 
                 server_app = express()
-
+                server_app.use body_parser.json()
+                server_app.use body_parser.urlencoded {extended: true}
                 server_app.use session { secret: config.get('slack_client_secret') + 'asdf23asd', secure: true }
                 server_app.use passport.initialize()
                 server_app.use passport.session()
@@ -159,6 +272,40 @@ bbserver.Server = class Server
                 server_app.get '/', authenticate(), @syncware (req, res) =>
                     res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
                     res.end()
+
+                server_app.get '/session/:id', authenticate(), @syncware (req, res) =>
+                    session = get_web_session req.params.id
+                    if not session
+                        res.statusCode = 400
+                        res.end 'Sorry, we were unable to find session ' + req.params.id
+                    else if session.user_id isnt u.current_user().id
+                        res.statusCode = 401
+                        res.end 'Sorry, this session was created by user ' + user_id + ' but you are logged in as ' + u.current_user().id
+                    else
+                        res.statusCode = 200
+                        res.end session.build_html()
+
+                server_app.get '/session/:id/get_latest', authenticate(), @syncware (req, res) =>
+                    session = get_web_session req.params.id
+                    if not session
+                        res.statusCode = 400
+                        res.end 'Sorry, we were unable to find session ' + req.params.id
+                    else
+                        session.get_latest req, res
+
+                server_app.post '/session/:id/write', authenticate(), @syncware (req, res) =>
+                    message = req.body?.message ? ''
+                    session = get_web_session req.params.id
+                    if not session
+                        res.statusCode = 400
+                        res.end 'Sorry, we were unable to find session ' + req.params.id
+                    else if session.user_id isnt u.current_user().id
+                        res.statusCode = 401
+                        res.end 'Sorry, this session was created by user ' + user_id + ' but you are logged in as ' + u.current_user().id
+                    else
+                        session.write message
+                        res.statusCode = 200
+                        res.end 'Success'
 
                 server_app.use '/custom', @get_custom_router()
 
@@ -1436,6 +1583,7 @@ class Console extends Command
 
     groups: constants.ADMIN
 
+
 #The initial command structure for the bot
 class RootCommand extends CommandTree
     constructor: (@server) ->
@@ -1575,6 +1723,8 @@ https = require 'https'
 passport = require 'passport'
 passport_slack = require 'passport-slack'
 session = require 'express-session'
+events = require 'events'
+body_parser = require 'body-parser'
 
 #Testing
 if require.main is module
