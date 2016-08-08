@@ -64,9 +64,10 @@ bbserver.Server = class Server
                 if config.get('bubblebot_use_https')
                     cert = config.get_secure 'ssl_cert'
                     key = config.get_secure 'ssl_key'
+                    ca = config.get_secure 'ssl_intermediate'
                     if not cert
                         setTimeout ->
-                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a cert.  Use the set_secure command with key "ssl_cert" to set a cert'
+                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a cert.  Use the set_secure command with key "ssl_cert" to set a cert, and "ssl_intermediate" to set an intermediate.'
                         , 20000
                     else if not key
                         setTimeout ->
@@ -103,7 +104,7 @@ bbserver.Server = class Server
                 server_app.use '/custom', @get_custom_router()
 
                 if @using_ssl
-                    options = {key, cert}
+                    options = {key, cert, ca}
                     https.createServer(options, app).listen(8083)
                 else
                     server_app.listen 8080
