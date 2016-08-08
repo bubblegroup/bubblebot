@@ -79,12 +79,33 @@ bbserver.Server = class Server
 
                 server_app = express()
 
+                passport.use new passport_slack.Strategy {
+                    clientID: config.get('slack_client_id')
+                    clientSecret: config.get('slack_client_secret')
+                }, (accessToken, refreshToken, profile, done) ->
+                    user = bbobjects.instance 'User', profile.id
+                    done null, user
+
                 #Stop handling new requests once shutdown begins
                 server_app.use (req, res, next) =>
                     if @close_everything
                         res.end 'shutting down'
                     else
                         next()
+
+                server_app.get '/auth/slack', passport.authenticate('slack')
+
+                opts = {
+                    failureRedirect: '/failed'
+                    successRedirect: '/succeeded'
+                }
+                server_app.get '/auth/slack/callback', pasport.authenticate('slack', options)
+                server_app.get '/auth/slack/test', passport.authenticate('slack'), @syncware (req, res) =>
+                    try
+                        message = 'User: ' + String(req.user)
+                    catch err
+                        message = err.stack
+                    res.end message
 
                 server_app.get '/logs/:env_id/:groupname/:name', @syncware (req, res) =>
                     {env_id, groupname, name} = req.params
@@ -1513,6 +1534,8 @@ config = require './config'
 express = require 'express'
 cloudwatchlogs = require './cloudwatchlogs'
 https = require 'https'
+passport = require 'passport'
+passport_slack = require 'passport-slack'
 
 #Testing
 if require.main is module
