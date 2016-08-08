@@ -261,12 +261,13 @@ bbserver.Server = class Server
     get_server_url: ->
         protocol = if @using_ssl then 'https' else 'http'
 
-        if config.get('bubblebot_domain')
-            return protocol + '://' + config.get('bubblebot_domain')
-
         eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
         if eip.get_instance()?.id isnt bbobjects.get_bbserver().id
             eip.switch bbobjects.get_bbserver()
+
+        if config.get('bubblebot_domain')
+            return protocol + '://' + config.get('bubblebot_domain')
+
         return protocol + '://' + eip.endpoint()
 
     #Gets the master server log stream
