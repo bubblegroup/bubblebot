@@ -143,7 +143,7 @@ commands.set_config = (name, value) ->
         config.init_account_specific()
 
         if value.indexOf('file:') is 0
-            value = fs.readFileSync value[0...6], 'utf8'
+            value = fs.readFileSync value[5...], 'utf8'
 
         config.set_secure name, value
         u.log 'config set successfully'

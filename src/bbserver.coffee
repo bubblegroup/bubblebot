@@ -67,11 +67,11 @@ bbserver.Server = class Server
                     ca = config.get_secure 'ssl_intermediate', true
                     if not cert
                         setTimeout ->
-                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a cert.  Use the set_secure command with key "ssl_cert" to set a cert, and "ssl_intermediate" to set an intermediate.'
+                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a cert.  Use the set_config command with key "ssl_cert" to set a cert, and "ssl_intermediate" to set an intermediate.'
                         , 20000
                     else if not key
                         setTimeout ->
-                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a key.  Use the set_secure command with key "ssl_key" to set a key'
+                            u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a key.  Use the set_config command with key "ssl_key" to set a key'
                         , 20000
 
                     else
