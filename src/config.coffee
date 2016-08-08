@@ -76,10 +76,12 @@ _secure_cache = {}
 #
 #This is not used in the bubblebot codebase, but can be useful for specific
 #instances of bubblebot to save credentials
-config.get_secure = (name) ->
+config.get_secure = (name, missing_okay) ->
     if not _secure_cache[name]?
         res = bbobjects.get_s3_config 'bubblebot_config_get_secure_' + name
         if not res?
+            if missing_okay
+                return null
             throw new Error 'missing secure config ' + name + ': use bubblebot set_config [name] [value]'
         _secure_cache[name] = res
     return _secure_cache[name]
