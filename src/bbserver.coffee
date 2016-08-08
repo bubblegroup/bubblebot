@@ -70,6 +70,8 @@ class WebSession extends events.EventEmitter
         @write '\n\n' + (message ? 'Session closed')
         @_closed = true
 
+        clearTimeout @my_timeout
+
         #Wait 30 seconds, then delete the reference to it
         setTimeout =>
             delete _web_sessions[@id]
@@ -1565,9 +1567,54 @@ class Sudo extends Command
 
 
 class Console extends Command
-    help: 'Opens up an interactive console.'
+    constructor: (@server) ->
+
+    help: 'Opens up an interactive javascript console for running code on Bubblebot'
+
+    groups: constants.ADMIN
 
     run: ->
+        session = create_web_session 'Bubblebot Javascript Console'
+
+        next_block = u.Block 'next_input'
+
+        session.on 'input', (message) -> next_block.success message
+
+        session.on 'timeout', -> next_block.success 'TIMED_OUT'
+
+        u.reply @server.get_server_url() + '/session/' + session.id
+
+        #Eval function
+        u.SyncRun =>
+            @server.build_context 'interactive_admin_js_console'
+
+            while (input = next_block.wait()) not in ['exit', 'cancel', 'TIMED_OUT']
+                next_block = u.Block 'next_input'
+                u.log 'Input: ' + input
+
+                try
+                    result = eval(input)
+                    result = util.inspect(result)
+                catch err
+                    result = err.stack
+
+                session.write result
+
+
+            message = 'Interactive session finished.  Last input was: ' + input
+            u.log message
+            session.close message
+
+
+
+#
+#Sessions have a .id parameter that can be used to retrieve them from get_web_session.
+#
+#They emit 'input' events when the user types something, and 'timeout' events if the user
+#seems to have disconnected
+create_web_session = (name) -
+
+
         result = 'Console started, say "cancel" or "abort" to exit'
         while true
             input = u.ask result
@@ -1581,7 +1628,7 @@ class Console extends Command
             catch err
                 result = err.stack
 
-    groups: constants.ADMIN
+
 
 
 #The initial command structure for the bot
