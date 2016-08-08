@@ -50,6 +50,7 @@ bbserver.Server = class Server
         u.SyncRun 'http_request', =>
             try
                 @build_context('http request ' + req.url)
+                u.context().user_id = req.user?.id
                 fn req, res
             catch err
                 u.report 'Error handling http request:\n' + err.stack
@@ -105,21 +106,42 @@ bbserver.Server = class Server
                     else
                         next()
 
+
+                #Ensures that the user is logged in and has the given permissions
+                authenticate = (group = constants.BASIC) => (req, res, next) =>
+                    if not req.user
+                        res.statusCode = 302
+                        res.setHeader 'Location', '/auth/slack'
+                        res.end()
+                        return
+
+                    u.SyncRun 'http_request', =>
+                        try
+                            @build_context('http request ' + req.url)
+                            if req.user.is_in_group group
+                                next()
+                            else
+                                res.statusCode = 401
+                                res.end 'Sorry, you do not have permission to view this page'
+                        catch err
+                            u.report 'Error in authenticate:\n' + err.stack
+                            next err
+
                 server_app.get '/auth/slack', passport.authenticate('slack')
 
-                opts = {
-                    failureRedirect: '/failed'
-                    successRedirect: '/succeeded'
+                server_app.get '/auth/slack/callback', passport.authenticate 'slack', {
+                    failureRedirect: '/auth/slack/failed'
+                    successRedirect: '/'
                 }
-                server_app.get '/auth/slack/callback', passport.authenticate('slack', opts)
-                server_app.get '/auth/slack/test', @syncware (req, res) =>
-                    try
-                        message = 'User: ' + String(req.user)
-                    catch err
-                        message = err.stack
+
+                server_app.get '/auth/slack/failed', @syncware (req, res) =>
+                    res.end 'Sorry, we were unable to log you in with Slack'
+
+                server_app.get '/me', authenticate(), @syncware (req, res) =>
+                    message = 'You are logged in as: ' + String(u.current_user())
                     res.end message
 
-                server_app.get '/logs/:env_id/:groupname/:name', @syncware (req, res) =>
+                server_app.get '/logs/:env_id/:groupname/:name', authenticate(), @syncware (req, res) =>
                     {env_id, groupname, name} = req.params
                     logstream = bbobjects.instance('Environment', env_id).get_log_stream(groupname, name)
                     logstream.tail req, res
@@ -130,7 +152,7 @@ bbserver.Server = class Server
                     res.write 'Okay!'
                     res.end()
 
-                server_app.get '/', @syncware (req, res) =>
+                server_app.get '/', authenticate(), @syncware (req, res) =>
                     res.write '<html><head><title>Bubblebot</title></head><body><p>Welcome to Bubblebot!  <a href="' + @get_server_log_stream().get_tail_url() + '">Master server logs</a></p></body></html>'
                     res.end()
 
