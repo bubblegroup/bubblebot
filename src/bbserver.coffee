@@ -97,7 +97,7 @@ bbserver.Server = class Server
                     done null, user.id
 
                 passport.deserializeUser (id, done) ->
-                    done null, bbobjects.instance 'User', profile.id
+                    done null, bbobjects.instance 'User', id
 
                 #Stop handling new requests once shutdown begins
                 server_app.use (req, res, next) =>
