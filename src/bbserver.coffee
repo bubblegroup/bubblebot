@@ -105,7 +105,7 @@ bbserver.Server = class Server
 
                 if @using_ssl
                     options = {key, cert, ca}
-                    https.createServer(options, app).listen(8083)
+                    https.createServer(options, server_app).listen(8083)
                 else
                     server_app.listen 8080
 
@@ -1511,6 +1511,7 @@ util = require 'util'
 config = require './config'
 express = require 'express'
 cloudwatchlogs = require './cloudwatchlogs'
+https = require 'https'
 
 #Testing
 if require.main is module
