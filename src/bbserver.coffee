@@ -123,9 +123,16 @@ class WebSession extends events.EventEmitter
     #Returns the html for interacting with this session
     build_html: -> """
     <html>
-    <head><title>Bubblebot: #{@name}</title></head>
+    <head>
+    <title>Bubblebot: #{@name}</title>
+    <link rel="stylesheet" type="text/css" href="/static/websession.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="/static/websession.js"></script>
+    </head>
     <body>
     <h2>#{@name}</h2>
+    <p><textarea id="output" readonly=true></textarea></p>
+    <p><input id="input" type="text"></input></p>
     </body>
     </html>
     """
