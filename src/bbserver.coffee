@@ -1598,7 +1598,13 @@ class Console extends Command
         u.SyncRun 'interactive_admin_js_console', =>
             @server.build_context 'interactive_admin_js_console'
 
-            while (input = next_block.wait()) not in ['exit', 'cancel', 'TIMED_OUT']
+            get_next = ->
+                try
+                    return next_block.wait(2 * 60 * 60 * 1000)
+                catch err
+                    return 'TIMED_OUT'
+
+            while (input = get_next()) not in ['exit', 'cancel', 'TIMED_OUT']
                 next_block = u.Block 'next_input'
                 u.log 'Input: ' + input
 
