@@ -28,9 +28,16 @@ $(document).ready ->
 
     #Writes the given message to our output log
     write_to_output = (message) ->
+        at_bottom = output[0].scrollHeight - output.scrollTop() >= output.height()
+
         content = output.val()
         content += message
         output.val content
+
+        if at_bottom
+            output.scrollTop output[0].scrollHeight - output.height()
+
+
 
     #Watch the server for new output
     timeout = 1

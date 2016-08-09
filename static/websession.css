@@ -1,1 +1,10 @@
- 
+h2, p {
+    text-align: center;
+}
+#input {
+    width: 90%;
+}
+#output {
+    height: 80%;
+    width: 90%;
+}
