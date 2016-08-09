@@ -29,7 +29,7 @@ $(document).ready ->
     #Writes the given message to our output log
     write_to_output = (message) ->
         content = output.val()
-        countent += message
+        content += message
         content.val content
 
     #Watch the server for new output
