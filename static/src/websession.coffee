@@ -28,7 +28,7 @@ $(document).ready ->
 
     #Writes the given message to our output log
     write_to_output = (message) ->
-        at_bottom = output[0].scrollHeight - output.scrollTop() >= output.height()
+        at_bottom = output[0].scrollHeight - output.scrollTop() <= output.height() + 10 #the plus 10 is buffer for if it is almost at bottom
 
         content = output.val()
         content += message
