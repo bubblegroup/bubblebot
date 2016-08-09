@@ -59,7 +59,7 @@ class WebSession extends events.EventEmitter
                 @emit 'timeout'
                 @close 'Client timed out -- looks like they closed the window'
 
-        , 10 * 60 * 1000
+        , 5 * 60 * 1000
 
     #Tell the session that the user typed something
     user_input: (message) -> @emit 'input', message
@@ -259,9 +259,9 @@ bbserver.Server = class Server
 
                 server_app.get '/auth/slack', passport.authenticate('slack')
 
-                server_app.get '/auth/slack/callback', passport.authenticate 'slack', {
+                server_app.get '/auth/slack/callback', passport.authenticate('slack', {
                     failureRedirect: '/auth/slack/failed'
-                }, (req, res, next) ->
+                }), (req, res) ->
                     res.redirect req.session.redirect_to ? '/'
 
                 server_app.get '/auth/slack/failed', @syncware (req, res) =>
