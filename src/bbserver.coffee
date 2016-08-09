@@ -239,6 +239,7 @@ bbserver.Server = class Server
                 #Ensures that the user is logged in and has the given permissions
                 authenticate = (group = constants.BASIC) => (req, res, next) =>
                     if not req.user
+                        req.session.redirect_to = req.path
                         res.statusCode = 302
                         res.setHeader 'Location', '/auth/slack'
                         res.end()
@@ -260,8 +261,8 @@ bbserver.Server = class Server
 
                 server_app.get '/auth/slack/callback', passport.authenticate 'slack', {
                     failureRedirect: '/auth/slack/failed'
-                    successRedirect: '/'
-                }
+                }, (req, res, next) ->
+                    res.redirect req.session.redirect_to ? '/'
 
                 server_app.get '/auth/slack/failed', @syncware (req, res) =>
                     res.end 'Sorry, we were unable to log you in with Slack'
