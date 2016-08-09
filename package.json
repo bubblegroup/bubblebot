@@ -4,7 +4,7 @@
   "description": "A slackbot the manages cloud-hosted infrastructure",
   "main": "lib/index.js",
   "scripts": {
-    "prepublish": "coffee -o lib -c src && node node_modules/eslint/bin/eslint.js lib",
+    "prepublish": "coffee -o lib -c src && coffee -o static/lib static/src && node node_modules/eslint/bin/eslint.js lib",
     "test": "node node_modules/eslint/bin/eslint.js lib && node lib/bbserver"
   },
   "bin": {

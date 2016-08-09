@@ -296,7 +296,7 @@ bbserver.Server = class Server
                         res.statusCode = 200
                         res.end session.build_html()
 
-                server_app.get '/session/:id/get_latest', authenticate(), @syncware (req, res) =>
+                server_app.post '/session/:id/get_latest', authenticate(), @syncware (req, res) =>
                     session = get_web_session req.params.id
                     if not session
                         res.statusCode = 400
