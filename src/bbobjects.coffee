@@ -2562,7 +2562,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     console_cmd:
         help: "Opens up a console for interacting with the server directly"
         groups: ->
-            if @environment().is_production() or @owner()?.id isnt u.current_user().id
+            if @environment().is_production()
                 return constants.ADMIN
             else
                 return constants.BASIC
