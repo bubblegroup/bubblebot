@@ -41,28 +41,31 @@ class WebSession extends events.EventEmitter
 
         @queue = []
 
-        @restart_timeout()
+        #We give 5 minutes to open the session initially
+        @start_timeout(5 * 60 * 1000)
 
 
     #Schedule a timeout to make sure the client is still connected
-    restart_timeout: ->
+    start_timeout: (timeout = 60000) ->
         if @my_timeout
             clearTimeout @my_timeout
 
         @my_timeout = setTimeout =>
-            #if there's currently a request open, close it and restart the timeout
+            #if there's currently a request open, restart the timeout
             if @open_res
-                @_send ''
-                @restart_timeout()
-            else
-                #if we haven't heard from the client in ten minutes, consider it a timeout
-                @emit 'timeout'
-                @close 'Client timed out -- looks like they closed the window'
+                @start_timeout()
+                return
 
-        , 5 * 60 * 1000
+            #Otherwise, emit a timeout event.  It's up to the session creator to close it
+            @emit 'timeout'
+
+        , timeout
 
     #Tell the session that the user typed something
-    user_input: (message) -> @emit 'input', message
+    user_input: (message) ->
+        @emit 'input', message
+        #restart the timeout
+        @start_timeout()
 
     #Close the web session, with an optional message
     close: (message) ->
@@ -106,7 +109,7 @@ class WebSession extends events.EventEmitter
             return
 
         #Client is still alive
-        @restart_timeout()
+        @start_timeout()
 
         #If we have stuff, send it immediately
         if @queue.length > 0
@@ -120,6 +123,13 @@ class WebSession extends events.EventEmitter
         #otherwise, hold onto this res until we have more data to write
         if not @_closed
             @open_res = res
+
+            res.on 'close', =>
+                #if it closes before we write to it, forget it, and restart our timeout
+                if @open_res is res
+                    @open_res = null
+                    @start_timeout()
+
 
     #Returns the html for interacting with this session
     build_html: -> """
