@@ -11,8 +11,6 @@ $(document).ready ->
             message = input.val()
             input.val ''
 
-            write_to_output '\n>> ' + message
-
             $.ajax {
                 method: 'post'
                 url: "/session/#{session_id}/write"

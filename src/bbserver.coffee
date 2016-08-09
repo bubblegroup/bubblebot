@@ -1631,6 +1631,7 @@ class Console extends Command
 
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             u.log 'Input: ' + input
+            session.write '\n> ' + input
 
             try
                 result = eval(input)
