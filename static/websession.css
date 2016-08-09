@@ -3,8 +3,10 @@ h2, p {
 }
 #input {
     width: 90%;
+    height: 26px;
 }
 #output {
-    height: 80%;
+    height: 60%;
     width: 90%;
+    resize: none;
 }

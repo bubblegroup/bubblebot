@@ -139,6 +139,7 @@ class WebSession extends events.EventEmitter
     <link rel="stylesheet" type="text/css" href="/static/websession.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script src="/static/lib/websession.js"></script>
+    <link rel="icon" type="image/png" href="https://d1muf25xaso8hp.cloudfront.net/http://s3.amazonaws.com/appforest_uf/f1412116867925x202730323653668160/apple_touch_icon_precomposed.png?w=124.80000000000001&h=&fit=max" />
     </head>
     <body>
     <h2>#{@name}</h2>
