@@ -291,7 +291,7 @@ bbserver.Server = class Server
                         res.end 'Sorry, we were unable to find session ' + req.params.id
                     else if session.user_id isnt u.current_user().id
                         res.statusCode = 401
-                        res.end 'Sorry, this session was created by user ' + user_id + ' but you are logged in as ' + u.current_user().id
+                        res.end 'Sorry, this session was created by user ' + session.user_id + ' but you are logged in as ' + u.current_user().id
                     else
                         res.statusCode = 200
                         res.end session.build_html()
@@ -312,7 +312,7 @@ bbserver.Server = class Server
                         res.end 'Sorry, we were unable to find session ' + req.params.id
                     else if session.user_id isnt u.current_user().id
                         res.statusCode = 401
-                        res.end 'Sorry, this session was created by user ' + user_id + ' but you are logged in as ' + u.current_user().id
+                        res.end 'Sorry, this session was created by user ' + session.user_id + ' but you are logged in as ' + u.current_user().id
                     else
                         session.write message
                         res.statusCode = 200
