@@ -2534,11 +2534,13 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         u.context().create_sub_logger true
         session = bbserver.create_web_session 'SSH to ' + String(this)
 
-        #Logs the server's output back to the user
-        output_logger = (message) -> session.write message
-        output_logger.is_console = true
-
         u.reply u.context().server.get_server_url() + '/session/' + session.id
+
+        #Create an interactive stream connecting us to the server...
+        server_stream = ssh.shell @get_address(), @environment().get_private_key()
+        server_stream.on 'data', (data) -> session.write data
+        server_stream.stderr.on 'data', (data) -> session.write data
+        server_stream.on 'close', -> session.write '\n\nConnection to server closed'
 
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             next_block = u.Block 'next_input'
@@ -2550,9 +2552,12 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
                     can_fail: true
                     timeout: 2 * 60 * 60 * 1000
                 }
-                ssh.run @get_address(), @environment().get_private_key(), input, options
+                server_stream.write input + '\n'
             catch err
-                output_logger '\n' + err.stack
+                session.write '\n' + err.stack
+
+        #Close our connection with the server
+        server_stream.end()
 
         message = 'Interactive session finished.  Last input was: ' + input
         u.log message

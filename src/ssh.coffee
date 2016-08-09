@@ -36,6 +36,16 @@ class LogFlusher
             clearTimeout @flush_scheduled
             @flush_scheduled = null
 
+
+#Returns a stream object that represents an interactive session
+#supports .on 'data', .stderr.on 'data', .on 'close', .write, and .end
+ssh.shell = (host, private_key) ->
+    conn = get_connection(host, private_key)
+    block = u.Block 'establishing shell'
+    conn.shell block.make_cb()
+    stream = block.wait()
+    return stream
+
 ssh.run = (host, private_key, cmd, options) ->
     {can_fail, timeout, no_log, logger} = options ? {}
 
