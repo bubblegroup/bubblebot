@@ -1,6 +1,7 @@
 bbserver = exports
 
 constants = require './constants'
+events = require 'events'
 
 #Schedule name for one-time tasks
 ONCE = 'once'
@@ -1779,7 +1780,6 @@ https = require 'https'
 passport = require 'passport'
 passport_slack = require 'passport-slack'
 session = require 'express-session'
-events = require 'events'
 body_parser = require 'body-parser'
 
 #Testing
