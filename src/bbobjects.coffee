@@ -2538,7 +2538,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         output_logger = (message) -> session.write message
         output_logger.is_console = true
 
-        u.reply @server.get_server_url() + '/session/' + session.id
+        u.reply u.context().server.get_server_url() + '/session/' + session.id
 
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             next_block = u.Block 'next_input'
