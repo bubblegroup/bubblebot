@@ -1625,7 +1625,7 @@ class Console extends Command
                 catch err
                     result = err.stack
 
-                session.write result
+                session.write '\n' + result
 
 
             message = 'Interactive session finished.  Last input was: ' + input
