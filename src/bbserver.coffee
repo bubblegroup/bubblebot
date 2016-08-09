@@ -25,7 +25,7 @@ _web_session_id_counter = 0
 #
 #They emit 'input' events when the user types something, and 'timeout' events if the user
 #seems to have disconnected
-create_web_session = (name) ->
+bbserver.create_web_session = (name) ->
     id = _web_session_id_counter++
     _web_sessions[id] = new WebSession id, u.current_user().id, name
     return _web_sessions[id]
@@ -1625,7 +1625,7 @@ class Console extends Command
 
     run: ->
         u.context().create_sub_logger true
-        session = create_web_session 'Bubblebot Javascript Console'
+        session = bbserver.create_web_session 'Bubblebot Javascript Console'
 
         u.reply @server.get_server_url() + '/session/' + session.id
 

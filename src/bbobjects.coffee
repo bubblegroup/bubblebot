@@ -2532,7 +2532,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
     #Opens up a console for interacting with the server
     console: ->
         u.context().create_sub_logger true
-        session = create_web_session 'SSH to ' + String(this)
+        session = bbserver.create_web_session 'SSH to ' + String(this)
 
         #Logs the server's output back to the user
         output_logger = (message) -> session.write message
@@ -2550,7 +2550,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
                     can_fail: true
                     timeout: 2 * 60 * 60 * 1000
                 }
-                ssh.run @get_address(), @environment().get_private_key(), command, options
+                ssh.run @get_address(), @environment().get_private_key(), input, options
             catch err
                 output_logger '\n' + err.stack
 
