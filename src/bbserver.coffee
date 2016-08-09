@@ -715,10 +715,11 @@ bbserver.Server = class Server
                 return
 
             #If the command is lengthy, it can create a sublogger...
-            context.create_sub_logger = =>
+            context.create_sub_logger = (silent) =>
                 sub_logger = @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
                 link = sub_logger.get_tail_url()
-                u.reply 'Logging transcript for ' + msg + ': ' + link
+                if not silent
+                    u.reply 'Logging transcript for ' + msg + ': ' + link
 
             u.log current_user.name() + ': ' + msg
 
@@ -1595,6 +1596,7 @@ class Console extends Command
     groups: constants.ADMIN
 
     run: ->
+        u.context().create_sub_logger true
         session = create_web_session 'Bubblebot Javascript Console'
 
         next_block = u.Block 'next_input'
@@ -1605,32 +1607,27 @@ class Console extends Command
 
         u.reply @server.get_server_url() + '/session/' + session.id
 
-        #Eval function
-        u.SyncRun 'interactive_admin_js_console', =>
-            @server.build_context 'interactive_admin_js_console'
+        get_next = ->
+            try
+                return next_block.wait(2 * 60 * 60 * 1000)
+            catch err
+                return 'TIMED_OUT'
 
-            get_next = ->
-                try
-                    return next_block.wait(2 * 60 * 60 * 1000)
-                catch err
-                    return 'TIMED_OUT'
+        while (input = get_next()) not in ['exit', 'cancel', 'TIMED_OUT']
+            next_block = u.Block 'next_input'
+            u.log 'Input: ' + input
 
-            while (input = get_next()) not in ['exit', 'cancel', 'TIMED_OUT']
-                next_block = u.Block 'next_input'
-                u.log 'Input: ' + input
+            try
+                result = eval(input)
+                result = util.inspect(result)
+            catch err
+                result = err.stack
 
-                try
-                    result = eval(input)
-                    result = util.inspect(result)
-                catch err
-                    result = err.stack
+            session.write '\n' + result
 
-                session.write '\n' + result
-
-
-            message = 'Interactive session finished.  Last input was: ' + input
-            u.log message
-            session.close message
+        message = 'Interactive session finished.  Last input was: ' + input
+        u.log message
+        session.close message
 
 
 #The initial command structure for the bot

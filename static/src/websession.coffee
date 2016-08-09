@@ -62,3 +62,5 @@ $(document).ready ->
         }
 
     long_poll()
+
+    input.focus()
