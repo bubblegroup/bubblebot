@@ -127,7 +127,7 @@ class WebSession extends events.EventEmitter
     <title>Bubblebot: #{@name}</title>
     <link rel="stylesheet" type="text/css" href="/static/websession.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
-    <script src="/static/websession.js"></script>
+    <script src="/static/lib/websession.js"></script>
     </head>
     <body>
     <h2>#{@name}</h2>
@@ -209,6 +209,8 @@ bbserver.Server = class Server
                 server_app.use session { secret: config.get('slack_client_secret') + 'asdf23asd', secure: true }
                 server_app.use passport.initialize()
                 server_app.use passport.session()
+
+                server_app.use '/static', express.static 'node_modules/bubblebot/static'
 
                 passport.use new passport_slack.Strategy {
                     clientID: config.get('slack_client_id')
