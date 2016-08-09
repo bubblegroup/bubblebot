@@ -2543,15 +2543,8 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         server_stream.on 'close', -> session.write '\n\nConnection to server closed'
 
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
-            next_block = u.Block 'next_input'
             u.log 'Input: ' + input
-
             try
-                options = {
-                    logger: output_logger
-                    can_fail: true
-                    timeout: 2 * 60 * 60 * 1000
-                }
                 server_stream.write input + '\n'
             catch err
                 session.write '\n' + err.stack
