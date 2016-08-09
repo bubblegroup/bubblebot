@@ -1616,31 +1616,6 @@ class Console extends Command
             session.close message
 
 
-
-#
-#Sessions have a .id parameter that can be used to retrieve them from get_web_session.
-#
-#They emit 'input' events when the user types something, and 'timeout' events if the user
-#seems to have disconnected
-create_web_session = (name) -
-
-
-        result = 'Console started, say "cancel" or "abort" to exit'
-        while true
-            input = u.ask result
-
-            #Replace annoying characters
-            input = input.replace(/“/g, '"').replace(/”/g, '"').replace(/‘/g, "'").replace(/’/g, "'")
-
-            try
-                result = eval(input)
-                result = util.inspect(result)
-            catch err
-                result = err.stack
-
-
-
-
 #The initial command structure for the bot
 class RootCommand extends CommandTree
     constructor: (@server) ->
