@@ -1,7 +1,6 @@
 bbserver = exports
 
 constants = require './constants'
-events = require 'events'
 
 #Schedule name for one-time tasks
 ONCE = 'once'
@@ -35,14 +34,33 @@ create_web_session = (name) ->
 get_web_session = (id) -> _web_sessions[id]
 
 #Creates an interactive web session for talking to some bubblebot component
-class WebSession extends events.EventEmitter
+class WebSession
+    CLOSED: 'CLOSED'
+
     constructor: (@id, @user_id, @name) ->
         @open_res = null
-
         @queue = []
+
+        @open_block = null
+        @input_queue = []
 
         #We give 5 minutes to open the session initially
         @start_timeout(5 * 60 * 1000)
+
+    #Gets the next user input.  Blocks if there isn't any.  Returns @CLOSED
+    #if it looks like the browser tab was closed
+    get_next_input: ->
+        #if we have a queued item, return it
+        if @input_queue.length > 0
+            return @input_queue.shift()
+
+        #Otherwise, create a block and wait for it
+        @open_block = u.Block 'waiting for input'
+        try
+            #after 2 hours with no input, we count it as closed
+            return @open_block.wait(2 * 60 * 60 * 1000)
+        catch err
+            return @CLOSED
 
 
     #Schedule a timeout to make sure the client is still connected
@@ -56,16 +74,25 @@ class WebSession extends events.EventEmitter
                 @start_timeout()
                 return
 
-            #Otherwise, emit a timeout event.  It's up to the session creator to close it
-            @emit 'timeout'
+            #Otherwise, indicate that the user closed it
+            @user_input @CLOSED
 
         , timeout
 
     #Tell the session that the user typed something
     user_input: (message) ->
-        @emit 'input', message
         #restart the timeout
         @start_timeout()
+
+        #If we are waiting on the user's next input, return it
+        if @open_block
+            @open_block.success message
+            @open_block = null
+
+        #otherwise, add it to the queue
+        else
+            @input_queue.push message
+
 
     #Close the web session, with an optional message
     close: (message) ->
@@ -1600,22 +1627,9 @@ class Console extends Command
         u.context().create_sub_logger true
         session = create_web_session 'Bubblebot Javascript Console'
 
-        next_block = u.Block 'next_input'
-
-        session.on 'input', (message) -> next_block.success message
-
-        session.on 'timeout', -> next_block.success 'TIMED_OUT'
-
         u.reply @server.get_server_url() + '/session/' + session.id
 
-        get_next = ->
-            try
-                return next_block.wait(2 * 60 * 60 * 1000)
-            catch err
-                return 'TIMED_OUT'
-
-        while (input = get_next()) not in ['exit', 'cancel', 'TIMED_OUT']
-            next_block = u.Block 'next_input'
+        while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             u.log 'Input: ' + input
 
             try

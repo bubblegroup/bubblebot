@@ -2529,6 +2529,44 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         groups: constants.ADMIN
         reply: true
 
+    #Opens up a console for interacting with the server
+    console: ->
+        u.context().create_sub_logger true
+        session = create_web_session 'SSH to ' + String(this)
+
+        #Logs the server's output back to the user
+        output_logger = (message) -> session.write message
+        output_logger.is_console = true
+
+        u.reply @server.get_server_url() + '/session/' + session.id
+
+        while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
+            next_block = u.Block 'next_input'
+            u.log 'Input: ' + input
+
+            try
+                options = {
+                    logger: output_logger
+                    can_fail: true
+                    timeout: 2 * 60 * 60 * 1000
+                }
+                ssh.run @get_address(), @environment().get_private_key(), command, options
+            catch err
+                output_logger '\n' + err.stack
+
+        message = 'Interactive session finished.  Last input was: ' + input
+        u.log message
+        session.close message
+
+
+    console_cmd:
+        help: "Opens up a console for interacting with the server directly"
+        groups: ->
+            if @environment().is_production() or @owner()?.id isnt u.current_user().id
+                return constants.ADMIN
+            else
+                return constants.BASIC
+
     upload_file: (path, remote_dir) ->
         ssh.upload_file @get_address(), @environment().get_private_key(), path, remote_dir
 

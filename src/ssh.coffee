@@ -37,12 +37,13 @@ class LogFlusher
             @flush_scheduled = null
 
 ssh.run = (host, private_key, cmd, options) ->
-    {can_fail, timeout, no_log} = options ? {}
+    {can_fail, timeout, no_log, logger} = options ? {}
 
-    if no_log
-        logger = ->
-    else
-        logger = u.get_logger('log')
+    if not logger?
+        if no_log
+            logger = ->
+        else
+            logger = u.get_logger('log')
 
     logger '\nSSH ' + host + ': ' + cmd
 
