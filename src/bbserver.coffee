@@ -1595,7 +1595,7 @@ class Console extends Command
         u.reply @server.get_server_url() + '/session/' + session.id
 
         #Eval function
-        u.SyncRun =>
+        u.SyncRun 'interactive_admin_js_console', =>
             @server.build_context 'interactive_admin_js_console'
 
             while (input = next_block.wait()) not in ['exit', 'cancel', 'TIMED_OUT']
