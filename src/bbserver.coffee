@@ -1619,7 +1619,7 @@ class Console extends Command
 
             try
                 result = eval(input)
-                result = util.inspect(result)
+                result = util.inspect(result, {depth: 1})
             catch err
                 result = err.stack
 
