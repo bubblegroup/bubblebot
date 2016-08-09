@@ -30,7 +30,7 @@ $(document).ready ->
     write_to_output = (message) ->
         content = output.val()
         content += message
-        content.val content
+        output.val content
 
     #Watch the server for new output
     timeout = 1
