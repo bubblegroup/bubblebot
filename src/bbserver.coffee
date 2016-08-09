@@ -326,7 +326,7 @@ bbserver.Server = class Server
                         res.statusCode = 401
                         res.end 'Sorry, this session was created by user ' + session.user_id + ' but you are logged in as ' + u.current_user().id
                     else
-                        session.write message
+                        session.user_input message
                         res.statusCode = 200
                         res.end 'Success'
 
