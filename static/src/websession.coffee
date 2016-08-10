@@ -5,11 +5,18 @@ $(document).ready ->
     uri_pieces = (piece for piece in document.location.href.split('/') when piece)
     session_id = uri_pieces[uri_pieces.length - 1]
 
+    #For supporting up-arrow and down-arrow
+    prev_commands = []
+    command_pointer = 0
+
     #On enter, clear the input and send the contents to the server
     input.on 'keypress', (evt) ->
         if evt.which is 13
             message = input.val()
             input.val ''
+
+            prev_commands.push message
+            command_pointer = 0
 
             $.ajax {
                 method: 'post'

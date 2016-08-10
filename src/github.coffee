@@ -156,7 +156,7 @@ github.Repo = class Repo
         if raw
             return data
         else
-            return Buffer.from(data, 'base64').toString('utf8')
+            return (new Buffer data, 'base64').toString('utf8')
 
 
 request = require 'request'
