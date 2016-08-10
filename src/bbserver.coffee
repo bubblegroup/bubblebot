@@ -1794,6 +1794,7 @@ passport = require 'passport'
 passport_slack = require 'passport-slack'
 session = require 'express-session'
 body_parser = require 'body-parser'
+templates = require './templates'  #not actually used but useful for the Console command
 
 #Testing
 if require.main is module
