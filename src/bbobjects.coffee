@@ -3025,6 +3025,50 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             @delete()
 
 
+    #Opens up a console for interacting with the database
+    console: ->
+        u.context().create_sub_logger true
+        session = bbserver.create_web_session 'Connecting to ' + String(this)
+
+        u.reply u.context().server.get_server_url() + '/session/' + session.id
+
+        [client, done] = (new databases.Postgres this).get_client()
+        session.write 'Connected to database\n\n'
+
+        try
+            while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
+                u.log 'Input: ' + input
+                try
+                    session.write '> ' + input + '\n'
+                    block = u.Block 'querying'
+                    client.query input, block.make_cb()
+                    res = block.wait()
+                    if res.rows
+                        for row in res.rows
+                            session.write JSON.stringify(row) + '\n'
+                    else
+                        session.write JSON.stringify(res) + '\n'
+
+                catch err
+                    session.write '\n' + err.stack
+
+        finally
+            done()
+
+        message = 'Interactive session finished.  Last input was: ' + input
+        u.log message
+        session.close message
+
+
+    console_cmd:
+        help: "Opens up a console for interacting with the database directly"
+        groups: ->
+            if @environment().is_production()
+                return constants.ADMIN
+            else
+                return constants.BASIC
+
+
 
 #Represents an elastic ip address.  The id should be the amazon allocation id.
 #
