@@ -3024,6 +3024,25 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if @exists()
             @delete()
 
+    #Terminates this server
+    clean: (confirm) ->
+        if confirm
+            @terminate()
+            u.reply 'Server succesfully terminated'
+        else
+            u.reply 'Okay, aborting'
+
+    clean_cmd: ->
+        help: 'Terminates this server'
+        questions: ->
+            {name: 'confirm',  type: 'boolean', help: 'Are you sure you want to terminate this server?'}
+        dangerous: -> @environment().is_production()
+        groups: ->
+            if @environment().is_production() or @owner()?.id isnt u.current_user().id
+                return constants.ADMIN
+            else
+                return constants.BASIC
+
 
     #Opens up a console for interacting with the database
     console: ->
