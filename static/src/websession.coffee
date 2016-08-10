@@ -11,7 +11,7 @@ $(document).ready ->
     saved_res = ''
 
     #On enter, clear the input and send the contents to the server
-    input.on 'keypress', (evt) ->
+    input.on 'keydown', (evt) ->
         if evt.which is 13
             message = input.val()
             input.val ''
