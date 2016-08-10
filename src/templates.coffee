@@ -1004,7 +1004,7 @@ templates.GithubRDSCodebase = class GithubRDSCodebase extends templates.RDSCodeb
 
         num = @_get_max_migrations contents
 
-        return (@_build_migration contents, String(num) + '.sql' for num in [0...num])
+        return (@_build_migration contents, String(num) + '.sql' for i in [0...num])
 
     #Given the contents of our folder and a filename, builds a migration from that filename
     _build_migration: (contents, filename) ->
