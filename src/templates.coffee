@@ -672,14 +672,14 @@ templates.MultiGitCodebase = class MultiGitCodebase extends Codebase
         version = version.split('-')
         return (repo.display_commit version[idx] for repo, idx in @repos).join('\n')
 
-#Returns [codebase_id (string), migration (number)]
+#Returns [codebase_id (string), migration (number), digest (string)]
 extract_rds_version_pieces = (version) ->
-    [codebase_id, migration] = String(version).split('/')
+    [codebase_id, migration, digest] = String(version).split('/')
     migration = parseInt migration
-    return [codebase_id, migration]
+    return [codebase_id, migration, digest]
 
 #Returns an RDSCodebase version
-join_rds_version_pieces = (codebase_id, migration) -> codebase_id + '/' + String(migration)
+join_rds_version_pieces = (codebase_id, migration, digest) -> codebase_id + '/' + String(migration) + '/' + (digest ? 'x')
 
 #Represents a set of schema migrations for an RDS managed database
 #
@@ -691,12 +691,13 @@ join_rds_version_pieces = (codebase_id, migration) -> codebase_id + '/' + String
 #  get_additional_tests
 #
 templates.RDSCodebase = class RDSCodebase extends Codebase
-    #Version should be [codebase id]/[migration #]
+    #Version should be [codebase id]/[migration #]/digest
     canonicalize: (version) ->
-        [codebase_id, migration] = String(version).split('/')
-        if codebase_id isnt @get_id() or not String(parseInt(migration)) is migration
+        [codebase_id, migration, digest] = extract_rds_version_pieces version
+        if codebase_id isnt @get_id()
             return null
-        return join_rds_version_pieces codebase_id, migration
+        digest = @get_migration_digest version
+        return join_rds_version_pieces codebase_id, migration, digest
 
     debug_version: (version) ->
         if String(version).indexOf('/') is -1
@@ -777,6 +778,16 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
         if @get_rollbacks()[migration]
             bbobjects.put_s3_config 'RDSCodebase_' + version + '_rollback', @get_rollbacks()[migration]
 
+    #Returns the digest for the given migration.  This is so that if migration data changes,
+    #the version will have a different hash component, forcing us to re-run tests
+    get_migration_digest: (version) ->
+        hash = crypto.createHash('sha256')
+        #add the forward migration
+        hash.update @get_migration_data version
+        #and add the rollback
+        hash.update @get_migration_data version, true
+        return hash.digest 'hex'
+
     #Gets the data for this migration.  If rollback is true, returns the rollback instead
     #of the migration
     get_migration_data: (version, rollback) ->
@@ -793,7 +804,9 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
             return @get_migrations()[migration]
 
     #Returns the most up-to-date version of this codebase
-    get_latest_version: -> join_rds_version_pieces @get_id(), @get_migrations().length - 1
+    get_latest_version: ->
+        version = join_rds_version_pieces @get_id(), @get_migrations().length - 1
+        return @canonicalize version
 
     #Returns true if upgrading the given rds_instance to the given version is reversible.
     #If not reversible, will ask the user to confirm that it is okay to migrate anyway.
@@ -1343,3 +1356,4 @@ bbobjects = require './bbobjects'
 u = require './utilities'
 config = require './config'
 software = require './software'
+crypto = require 'crypto'
