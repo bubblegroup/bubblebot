@@ -783,9 +783,9 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
     get_migration_digest: (version) ->
         hash = crypto.createHash('sha256')
         #add the forward migration
-        hash.update @get_migration_data version
+        hash.update @get_migration_data(version) ? ''
         #and add the rollback
-        hash.update @get_migration_data version, true
+        hash.update @get_migration_data(version, true) ? ''
         return hash.digest 'hex'
 
     #Gets the data for this migration.  If rollback is true, returns the rollback instead
@@ -1006,6 +1006,14 @@ templates.GithubRDSCodebase = class GithubRDSCodebase extends templates.RDSCodeb
 
         return (@_build_migration contents, String(i) + '.sql' for i in [0...num])
 
+    #Used by RDSCodebase to get the array of rollbacks
+    get_rollbacks: ->
+        contents = @list_folder()
+
+        num = @_get_max_migrations contents
+
+        return (@_build_migration contents, String(i) + '_rollback.sql' for i in [0...num])
+
     #Given the contents of our folder and a filename, builds a migration from that filename
     _build_migration: (contents, filename) ->
         repo = @repo()
@@ -1039,13 +1047,7 @@ templates.GithubRDSCodebase = class GithubRDSCodebase extends templates.RDSCodeb
             num++
         return num
 
-    #Used by RDSCodebase to get the array of rollbacks
-    get_rollbacks: ->
-        contents = @list_folder()
 
-        num = @_get_max_migrations contents
-
-        return (@_build_migration contents, String(num) + '_rollback.sql' for num in [0...num])
 
 
 
