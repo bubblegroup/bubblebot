@@ -1090,7 +1090,18 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
             t.query migration_data
 
             #Update the migration table
-            query = "INSERT INTO bubblebot.migrations (codebase_id, migration) VALUES ($1, $2) ON CONFLICT (codebase_id) DO UPDATE SET migration = $2"
+
+            #Can't do an upsert b/c we need to support postgres 9.4
+            #query = "INSERT INTO bubblebot.migrations (codebase_id, migration) VALUES ($1, $2) ON CONFLICT (codebase_id) DO UPDATE SET migration = $2"
+
+            query = "SELECT 1 FROM bubblebot.migration WHERE codebase_id = $1"
+            res = t.query query, codebase_id
+            if res.rows > 0
+                query = "UPDATE bubblebot.migration SET migration = $2 WHERE codebase_id = $1"
+            else
+                query = "INSERT INTO bubblebot.migrations (codebase_id, migration) VALUES ($1, $2)"
+            t.query query, codebase_id, migration
+
             u.log 'Updating migration table:\n' + query
             t.query query, codebase_id, migration
             u.log 'Migration successful'
