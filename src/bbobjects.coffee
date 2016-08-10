@@ -3062,7 +3062,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
                     block = u.Block 'querying'
                     client.query input, block.make_cb()
                     res = block.wait()
-                    if res.rows
+                    if res.rows?.length > 0
                         for row in res.rows
                             session.write JSON.stringify(row) + '\n'
                     else
