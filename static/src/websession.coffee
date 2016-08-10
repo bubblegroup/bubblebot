@@ -8,6 +8,7 @@ $(document).ready ->
     #For supporting up-arrow and down-arrow
     prev_commands = []
     command_pointer = 0
+    saved_res = ''
 
     #On enter, clear the input and send the contents to the server
     input.on 'keypress', (evt) ->
@@ -16,7 +17,7 @@ $(document).ready ->
             input.val ''
 
             prev_commands.push message
-            command_pointer = 0
+            command_pointer = prev_commands.length
 
             $.ajax {
                 method: 'post'
@@ -29,6 +30,23 @@ $(document).ready ->
                         res += ' ' + (err.stack ? err.message)
                     write_to_output res
             }
+        else if evt.which is 38 #up arrow
+            if command_pointer is prev_commands.length
+                saved_res = input.val()
+            command_pointer--
+            if command_pointer < 0
+                command_pointer = 0
+            input.val prev_commands[command_pointer]
+
+        else if evt.which is 40 #down arrow
+            command_pointer++
+            if command_pointer > prev_commands.length
+                command_pointer = prev_commands.length
+                return
+            if command_pointer is prev_commands.length
+                input.val saved_res
+            else
+                input.val prev_commands[command_pointer]
 
 
     #Writes the given message to our output log
