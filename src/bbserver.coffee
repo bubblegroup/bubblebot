@@ -1637,6 +1637,8 @@ class Console extends Command
 
         u.reply @server.get_server_url() + '/session/' + session.id
 
+        session.write 'Interactive session started\n\n'
+
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             u.log 'Input: ' + input
             session.write '\n> ' + input
