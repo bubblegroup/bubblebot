@@ -942,8 +942,16 @@ bbserver.CommandTree = class CommandTree
 
     #Gets the subcommand, returning null if not found
     get_command: (command) ->
-        res = @get_commands()[command] ? null
-        return res
+        all_commands = @get_commands()
+        if all_commands[command]
+            return all_commands[command]
+        command = String(command).toLowerCase()
+        if all_commands[command]
+            return all_commands[command]
+        for k, v of all_commands
+            if k.toLowerCase() is command
+                return v
+        return null
 
     #Executes a command.  Previous args is the path through the outer tree to this tree,
     #and args are the forward navigation: args[0] should be a subcommand of this tree.
@@ -958,7 +966,7 @@ bbserver.CommandTree = class CommandTree
             args = parse_command msg
 
         first = args[0]
-        subcommand = @get_commands()[first.toLowerCase()]
+        subcommand = @get_command(first)
 
         if subcommand
             new_prev_args = prev_args.concat(first)
