@@ -193,6 +193,7 @@ cloudwatchlogs.LogStream = class LogStream
         <head>
         <title>BubbleBot Log #{@environment.id}, #{@groupname},#{@name}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/png" href="https://d1muf25xaso8hp.cloudfront.net/http://s3.amazonaws.com/appforest_uf/f1412116867925x202730323653668160/apple_touch_icon_precomposed.png?w=124.80000000000001&h=&fit=max" />
         <style>
         pre.message {
             margin-top: 5px;
