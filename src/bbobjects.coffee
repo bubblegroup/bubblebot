@@ -2547,7 +2547,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             try
                 server_stream.write input + '\n'
             catch err
-                session.write '\n' + err.stack
+                session.write '\n' + err.stack + '\n'
 
         #Close our connection with the server
         server_stream.end()

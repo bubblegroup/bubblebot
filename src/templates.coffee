@@ -768,6 +768,8 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
     #We do this after testing migrations to make sure that the tested version remains
     #the actual version.  If overwrite is true, we can replace a locked version.
     lock_migration_data: (version, overwrite) ->
+        if version isnt @canonicalize(version)
+            throw new Error 'lock migration version did not match canonical: ' + version + ' vs ' + @canonicalize(version)
         if not overwrite
             saved = bbobjects.get_s3_config 'RDSCodebase_' + version
             if saved?
