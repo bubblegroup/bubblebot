@@ -2595,7 +2595,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             @wait_for_running(retries - 1, target_state)
 
     #When the server was launched
-    launch_time: -> new Date(@get_data().LaunchTime)
+    launch_time: -> (new Date(@get_data().LaunchTime)).valueOf()
 
     #waits for the server to accept ssh connections
     wait_for_ssh: () ->
@@ -2849,7 +2849,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     should_delete: (owner, aggressive) -> owner.should_delete_rdsinstance(this, aggressive)
 
     #When this RDS instance was created
-    launch_time: -> new Date(@get_configuration().InstanceCreateTime)
+    launch_time: -> (new Date(@get_configuration().InstanceCreateTime)).valueOf()
 
     #If this is a special bubblebot instance, return a flag that indicates that
     bubblebot_role: ->
@@ -2859,7 +2859,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             return null
 
     describe_keys: -> u.extend super(), {
-        launch_time: @launch_time()
+        launch_time: u.print_date @launch_time()
         bubblebot_role: @bubblebot_role()
     }
 
