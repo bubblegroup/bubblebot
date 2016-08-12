@@ -1330,6 +1330,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             threshold = if aggressive then 0.5 else 3
             if Date.now() - instance.launch_time() < threshold * 60 * 60 * 1000
                 return false
+            #otherwise, delete it
+            else
+                return true
 
         #otherwise, check the expiration time
         return Date.now() > expires
