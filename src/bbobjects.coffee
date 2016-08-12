@@ -1326,6 +1326,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
     should_delete: (instance, aggressive) ->
         expires = instance.get 'expiration_time'
         if not expires
+            #if instance.launch_time is null or NaN, it means it is in the process
+            #of getting created, so return false
+            if isNaN(instance.launch_time()) or not instance.launch_time()?
+                return false
+
             #if it is newer than 3 hours, we are fine
             threshold = if aggressive then 0.5 else 3
             if Date.now() - instance.launch_time() < threshold * 60 * 60 * 1000
