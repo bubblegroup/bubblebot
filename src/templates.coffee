@@ -551,6 +551,15 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         groups: constants.BASIC
         dangerous: -> @environment().is_production()
 
+    console: (instance) -> @get_active_instance(instance).console()
+
+    console_cmd:
+        help: "Opens up a console for interacting with the server directly"
+        groups: ->
+            if @environment().is_production()
+                return constants.ADMIN
+            else
+                return constants.BASIC
 
 #Base class for codebases
 templates.Codebase = class Codebase
