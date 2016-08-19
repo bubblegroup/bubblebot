@@ -363,6 +363,14 @@ bbserver.Server = class Server
                 if @using_ssl
                     options = {key, cert, ca}
                     https.createServer(options, server_app).listen(8043)
+
+                    #If we're listening over ssl, serve a simple hello world page on port 80
+                    hello_world = express()
+                    hello_world.use '/', (req, res) ->
+                        res.statusCode = 200
+                        res.end 'Welcome to Bubblebot'
+                    hello_world.listen 8080
+
                 else
                     server_app.listen 8080
 
