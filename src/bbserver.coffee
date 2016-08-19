@@ -518,14 +518,20 @@ bbserver.Server = class Server
     get_server_url: ->
         protocol = if @using_ssl then 'https' else 'http'
 
-        eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
-        if eip.get_instance()?.id isnt bbobjects.get_bbserver().id
-            eip.switch bbobjects.get_bbserver()
+        server_ip = @get_server_ip()
 
         if config.get('bubblebot_domain')
             return protocol + '://' + config.get('bubblebot_domain')
 
-        return protocol + '://' + eip.endpoint()
+        return protocol + '://' + server_ip
+
+    #Gets the public ip address of the bubblebot server
+    get_server_ip: ->
+        eip = bbobjects.bubblebot_environment().get_elastic_ip('bubblebot')
+        if eip.get_instance()?.id isnt bbobjects.get_bbserver().id
+            eip.switch bbobjects.get_bbserver()
+
+        return eip.endpoint()
 
     #Gets the master server log stream
     get_server_log_stream: -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', 'bubblebot_server')
