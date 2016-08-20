@@ -53,8 +53,15 @@ cloudwatchlogs.LogStream = class LogStream
             return
 
         timestamp = Date.now()
-        if message.length > 100000
-            message = message[...100000] + '\n[Truncated: too big for CloudWatch]'
+        pieces = 0
+        while message.length > 100000
+            pieces++
+            if pieces > 10
+                @log 'Truncating: Too big for Cloudfront'
+                return
+           @log message[...100000]
+           message = message[100000..]
+
 
         @queue.push {timestamp, message}
 
