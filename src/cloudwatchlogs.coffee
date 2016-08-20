@@ -52,7 +52,6 @@ cloudwatchlogs.LogStream = class LogStream
         if String(message).trim() is ''
             return
 
-        timestamp = Date.now()
         pieces = 0
         while message.length > 100000
             pieces++
@@ -62,6 +61,7 @@ cloudwatchlogs.LogStream = class LogStream
             @log message[...100000]
             message = message[100000..]
 
+        timestamp = Date.now()
         @queue.push {timestamp, message}
 
         @ensure_put_scheduled()
