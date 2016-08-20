@@ -59,9 +59,8 @@ cloudwatchlogs.LogStream = class LogStream
             if pieces > 10
                 @log 'Truncating: Too big for Cloudfront'
                 return
-           @log message[...100000]
-           message = message[100000..]
-
+            @log message[...100000]
+            message = message[100000..]
 
         @queue.push {timestamp, message}
 
