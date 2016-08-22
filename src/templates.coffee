@@ -277,7 +277,7 @@ templates.RDSService = class RDSService extends Service
         if not @rds_instance(instance)
             @create_rds_instance(instance)
 
-        @codebase().migrate_to @rds_instance(), version
+        @codebase().migrate_to @rds_instance(instance), version
 
     servers: (instance) -> [@rds_instance(instance)]
 
