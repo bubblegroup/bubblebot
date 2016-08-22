@@ -2592,6 +2592,15 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
             @refresh()
         return instance_cache.get(@id)
 
+    exists_in_aws: ->
+        try
+            @refresh()
+            return true
+        catch err
+            if String(err).indexOf('InvalidInstanceID.NotFound') isnt -1
+                return false
+            throw err
+
     #Waits til the server is in the running state
     wait_for_running: (retries = 20, target_state = 'running') ->
         u.log 'waiting for server to be ' + target_state + ' (' + retries + ')'
