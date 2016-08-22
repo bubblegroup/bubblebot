@@ -313,7 +313,7 @@ templates.RDSService = class RDSService extends Service
         if instance.get 'rds_instance'
             throw new Error 'already have an instance'
 
-        rds_instance = bbobjects.instance 'RDSInstance', @id + '_instance1'
+        rds_instance = bbobjects.instance 'RDSInstance', @id + '-instance1'
 
         {permanent_options, sizing_options, credentials} = @get_params_for_creating_instance instance
 

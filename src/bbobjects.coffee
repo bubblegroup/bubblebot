@@ -223,7 +223,7 @@ bbobjects.get_all_instances = ->
 #Gets the default QA environment, which is the environment we use to run tests on individual
 #components
 bbobjects.get_default_qa_environment = ->
-    id = 'default_qa'
+    id = 'default-qa'
     environment = bbobjects.instance 'Environment', id
     #create it if it does not exist
     if not environment.exists()
@@ -243,8 +243,8 @@ bbobjects.get_default_dev_environment = (region) ->
     #if region isn't set, use the bubblebot region
     region ?= bbobjects.bubblebot_environment().region()
 
-    #The default dev environment is always named default_dev_[region]
-    id = 'default_dev_' + region
+    #The default dev environment is always named default-dev-[region]
+    id = 'default-dev-' + region
     environment = bbobjects.instance 'Environment', id
     #create it if it does not exist
     if not environment.exists()
