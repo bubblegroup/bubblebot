@@ -222,7 +222,8 @@ templates.Service = class Service
         tests = (test for test in @get_tests() when not test.is_tested version)
         u.reply 'Running the following tests: ' + tests.join(', ')
         for test in tests
-            test.run version
+            if not test.run version
+                return
 
 
 

@@ -2370,6 +2370,7 @@ bbobjects.Test = class Test extends BubblebotObject
             @mark_tested version
         else
             u.reply 'Test ' + @id + ' failed on version ' + version + ': ' + u.context().get_transcript()
+        return result
 
     #Returns an array of the last n_entries versions that passed the tests.  Does not count tests marked
     #as skip_tests unless include_skipped is set to true
