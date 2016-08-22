@@ -292,7 +292,7 @@ templates.RDSService = class RDSService extends Service
     #Gets the parameters we use to create a new RDS instance
     get_params_for_creating_instance: (instance) ->
         permanent_options = @codebase().rds_options()
-        sizing_options = @codebase().get_sizing this
+        sizing_options = @codebase().get_sizing instance
 
         #Most of the time we want to let the instance generate and store its own credentials,
         #but for special cases like BBDB we want to store the credentials in S3
