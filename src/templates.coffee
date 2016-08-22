@@ -889,6 +889,8 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
 
     #Returns the number of the currently installed migration for this codebase
     get_installed_migration: (rds_instance, codebase_id) ->
+        if not rds_instance?
+            return -1
         migration_manager = @get_migration_manager(rds_instance)
         return migration_manager.get_migration(codebase_id)
 
