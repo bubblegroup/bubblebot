@@ -354,7 +354,8 @@ class Block
 
         if err?
             #capture the current call stack as well:
-            err = new Error err
+            if not (err instanceof Error)
+                err = new Error err
             err.stack ?= ''
             err.stack += '\n\n' + (new Error('Outer Error (see above for inner error)')).stack
             throw err
