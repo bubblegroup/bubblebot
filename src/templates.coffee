@@ -1110,7 +1110,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
 
             query = "SELECT 1 FROM bubblebot.migrations WHERE codebase_id = $1"
             res = t.query query, codebase_id
-            if res.rows > 0
+            if res.rows.length > 0
                 query = "UPDATE bubblebot.migrations SET migration = $2 WHERE codebase_id = $1"
             else
                 query = "INSERT INTO bubblebot.migrations (codebase_id, migration) VALUES ($1, $2)"
