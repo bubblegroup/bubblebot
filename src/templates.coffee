@@ -773,23 +773,6 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
         description = @get_migration(version).description
         return "#{codebase_id} migration #{migration}: #{description}"
 
-
-    #Prevents accidentally changing the data for this migration by persisting it to S3.
-    #We do this after testing migrations to make sure that the tested version remains
-    #the actual version.  If overwrite is true, we can replace a locked version.
-    lock_migration_data: (version, overwrite) ->
-        if version isnt @canonicalize(version)
-            throw new Error 'lock migration version did not match canonical: ' + version + ' vs ' + @canonicalize(version)
-        if not overwrite
-            saved = bbobjects.get_s3_config 'RDSCodebase_' + version
-            if saved?
-                throw new Error 'we have already locked version ' + version
-
-        [codebase_id, migration] = @_extract_pieces(version)
-        bbobjects.put_s3_config 'RDSCodebase_' + version, @get_migrations()[migration]
-        if @get_rollbacks()[migration]
-            bbobjects.put_s3_config 'RDSCodebase_' + version + '_rollback', @get_rollbacks()[migration]
-
     #Returns the digest for the given migration.  This is so that if migration data changes,
     #the version will have a different hash component, forcing us to re-run tests
     get_migration_digest: (version) ->
@@ -803,11 +786,6 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
     #Gets the data for this migration.  If rollback is true, returns the rollback instead
     #of the migration
     get_migration_data: (version, rollback) ->
-        #See if we have it saved in s3.
-        saved = bbobjects.get_s3_config 'RDSCodebase_' + version + (if rollback then '_rollback' else '')
-        if saved?
-            return JSON.parse saved
-
         #Otherwise, get it from the migration array
         [codebase_id, migration] = @_extract_pieces(version)
         if rollback
@@ -920,7 +898,7 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
         tests = [].concat @get_additional_tests()
         #The final test is always trying it to see if it runs without errors, and if so
         #saving it to S3 so that it's locked down
-        tests.push bbobjects.instance 'Test', 'RDS_migration_try_and_save'
+        tests.push bbobjects.instance 'Test', 'RDS_migration_try'
         return tests
 
     #This should generally be false.  If true, we will store the credentials in S3 instead
@@ -1198,9 +1176,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
 
 #Tries this migration against a test database to make sure it works.  Tries the rollback
 #and confirms it leaves the database in a consistent state.
-#
-#Then, saves both the rollback and migration to S3
-templates.add 'Test', 'RDS_migration_try_and_save', {
+templates.add 'Test', 'RDS_migration_try', {
     codebase: -> null
 
     run: (version) ->
@@ -1247,9 +1223,6 @@ templates.add 'Test', 'RDS_migration_try_and_save', {
                     u.log 'The rollback did not restore the schema.  Differences:\n' + comparison
                     return false
                 u.log 'post schema matches pre-schema... locking migration data'
-
-            #save both migration and rollback to S3
-            codebase.lock_migration_data version
 
             u.log 'migration data locked'
             return true
