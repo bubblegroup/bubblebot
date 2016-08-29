@@ -706,6 +706,8 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
         [codebase_id, migration, digest] = extract_rds_version_pieces version
         if codebase_id isnt @get_id()
             return null
+        if not @get_migration_data(version)
+            return null
         digest = @get_migration_digest version
         return join_rds_version_pieces codebase_id, migration, digest
 
