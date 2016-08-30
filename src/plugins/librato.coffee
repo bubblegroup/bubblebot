@@ -32,11 +32,12 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
     instance.run "sudo yum-config-manager --enable epel"
 
     #May not be necessary, debugging an issue...
+    u.log 'pausing before collectd installation'
     u.pause 1000
-    instance.run "sudo killall yum"
+    instance.run "sudo killall yum", {can_fail: true}
 
     #Install the librato agent
-    instance.run "sudo yum install -y collectd"'
+    instance.run "sudo yum install -y collectd"
 
     #Set the user and password
     user = config.get "plugins.librato.email"
