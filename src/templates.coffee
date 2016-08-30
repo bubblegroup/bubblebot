@@ -714,11 +714,13 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
     debug_version: (version) ->
         if String(version).indexOf('/') is -1
             return 'Version should be [codebase id]/[migration #]'
-        [codebase_id, migration] = String(version).split('/')
+        [codebase_id, migration, digest] = extract_rds_version_pieces version
         if codebase_id isnt @get_id()
             return 'Codebase id ' + codebase_id + ' does not match this codebase: ' + @get_id()
         if String(parseInt(migration)) is migration
             return 'Bad migration: ' + migration + '.  Should be an integer.'
+        if not @get_migration_data(version)
+            return 'Could not find migration ' + migration
         throw new Error 'could not figure out what is wrong with version ' + version
 
     #returns [codebase_id (string), migration (number)], and throws an error
