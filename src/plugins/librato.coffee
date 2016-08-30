@@ -31,8 +31,12 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
     instance.run "sudo yum install -y epel-release"
     instance.run "sudo yum-config-manager --enable epel"
 
+    #May not be necessary, debugging an issue...
+    u.pause 1000
+    instance.run "sudo killall yum"
+
     #Install the librato agent
-    instance.run "sudo yum install -y collectd"
+    instance.run "sudo yum install -y collectd"'
 
     #Set the user and password
     user = config.get "plugins.librato.email"
