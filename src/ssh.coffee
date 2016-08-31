@@ -68,6 +68,7 @@ ssh.run = (host, private_key, cmd, options) ->
 
     close_block = u.Block('ssh.run close block')
     block = u.Block('ssh.run')
+    stderr_end = u.Block('ssh.run stderr_end')
     on_data = (data) ->
         stdout_log.write data
         output.push data
@@ -77,6 +78,10 @@ ssh.run = (host, private_key, cmd, options) ->
         stderr_log.write data
         output.push data
     stream.stderr.on 'data', on_stderr_data
+
+    on_stderr_end = ->
+        stderr_end.sucess()
+    stream.stderr.on 'end', on_stderr_end
 
     on_error = (err) ->
         block.fail err
@@ -98,9 +103,11 @@ ssh.run = (host, private_key, cmd, options) ->
 
     close_block.wait(timeout)
     block.wait(10000)
+    stderr_end.wait(5000)
 
     stream.removeListener 'data', on_data
     stream.stderr.removeListener 'data', on_stderr_data
+    stream.stderr.removeListener 'end', on_stderr_end
     stream.removeListener 'error', on_error
     stream.removeListener 'close', on_close
     stream.removeListener 'end', on_end

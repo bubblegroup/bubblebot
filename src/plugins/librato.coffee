@@ -34,7 +34,6 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
     #May not be necessary, debugging an issue...
     u.log 'pausing before collectd installation'
     u.pause 1000
-    instance.run "sudo killall yum", {can_fail: true}
 
     #Install the librato agent
     instance.run "sudo yum install -y collectd"
