@@ -80,7 +80,7 @@ ssh.run = (host, private_key, cmd, options) ->
     stream.stderr.on 'data', on_stderr_data
 
     on_stderr_end = ->
-        stderr_end.sucess()
+        stderr_end.success()
     stream.stderr.on 'end', on_stderr_end
 
     on_error = (err) ->
