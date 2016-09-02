@@ -2539,17 +2539,26 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         reply: true
 
     #Opens up a console for interacting with the server
-    console: ->
-        u.context().create_sub_logger true
-        session = bbserver.create_web_session 'SSH to ' + String(this)
+    console: (operation_mode) ->
+        u.context().create_sub_logger (not operation_mode)
+        session = bbserver.create_web_session 'SSH to ' + String(this), operation_mode
 
         u.reply u.context().server.get_server_url() + '/session/' + session.id
 
         #Create an interactive stream connecting us to the server...
         server_stream = ssh.shell @get_address(), @environment().get_private_key()
-        server_stream.on 'data', (data) -> session.write data
-        server_stream.stderr.on 'data', (data) -> session.write data
-        server_stream.on 'close', -> session.write '\n\nConnection to server closed'
+        server_stream.on 'data', (data) ->
+            session.write data
+            if operation_mode
+                u.log data
+        server_stream.stderr.on 'data', (data) ->
+            session.write data
+            if operation_mode
+                u.log data
+        server_stream.on 'close', ->
+            session.write '\n\nConnection to server closed'
+            if operation_mode
+                u.log data
 
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             u.log 'Input: ' + input
@@ -2568,6 +2577,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     console_cmd:
         help: "Opens up a console for interacting with the server directly"
+        params: [{name: 'operation_mode', type: 'boolean', help: 'If specified, disables timeouts and everything'}]
         groups: ->
             if @environment().is_production()
                 return constants.ADMIN

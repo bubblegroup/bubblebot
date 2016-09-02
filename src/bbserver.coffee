@@ -25,9 +25,9 @@ _web_session_id_counter = 0
 #
 #They emit 'input' events when the user types something, and 'timeout' events if the user
 #seems to have disconnected
-bbserver.create_web_session = (name) ->
+bbserver.create_web_session = (name, no_timeout) ->
     id = _web_session_id_counter++
-    _web_sessions[id] = new WebSession id, u.current_user().id, name
+    _web_sessions[id] = new WebSession id, u.current_user().id, name, no_timeout
     return _web_sessions[id]
 
 #Retrieves a web session, or null if it cannot be found
@@ -37,7 +37,7 @@ get_web_session = (id) -> _web_sessions[id]
 class WebSession
     CLOSED: 'CLOSED'
 
-    constructor: (@id, @user_id, @name) ->
+    constructor: (@id, @user_id, @name, @no_timeout) ->
         @open_res = null
         @queue = []
 
@@ -58,13 +58,17 @@ class WebSession
         @open_block = u.Block 'waiting for input'
         try
             #after 2 hours with no input, we count it as closed
-            return @open_block.wait(2 * 60 * 60 * 1000)
+            timeout = if @no_timeout then 999999999999999999 else 2 * 60 * 60 * 1000
+            return @open_block.wait(timeout)
         catch err
             return @CLOSED
 
 
     #Schedule a timeout to make sure the client is still connected
     start_timeout: (timeout = 60000) ->
+        if @no_timeout
+            return
+
         if @my_timeout
             clearTimeout @my_timeout
 
