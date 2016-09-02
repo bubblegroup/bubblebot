@@ -58,7 +58,7 @@ class WebSession
         @open_block = u.Block 'waiting for input'
         try
             #after 2 hours with no input, we count it as closed
-            timeout = if @no_timeout then 999999999999999999 else 2 * 60 * 60 * 1000
+            timeout = if @no_timeout then 7 * 24 * 60 * 60 * 1000 else 2 * 60 * 60 * 1000
             return @open_block.wait(timeout)
         catch err
             return @CLOSED
