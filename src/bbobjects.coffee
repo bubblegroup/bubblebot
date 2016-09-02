@@ -2558,7 +2558,7 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         server_stream.on 'close', ->
             session.write '\n\nConnection to server closed'
             if operation_mode
-                u.log data
+                u.log 'Connection to server closed'
 
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             u.log 'Input: ' + input
