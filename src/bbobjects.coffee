@@ -2550,11 +2550,11 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
         server_stream.on 'data', (data) ->
             session.write data
             if operation_mode
-                u.log data
+                u.log data.toString('utf8')
         server_stream.stderr.on 'data', (data) ->
             session.write data
             if operation_mode
-                u.log data
+                u.log data.toString('utf8')
         server_stream.on 'close', ->
             session.write '\n\nConnection to server closed'
             if operation_mode
