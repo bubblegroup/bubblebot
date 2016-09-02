@@ -2545,20 +2545,22 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
         u.reply u.context().server.get_server_url() + '/session/' + session.id
 
+        logger = u.get_logger('log')
+
         #Create an interactive stream connecting us to the server...
         server_stream = ssh.shell @get_address(), @environment().get_private_key()
         server_stream.on 'data', (data) ->
             session.write data
             if operation_mode
-                u.log data.toString('utf8')
+                logger data.toString('utf8')
         server_stream.stderr.on 'data', (data) ->
             session.write data
             if operation_mode
-                u.log data.toString('utf8')
+                logger data.toString('utf8')
         server_stream.on 'close', ->
             session.write '\n\nConnection to server closed'
             if operation_mode
-                u.log 'Connection to server closed'
+                logger 'Connection to server closed'
 
         while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
             u.log 'Input: ' + input
