@@ -68,8 +68,8 @@ github.Repo = class Repo
 
             #failed, return the message
             else
-                message = JSON.parse(res.body).message
-                u.log 'Merge failed: ' + message
+                u.log 'merge failed: ' + res.status + ' ' + res.body
+                message = res.status + ' ' + res.body
                 return {success: false, message}
 
         finally
