@@ -48,6 +48,7 @@ github.Repo = class Repo
         tempname = 'merge-branch-' + Date.now()
         @create_branch tempname, base
         try
+            u.log 'Trying to merge ' + base + ' into ' + head
             url = @repo_url() + '/merges'
             res = @_request url, 'POST', {
                 base: tempname
@@ -56,15 +57,19 @@ github.Repo = class Repo
             }
             #successful merge
             if res.status is 201
-                return {success: true, commit: @extract(res, url).sha}
+                commit = @extract(res, url).sha
+                u.log 'merge successful: ' + commit
+                return {success: true, commit}
 
             #base already contains head
             else if res.status is 204
+                u.log 'base already contains head, returning base: ' + base
                 return {success: true, commit: base}
 
             #failed, return the message
             else
                 message = JSON.parse(res.body).message
+                u.log 'Merge failed: ' + message
                 return {success: false, message}
 
         finally
