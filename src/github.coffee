@@ -115,6 +115,8 @@ github.Repo = class Repo
     extract: (res, url) ->
         if res.statusCode < 200 or res.statusCode > 299
             throw new Error 'error hitting ' + url + ': ' + res.statusCode + ': ' + res.body
+        if not res.body
+            return null
         try
             return JSON.parse res.body
         catch err
