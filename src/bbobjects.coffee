@@ -2872,7 +2872,9 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
                 VpcSecurityGroupIds
                 MasterUserPassword
             }
-            @wait_for_available(100, ['available'])
+            #We have to wait for it to be available before we can modify it.  We set a
+            #very long timeout because copying the data can take a while
+            @wait_for_available(1000, ['available'])
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
             u.log 'Updating the credentials complete'
