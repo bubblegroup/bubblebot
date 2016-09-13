@@ -2846,8 +2846,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
                 PubliclyAccessible
 
                 DBSubnetGroupName
-
-                StorageEncrypted
             }
 
             #Add either RestoreTime or UseLatestRestorableTime
