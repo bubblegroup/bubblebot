@@ -2833,55 +2833,22 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if not StorageEncrypted
             u.log 'Creating unencrypted database (DBInstanceClass too small: ' + DBInstanceClass + ')'
 
-
-        params = {
-            DBInstanceIdentifier: @id
-
-            #Permanent Options
-
-            Engine
-            EngineVersion
-            #DBParameterGroupName  -- not supporting editing this at the moment, go with default
-
-            #Sizing Options
-
-            AllocatedStorage #5 to 6144 (in GB)
-            DBInstanceClass #db.m1.small, etc
-            BackupRetentionPeriod #0 - 35
-            MultiAZ #true if we want to make it multi-AZ
-            StorageType #standard | gp2 | io1
-            Iops #must be a multiple of 1000, and from 3x to 10x of storage amount.  Only if storagetype is io1
-            PubliclyAccessible #boolean, if true it means it can be accessed from the outside world
-
-            #Credentials
-
-            MasterUsername
-            MasterUserPassword
-
-            #Auto-generated
-
-            VpcSecurityGroupIds
-            DBSubnetGroupName
-
-            StorageEncrypted  #t2.large supports this, smaller ones do not
-        }
-
         #If this is a clone via restore from point in time, update the parameters to
         #reflect that
         if cloned_from?
-            params.SourceDBInstanceIdentifier = cloned_from
-            params.TargetDBInstanceIdentifier = params.DBInstanceIdentifier
-            delete params.DBInstanceIdentifier
+            params = {
+                SourceDBInstanceIdentifier: cloned_from
+                TargetDBInstanceIdentifier: DBInstanceIdentifier
 
-            #These can't be changed in a clone operation
-            delete params.Engine #well, technically this can, but we don't
-            delete params.EngineVersion
-            delete params.AllocatedStorage
-            delete params.BackupRetentionPeriod
-            delete params.MasterUsername
-            delete params.MasterUserPassword
-            delete params.VpcSecurityGroupIds
-            delete params.StorageEncrypted
+                DBInstanceClass
+                MultiAZ
+                StorageType
+                PubliclyAccessible
+
+                DBSubnetGroupName
+
+                StorageEncrypted
+            }
 
             #Add either RestoreTime or UseLatestRestorableTime
             if RestoreTime
@@ -2891,6 +2858,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
             u.log 'Restoring RDS instance from point in time: ' + JSON.stringify params
             @rds 'restoreDBInstanceToPointInTime', params
+            u.log 'Restore complete'
 
             #Need to set the new credentials and update the security group
             params = {
@@ -2901,8 +2869,41 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             }
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
+            u.log 'Updating the credentials complate
 
         else
+            params = {
+                DBInstanceIdentifier: @id
+
+                #Permanent Options
+
+                Engine
+                EngineVersion
+                #DBParameterGroupName  -- not supporting editing this at the moment, go with default
+
+                #Sizing Options
+
+                AllocatedStorage #5 to 6144 (in GB)
+                DBInstanceClass #db.m1.small, etc
+                BackupRetentionPeriod #0 - 35
+                MultiAZ #true if we want to make it multi-AZ
+                StorageType #standard | gp2 | io1
+                Iops #must be a multiple of 1000, and from 3x to 10x of storage amount.  Only if storagetype is io1
+                PubliclyAccessible #boolean, if true it means it can be accessed from the outside world
+
+                #Credentials
+
+                MasterUsername
+                MasterUserPassword
+
+                #Auto-generated
+
+                VpcSecurityGroupIds
+                DBSubnetGroupName
+
+                StorageEncrypted  #t2.large supports this, smaller ones do not
+            }
+
             #Remove credentials from the parameters...
             safe_params = u.extend {}, params
             delete safe_params.MasterUsername
