@@ -2869,7 +2869,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             }
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
-            u.log 'Updating the credentials complate
+            u.log 'Updating the credentials complete'
 
         else
             params = {
