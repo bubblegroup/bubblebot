@@ -2872,7 +2872,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
                 VpcSecurityGroupIds
                 MasterUserPassword
             }
-            @wait_for_available(100, 'available')
+            @wait_for_available(100, ['available'])
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
             u.log 'Updating the credentials complete'
@@ -2979,7 +2979,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             PubliclyAccessible
         }
 
-        @wait_for_available(100, 'available')
+        @wait_for_available(100, ['available'])
 
         u.log 'Resizing RDB ' + @id + ' with params: ' + JSON.stringify params
 
@@ -2988,7 +2988,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         u.log 'Resizing RDB succesful'
 
         if reboot_required
-            @wait_for_available(100, 'available')
+            @wait_for_available(100, ['available'])
             @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
 
         #Force a refresh of our cache
@@ -3012,7 +3012,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             throw new Error 'timed out while waiting for ' + @id + ' to be available: ' + @get_configuration(true).DBInstanceStatus
         else
             u.pause 10000
-            @wait_for_available(retries - 1)
+            @wait_for_available(retries - 1, available_statuses)
 
     #Fetches the current state of this instance from RDS
     get_configuration: (force_refresh) ->
