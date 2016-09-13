@@ -2817,11 +2817,19 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if bootstrap is 'just_write'
             return
 
+        #If we are cloning the database, we cannot change the username, so we need to
+        #go with the original username
+        get_actual_username = (preferred) ->
+            if not cloned_from
+                return preferred
+            return bbobjects.instance('RDSInstance', cloned_from).get('MasterUsername') ? preferred
+
         if credentials
             {MasterUsername, MasterUserPassword} = credentials
+            MasterUsername = get_actual_username MasterUsername
             @override_credentials MasterUsername, MasterUserPassword
         else
-            MasterUsername = 'bubblebot'
+            MasterUsername = get_actual_username 'bubblebot'
             MasterUserPassword = u.gen_password()
             @set 'MasterUsername', MasterUsername
             @set 'MasterUserPassword', MasterUserPassword
@@ -2863,7 +2871,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
                 DBInstanceIdentifier: @id
                 VpcSecurityGroupIds
                 MasterUserPassword
-                MasterUsername
             }
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
