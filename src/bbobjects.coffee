@@ -2790,6 +2790,8 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #
     #The parent
     #permanent_options -- things we don't allow changing after creation {Engine, EngineVersion}
+    #                     If cloned_from is present, uses the restoreDBInstanceToPointInTime operation
+    #                     to clone the given DB Instance
     #
     #sizing_options -- things that control the DB size / cost, can be changed after creation
     #                  {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible}
@@ -2864,13 +2866,44 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             StorageEncrypted  #t2.large supports this, smaller ones do not
         }
 
-        #Remove credentials from the parameters...
-        safe_params = u.extend {}, params
-        delete safe_params.MasterUsername
-        delete safe_params.MasterUserPassword
-        u.log 'Creating new RDS instance: ' + JSON.stringify safe_params
+        #If this is a clone via restore from point in time, update the parameters to
+        #reflect that
+        if permanent_options.cloned_from?
+            params.SourceDBInstanceIdentifier = permanent_options.cloned_from
+            params.TargetDBInstanceIdentifier = params.DBInstanceIdentifier
+            delete params.DBInstanceIdentifier
 
-        results = @rds 'createDBInstance', params
+            #These can't be changed in a clone operation
+            delete params.Engine #well, technically this can, but we don't
+            delete params.EngineVersion
+            delete params.AllocatedStorage
+            delete params.BackupRetentionPeriod
+            delete params.MasterUsername
+            delete params.MasterUserPassword
+            delete params.VpcSecurityGroupIds
+            delete params.StorageEncrypted
+
+            u.log 'Restoring RDS instance from point in time: ' + JSON.stringify params
+            @rds 'restoreDBInstanceToPointInTime', params
+
+            #Need to set the new credentials and update the security group
+            params = {
+                DBInstanceIdentifier: @id
+                VpcSecurityGroupIds
+                MasterUserPassword
+                MasterUsername
+            }
+            u.log 'Updating the credentials...'
+            @rds 'modifyDBInstance', params
+
+        else
+            #Remove credentials from the parameters...
+            safe_params = u.extend {}, params
+            delete safe_params.MasterUsername
+            delete safe_params.MasterUserPassword
+            u.log 'Creating new RDS instance: ' + JSON.stringify safe_params
+            @rds 'createDBInstance', params
+
 
         u.log 'RDS instance succesfully created with id ' + @id
         return null

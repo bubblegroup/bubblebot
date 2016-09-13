@@ -915,14 +915,21 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
     #
     #If sizing_options is null, creates the smallest possible instance... can pass in sizing
     #to create larger instances for tests that depend on instance size
-    create_test_instance: (migration, sizing_options) ->
+    #
+    #If cloned_from, clones the test instance from the given id, rather than
+    #creating it from scratch.  (This will use the cloned database's engine / engine version,
+    #storage amount, and backup retention period)
+    create_test_instance: (migration, sizing_options, cloned_from) ->
         migration ?= @get_migrations().length - 1
         sizing_options ?= @get_test_sizing_options()
 
         #Create a new instance with a random id
         environment = bbobjects.get_default_qa_environment()
         rds_instance = bbobjects.instance 'RDSInstance', 'test-' + u.gen_password()
-        rds_instance.create environment, @rds_options(), sizing_options
+        rds_options = @rds_options()
+        if cloned_from
+            rds_options.cloned_from = cloned_from
+        rds_instance.create environment, rds_options, sizing_options
 
         #Migrate the instance to the given migration
         @migrate_to rds_instance, join_rds_version_pieces @get_id(), migration
