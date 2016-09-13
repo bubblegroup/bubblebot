@@ -2838,7 +2838,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if cloned_from?
             params = {
                 SourceDBInstanceIdentifier: cloned_from
-                TargetDBInstanceIdentifier: DBInstanceIdentifier
+                TargetDBInstanceIdentifier: @id
 
                 DBInstanceClass
                 MultiAZ
