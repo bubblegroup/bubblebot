@@ -2872,6 +2872,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
                 VpcSecurityGroupIds
                 MasterUserPassword
             }
+            @wait_for_available(100, 'available')
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
             u.log 'Updating the credentials complete'
@@ -2978,6 +2979,8 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             PubliclyAccessible
         }
 
+        @wait_for_available(100, 'available')
+
         u.log 'Resizing RDB ' + @id + ' with params: ' + JSON.stringify params
 
         @rds 'modifyDBInstance', params
@@ -2985,6 +2988,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         u.log 'Resizing RDB succesful'
 
         if reboot_required
+            @wait_for_available(100, 'available')
             @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
 
         #Force a refresh of our cache
@@ -2993,16 +2997,16 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         return null
 
     #Waits til the instance is in the available state
-    wait_for_available: (retries = 100) ->
-        RDS_AVAILABLE_STATUSES = ['available', 'backing-up']
+    wait_for_available: (retries = 100, available_statuses) ->
+        available_statuses ?= ['available', 'backing-up']
 
         #first do a quick check using cached data...
-        if @get_configuration().DBInstanceStatus in RDS_AVAILABLE_STATUSES
+        if @get_configuration().DBInstanceStatus in available_statuses
             return
 
         #Then log and refresh the data
         u.log 'waiting for rds instance to be to be available (' + retries + ')'
-        if @get_configuration(true).DBInstanceStatus in RDS_AVAILABLE_STATUSES
+        if @get_configuration(true).DBInstanceStatus in available_statuses
             return
         else if retries is 0
             throw new Error 'timed out while waiting for ' + @id + ' to be available: ' + @get_configuration(true).DBInstanceStatus
