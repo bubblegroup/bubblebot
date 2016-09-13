@@ -2802,7 +2802,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
     #bootstrap -- this is for bootstrapping bbdb.  if 'just_create', creates without writing to
     #the database; if 'just_write', writes to the database without creating
     create: (parent, permanent_options, sizing_options, credentials, bootstrap) ->
-        {Engine, EngineVersion} = permanent_options ? {}
+        {Engine, EngineVersion, RestoreTime, cloned_from} = permanent_options ? {}
         {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options ? {}
 
         if bootstrap is 'just_create' and not credentials?
@@ -2868,8 +2868,8 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
 
         #If this is a clone via restore from point in time, update the parameters to
         #reflect that
-        if permanent_options.cloned_from?
-            params.SourceDBInstanceIdentifier = permanent_options.cloned_from
+        if cloned_from?
+            params.SourceDBInstanceIdentifier = cloned_from
             params.TargetDBInstanceIdentifier = params.DBInstanceIdentifier
             delete params.DBInstanceIdentifier
 
@@ -2882,6 +2882,12 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             delete params.MasterUserPassword
             delete params.VpcSecurityGroupIds
             delete params.StorageEncrypted
+
+            #Add either RestoreTime or UseLatestRestoreTime
+            if RestoreTime
+                params.RestoreTime = RestoreTime
+            else
+                params.UseLatestRestoreTime = true
 
             u.log 'Restoring RDS instance from point in time: ' + JSON.stringify params
             @rds 'restoreDBInstanceToPointInTime', params
