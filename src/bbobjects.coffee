@@ -2883,11 +2883,11 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             delete params.VpcSecurityGroupIds
             delete params.StorageEncrypted
 
-            #Add either RestoreTime or UseLatestRestoreTime
+            #Add either RestoreTime or UseLatestRestorableTime
             if RestoreTime
                 params.RestoreTime = RestoreTime
             else
-                params.UseLatestRestoreTime = true
+                params.UseLatestRestorableTime = true
 
             u.log 'Restoring RDS instance from point in time: ' + JSON.stringify params
             @rds 'restoreDBInstanceToPointInTime', params
