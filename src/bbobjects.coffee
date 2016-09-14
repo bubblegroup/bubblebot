@@ -2884,7 +2884,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             @get_configuration true
             @wait_for_available()
             u.log 'instance is available; sending test command'
-            u.retry ->
+            u.retry =>
                 u.log JSON.stringify (new databases.Postgres this).query('SELECT 1').rows
             u.log 'test command successful'
 
