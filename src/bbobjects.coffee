@@ -2880,8 +2880,13 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
             u.log 'Updating the credentials complete'
+            u.pause 1000
             @get_configuration true
-            @wait_for_available(100)
+            @wait_for_available()
+            u.log 'instance is available; sending test command'
+            u.retry ->
+                u.log JSON.stringify (new databases.Postgres this).query('SELECT 1').rows
+            u.log 'test command successful'
 
         else
             params = {
@@ -2996,6 +3001,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         if reboot_required
             @wait_for_available(100, ['available'])
             @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
+            @wait_for_available(100, ['available'])
 
         #Force a refresh of our cache
         @get_configuration true
