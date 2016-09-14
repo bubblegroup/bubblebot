@@ -2866,6 +2866,8 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             @rds 'restoreDBInstanceToPointInTime', params
             u.log 'Restore complete'
 
+            @get_configuration true
+
             #Need to set the new credentials and update the security group
             params = {
                 DBInstanceIdentifier: @id
@@ -2878,6 +2880,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             u.log 'Updating the credentials...'
             @rds 'modifyDBInstance', params
             u.log 'Updating the credentials complete'
+            @get_configuration true
             @wait_for_available(100)
 
         else
@@ -2919,7 +2922,6 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
             delete safe_params.MasterUserPassword
             u.log 'Creating new RDS instance: ' + JSON.stringify safe_params
             @rds 'createDBInstance', params
-
 
         u.log 'RDS instance succesfully created with id ' + @id
         return null
@@ -2989,6 +2991,7 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         @rds 'modifyDBInstance', params
 
         u.log 'Resizing RDB succesful'
+        @get_configuration true
 
         if reboot_required
             @wait_for_available(100, ['available'])
