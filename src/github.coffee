@@ -56,20 +56,20 @@ github.Repo = class Repo
                 commit_message: 'Bubblebot automerge of ' + head + ' into ' + base
             }
             #successful merge
-            if res.status is 201
+            if res.statusCode is 201
                 commit = @extract(res, url).sha
                 u.log 'merge successful: ' + commit
                 return {success: true, commit}
 
             #base already contains head
-            else if res.status is 204
+            else if res.statusCode is 204
                 u.log 'base already contains head, returning base: ' + base
                 return {success: true, commit: base}
 
             #failed, return the message
             else
-                u.log 'merge failed: ' + res.status + ' ' + res.body
-                message = res.status + ' ' + res.body
+                u.log 'merge failed: ' + res.statusCode + ' ' + res.body
+                message = res.statusCode + ' ' + res.body
                 return {success: false, message}
 
         finally
