@@ -2949,6 +2949,16 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
         bubblebot_role: @bubblebot_role()
     }
 
+    #Restarts the instance.  "hard" is ignored for now -- it's a parameter
+    #that comes from calling restart at the service level(we could map it to force failover,
+    #I guess)
+    restart: (hard) ->
+        u.log 'Calling rebootDBInstance on ' + this
+        @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
+        u.log 'Reboot finished on ' + this
+        @get_configuration true
+
+
     #returns true if any of the sizing options changes could cause downtime
     are_changes_unsafe: (sizing_options) ->
         {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
