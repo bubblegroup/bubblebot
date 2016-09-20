@@ -1945,6 +1945,27 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Returns an array of the underlying physical resources backing this service
     servers: -> @template().servers this
 
+    #Opens a console connected to the first server for this service
+    console: ->
+        servers = @servers()
+        if servers.length is 0
+            u.reply "There are no services associated with this service, so we can't open a console"
+            return
+        if typeof(servers[0].console) isnt 'function'
+            u.reply 'Server ' + servers[0] + ' does not have a console command, so we do not know how to connect to it'
+            return
+        u.reply 'Connecting to server ' + servers[0]
+        servers[0].console()
+
+    console_cmd:
+        help: "Opens up a console for interacting with the underlying server.  If there are multiple servers, connects to the first one"
+        params: []
+        groups: ->
+            if @environment().is_production()
+                return constants.ADMIN
+            else
+                return constants.BASIC
+
     #Returns the template for this service or null if not found
     template: ->
         prefix = @parent().id + '-'
