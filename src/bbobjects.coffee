@@ -1940,6 +1940,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             endpoint: @endpoint()
             maintenance: @maintenance()
             servers: @servers().join(', ')
+            leader: @get 'leader'
         }
 
     #Returns an array of the underlying physical resources backing this service
@@ -2044,7 +2045,38 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     on_startup: ->
         super()
         u.context().server?.monitor this
+        @check_leader()
 
+    #Indicates that we should try to switch to the same version as the other service
+    set_leader: (service_id) -> @set 'leader', service_id
+
+    set_leader_cmd:
+        help: "Sets another service as the leader for this service, meaning that when you deploy to that service, we try to deploy to this service"
+        groups: constants.ADMIN
+        params: [{name: 'service id', required: true, help: 'The version to deploy to', type: 'list', options: bbobjects.list_all_ids.bind(null, 'ServiceInstance')}]
+
+    #If we have a leader, see if it is ahead of us; if so, deploy
+    check_leader: ->
+        leader_id = @get 'leader'
+        if not leader_id
+            return
+        leader = bbobjects.instance('ServiceInstance', leader_id)
+        if not leader.exists()
+            u.report this + ' has leader ' + leader_id + ' but that id does not exist'
+            return
+        codebase = @codebase()
+        leader_version = codebase.canonicalize leader.version()
+        my_version = codebase.canonicalize @version()
+        if my_version is leader_version
+            return
+
+        #make sure the leader version is ahead of the current version
+        if not @codebase().ahead_of leader_version, my_version
+            u.report this + ' is set up to follow ' + leader + ' but leader version ' + leader_version + ' is not ahead of our version ' + my_version
+            return
+
+        #do a deploy
+        @template().deploy this, leader_version, false, 'Following leader: ' + leader
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: ->

@@ -131,6 +131,10 @@ templates.Service = class Service
         u.announce username + ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.\nDeployment message: *' + deployment_message + '*'
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
+        for service_instance in bbobjects.list_all('ServiceInstance')
+            u.SyncRun 'checking_leaders', ->
+                service_instance.check_leader()
+
         #Replace the existing servers with the new version
         u.retry 3, 30000, =>
             instance.replace()
