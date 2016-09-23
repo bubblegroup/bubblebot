@@ -2048,7 +2048,9 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         @check_leader()
 
     #Indicates that we should try to switch to the same version as the other service
-    set_leader: (service_id) -> @set 'leader', service_id
+    set_leader: (service_id) ->
+        @set 'leader', service_id
+        u.reply this + ' is set to follow leader ' + service_id
 
     set_leader_cmd:
         help: "Sets another service as the leader for this service, meaning that when you deploy to that service, we try to deploy to this service"
