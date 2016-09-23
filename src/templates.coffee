@@ -131,8 +131,9 @@ templates.Service = class Service
         u.announce username + ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.\nDeployment message: *' + deployment_message + '*'
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
+        #In case this is a leader, have all services do a quick check...
         for service_instance in bbobjects.list_all('ServiceInstance')
-            u.SyncRun 'checking_leaders', ->
+            u.sub_fiber ->
                 service_instance.check_leader()
 
         #Replace the existing servers with the new version
