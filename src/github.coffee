@@ -47,34 +47,29 @@ github.Repo = class Repo
         #create a temporary branch to merge into
         tempname = 'merge-branch-' + Date.now()
         @create_branch tempname, base
-        try
-            u.log 'Trying to merge ' + base + ' into ' + head
-            url = @repo_url() + '/merges'
-            res = @_request url, 'POST', {
-                base: tempname
-                head
-                commit_message: 'Bubblebot automerge of ' + head + ' into ' + base
-            }
-            #successful merge
-            if res.statusCode is 201
-                commit = @extract(res, url).sha
-                u.log 'merge successful: ' + commit
-                return {success: true, commit}
+        u.log 'Trying to merge ' + base + ' into ' + head
+        url = @repo_url() + '/merges'
+        res = @_request url, 'POST', {
+            base: tempname
+            head
+            commit_message: 'Bubblebot automerge of ' + head + ' into ' + base
+        }
+        #successful merge
+        if res.statusCode is 201
+            commit = @extract(res, url).sha
+            u.log 'merge successful: ' + commit
+            return {success: true, commit}
 
-            #base already contains head
-            else if res.statusCode is 204
-                u.log 'base already contains head, returning base: ' + base
-                return {success: true, commit: base}
+        #base already contains head
+        else if res.statusCode is 204
+            u.log 'base already contains head, returning base: ' + base
+            return {success: true, commit: base}
 
-            #failed, return the message
-            else
-                u.log 'merge failed: ' + res.statusCode + ' ' + res.body
-                message = res.statusCode + ' ' + res.body
-                return {success: false, message}
-
-        finally
-            @delete_branch tempname
-
+        #failed, return the message
+        else
+            u.log 'merge failed: ' + res.statusCode + ' ' + res.body
+            message = res.statusCode + ' ' + res.body
+            return {success: false, message}
 
     #Creates a new branch set to the given commit
     create_branch: (name, commit) ->
