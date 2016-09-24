@@ -338,14 +338,22 @@ monitoring.Monitor = class Monitor
             else if protocol is 'postgres'
                 db = new databases.Postgres object
                 try
-                    start = Date.now()
-                    db.query 'select 1'
-                    latency = Date.now() - start
+                    block = u.Block 'monitor hitting pg'
+                    pg_hit_timeout = setTimeout ->
+                        block.fail 'timed out after 5 seconds'
+                    , 10000
+                    u.sub_fiber ->
+                        start = Date.now()
+                        db.query 'select 1'
+                        block.sucess Date.now() - start
+
+                    latency = block.wait()
                     result = true
                     reason = null
                 catch err
                     result = false
                     reason = err.stack
+                clearTimeout pg_hit_timeout
 
             else
                 throw new Error 'monitoring: unrecognized protocol ' + protocol
