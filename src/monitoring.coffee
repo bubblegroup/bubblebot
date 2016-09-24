@@ -345,7 +345,7 @@ monitoring.Monitor = class Monitor
                     u.sub_fiber ->
                         start = Date.now()
                         db.query 'select 1'
-                        block.sucess Date.now() - start
+                        block.success Date.now() - start
 
                     latency = block.wait()
                     result = true
