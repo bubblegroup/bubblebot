@@ -3253,10 +3253,6 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     #Environment id defaults to the default dev environment in the same region
     #as the current database
     clone: (id, instance_class, hours, environment_id) ->
-        if id.match(/[^a-z0-9\-]/)?
-            u.reply 'id should only be lower-case letters, numbers, and hyphens'
-            return
-
         if environment_id
             environment = bbobjects.instance 'Environment', environment_id
         else
@@ -3286,6 +3282,15 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         help: 'Creates a copy of this database for development purposes'
         groups: -> constants.BASIC
         params: [
+            {
+                name: 'id'
+                required: true
+                validate: (id) ->
+                    while id.match(/[^a-z0-9\-]/)?
+                        id = u.ask 'id should only be lower-case letters, numbers, and hyphens... please enter a new id:'
+                    return id
+                help: 'The id of the new instance... should be lower-case letters, numbers, and hyphens'
+            }
             {
                 name: 'instance class'
                 required: true
