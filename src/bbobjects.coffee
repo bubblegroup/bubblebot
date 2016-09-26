@@ -3272,8 +3272,8 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
         u.reply 'Beginning clone...'
 
-        box = box.instance 'RDSInstance', id
-        new_instance.create parent, permanent_options, sizing_options
+        box = bbobjects.instance 'RDSInstance', id
+        box.create parent, permanent_options, sizing_options
 
         #Make sure we remind the user to destroy this when finished
         interval = hours * 60 * 60 * 1000
