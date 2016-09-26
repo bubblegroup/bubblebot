@@ -247,7 +247,7 @@ bbserver.Server = class Server
                         @using_ssl = true
 
                 server_app = express()
-                server_app.use body_parser.json()
+                server_app.use body_parser.json({limit: '5mb'})
                 server_app.use body_parser.urlencoded {extended: true}
                 server_app.use session { secret: config.get('slack_client_secret') + 'asdf23asd', secure: true }
                 server_app.use passport.initialize()
