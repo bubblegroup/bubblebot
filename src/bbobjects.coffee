@@ -2061,6 +2061,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     check_leader: ->
         leader_id = @get 'leader'
         if not leader_id
+            u.log 'This instance does not have a leader'
             return
         leader = bbobjects.instance('ServiceInstance', leader_id)
         if not leader.exists()
@@ -2078,6 +2079,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             return
 
         #do a deploy
+        u.reply this + ' is set to follow ' + leader + ', so deploying ' + leader_version + ' to it'
         @template().deploy this, leader_version, false, 'Following leader: ' + leader
 
     #Returns a description of how this service should be monitored
