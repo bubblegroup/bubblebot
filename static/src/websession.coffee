@@ -30,6 +30,8 @@ $(document).ready ->
                         res += ' ' + (err.stack ? err.message)
                     write_to_output res
             }
+            return false
+
         else if evt.which is 38 #up arrow
             if command_pointer is prev_commands.length
                 saved_res = input.val()
@@ -37,6 +39,7 @@ $(document).ready ->
             if command_pointer < 0
                 command_pointer = 0
             input.val prev_commands[command_pointer]
+            return false
 
         else if evt.which is 40 #down arrow
             command_pointer++
@@ -47,6 +50,7 @@ $(document).ready ->
                 input.val saved_res
             else
                 input.val prev_commands[command_pointer]
+            return false
 
 
     #Writes the given message to our output log
