@@ -175,7 +175,7 @@ class WebSession
     <body>
     <h2>#{@name}</h2>
     <p><textarea id="output" readonly=true></textarea></p>
-    <p><input id="input" type="text"></input></p>
+    <p><textarea id="input"></textarea></p>
     </body>
     </html>
     """
