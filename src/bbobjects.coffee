@@ -2472,7 +2472,31 @@ bbobjects.Test = class Test extends BubblebotObject
         @delete_entries 'test_passed', version
 
 
-bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
+#Based class for "boxes" like an EC2 instance or an RDS instance
+class AbstractBox extends BubblebotObject
+    #Checks to see if the owner still needs this instance
+    follow_up: ->
+        owner = @owner()
+        if not owner
+            u.report 'Following up on destroying a box without an owner: ' + this
+            return
+
+        still_need = bbserver.do_cast 'boolean', u.ask('Hey, do you still need the server you created called ' + this + '?  If not, we will delete it for you', owner.id)
+        if still_need
+            params = {
+                type: 'number'
+                validate: bbobjects.validate_destroy_hours
+            }
+            hours = bbserver.do_cast params, u.ask("Great, we will keep it for now.  How many more hours do you think you need it around for?", owner.id)
+            interval = hours * 60 * 60 * 1000
+            @set 'expiration_time', Date.now() + (interval * 2)
+            @schedule_once interval, 'follow_up'
+        else
+            u.message owner.id, "Okay, we are terminating the server now..."
+            @terminate()
+
+
+bbobjects.EC2Instance = class EC2Instance extends AbstractBox
     #Creates in the database and tags it with the name in the AWS console
     create: (parent, name, status, build_template_id) ->
         templates.verify 'EC2Build', build_template_id
@@ -2808,33 +2832,14 @@ bbobjects.EC2Instance = class EC2Instance extends BubblebotObject
 
     bubblebot_role: -> @get_tags()[config.get('bubblebot_role_tag')]
 
-    #Checks to see if the owner still needs this instance
-    follow_up: ->
-        owner = @owner()
-        if not owner
-            u.report 'Following up on destroying an ec2 instance without an owner: ' + @id
-            return
 
-        still_need = bbserver.do_cast 'boolean', u.ask('Hey, do you still need the server you created called ' + @get('name') + '?  If not, we will delete it for you', owner.id)
-        if still_need
-            params = {
-                type: 'number'
-                validate: bbobjects.validate_destroy_hours
-            }
-            hours = bbserver.do_cast params, u.ask("Great, we will keep it for now.  How many more hours do you think you need it around for?", owner.id)
-            interval = hours * 60 * 60 * 1000
-            @set 'expiration_time', Date.now() + (interval * 2)
-            @schedule_once interval, 'follow_up'
-        else
-            u.message owner.id, "Okay, we are terminating the server now..."
-            @terminate()
 
 
 #Storage for credentials that we don't store in the bubblebot database
 rds_credentials = {}
 
 #Represents an RDS instance.
-bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
+bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     constructor: (type, id) ->
         #there are other rules too but we can add them as they become problems
         if id.indexOf('_') isnt -1
@@ -3242,6 +3247,56 @@ bbobjects.RDSInstance = class RDSInstance extends BubblebotObject
                 return constants.ADMIN
             else
                 return constants.BASIC
+
+    #Creates a new RDS instance that's a copy of us.
+    #
+    #Environment id defaults to the default dev environment in the same region
+    #as the current database
+    clone: (id, instance_class, hours, environment_id) ->
+        if id.match(/[^a-z0-9\-]/)?
+            u.reply 'id should only be lower-case letters, numbers, and hyphens'
+            return
+
+        if environment_id
+            environment = bbobjects.instance 'Environment', environment_id
+        else
+            environment = bbobjects.get_default_dev_environment(@environment().get_region())
+
+        my_config = @get_configuration(true)
+        MultiAZ = my_config.MultiAZ
+        DBInstanceClass = if instance_class is 'go' then my_config.DBInstanceClass else instance_class
+        StorageType = my_config.StorageType
+        PubliclyAccessible = my_config.PubliclyAccessible
+        permanent_options = {cloned_from: @id}
+        sizing_options = {DBInstanceClass, MultiAZ, StorageType, PubliclyAccessible}
+
+        u.reply 'Beginning clone...'
+
+        box = box.instance 'RDSInstance', id
+        new_instance.create parent, permanent_options, sizing_options
+
+        #Make sure we remind the user to destroy this when finished
+        interval = hours * 60 * 60 * 1000
+        box.set 'expiration_time', Date.now() + (interval * 2)
+        box.schedule_once interval, 'follow_up'
+
+        u.reply 'Okay, your box is ready:\n' + box.describe()
+
+    clone_cmd:
+        help: 'Creates a copy of this database for development purposes'
+        groups: -> constants.BASIC
+        params: [
+            {
+                name: 'instance class'
+                required: true
+                type: 'list'
+                options: -> ['go', 'db.t2.micro', 'db.t2.small', 'db.t2.medium', 'db.t2.large', 'db.r3.large', 'db.r3.xlarge', 'db.r3.2xlarge', 'db.r3.4xlarge', 'db.r3.8xlarge', 'db.m4.large', 'db.m4.xlarge', 'db.m4.2xlarge', 'db.m4.4xlarge', 'db.m4.10xlarge']
+                help: 'The instance class of the clone.  Type "go" to use the same instance class as the current database'
+            }
+            {name: 'hours', required: true, type: 'number', help: 'The number of hours you need this clone for'}
+            {name: 'environment id', type: 'list', bbobjects.list_all_ids.bind(null, 'Environment'), help: 'The environment to create the clone in.  Defaults to the default dev environment in the same region as us'}
+        ]
+
 
 
 
