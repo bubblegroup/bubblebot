@@ -3294,7 +3294,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 help: 'The instance class of the clone.  Type "go" to use the same instance class as the current database'
             }
             {name: 'hours', required: true, type: 'number', help: 'The number of hours you need this clone for'}
-            {name: 'environment id', type: 'list', bbobjects.list_all_ids.bind(null, 'Environment'), help: 'The environment to create the clone in.  Defaults to the default dev environment in the same region as us'}
+            {name: 'environment id', type: 'list', options: bbobjects.list_all_ids.bind(null, 'Environment'), help: 'The environment to create the clone in.  Defaults to the default dev environment in the same region as us'}
         ]
 
 
