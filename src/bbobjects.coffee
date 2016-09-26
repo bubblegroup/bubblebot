@@ -2122,12 +2122,6 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         for server in @servers()
             server.restart?(hard)
 
-    replace_cmd:
-        sublogger: true
-        help: 'Replaces the underlying boxes for this service'
-        groups: constants.BASIC
-        reply: 'Replacement complete'
-
     restart_cmd:
         sublogger: true
         help: 'Restarts the underlying boxes for this service'
@@ -3019,6 +3013,14 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
         u.log 'Reboot finished on ' + this
         @get_configuration true
+
+    restart_cmd:
+        sublogger: true
+        help: 'Restarts the database'
+        reply: 'Restart complete'
+        dangerous: -> @is_production()
+        groups: (aws) -> if aws and @is_production() then constants.ADMIN else constants.BASIC
+        sublogger: true
 
 
     #returns true if any of the sizing options changes could cause downtime
