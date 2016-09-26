@@ -3282,7 +3282,8 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
     clone_cmd:
         help: 'Creates a copy of this database for development purposes'
-        groups: -> constants.BASIC
+        sublogger: true
+        groups: constants.BASIC
         params: [
             {
                 name: 'id'
