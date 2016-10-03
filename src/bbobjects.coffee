@@ -2117,6 +2117,12 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         #Make sure we update monitoring policies since endpoints may have changed
         u.context().server?._monitor.update_policies()
 
+    replace_cmd:
+        sublogger: true
+        help: 'Replaces the underlying boxes for this service'
+        groups: constants.BASIC
+        reply: 'Replace complete'
+
     #Restarts the underlying boxes for this service
     restart: (hard) ->
         for server in @servers()
