@@ -3276,9 +3276,10 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         MultiAZ = my_config.MultiAZ
         DBInstanceClass = if instance_class is 'go' then my_config.DBInstanceClass else instance_class
         StorageType = my_config.StorageType
+        Iops = my_config.Iops
         PubliclyAccessible = my_config.PubliclyAccessible
         permanent_options = {cloned_from: @id}
-        sizing_options = {DBInstanceClass, MultiAZ, StorageType, PubliclyAccessible}
+        sizing_options = {DBInstanceClass, MultiAZ, StorageType, PubliclyAccessible, Iops}
 
         u.reply 'Beginning clone...'
 
