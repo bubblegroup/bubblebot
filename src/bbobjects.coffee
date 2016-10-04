@@ -2913,6 +2913,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 DBInstanceClass
                 MultiAZ
                 StorageType
+                Iops
                 PubliclyAccessible
 
                 DBSubnetGroupName
