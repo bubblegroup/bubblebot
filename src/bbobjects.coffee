@@ -3159,7 +3159,11 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         endpoint.port = data.Port
         endpoint.user = username ? @get 'MasterUsername'
         endpoint.password = password ? @get 'MasterUserPassword'
-        endpoint.database = @get('database') ? 'postgres'
+
+        #allow overriding database (but not for bubblebot since that breaks things)
+        if @id.indexOf('bubblebot-bbdbservice-') isnt 0
+            database = @get('database')
+        endpoint.database = database ? 'postgres'
 
         return endpoint
 
