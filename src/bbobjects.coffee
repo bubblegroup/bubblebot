@@ -3138,7 +3138,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
     #Returns the endpoint we can access this instance at.
     #
-    #Can optionally override credentials
+    #Can optionally override credentials or database
     endpoint: (credentials) ->
         @wait_for_available()
 
@@ -3159,7 +3159,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         endpoint.port = data.Port
         endpoint.user = username ? @get 'MasterUsername'
         endpoint.password = password ? @get 'MasterUserPassword'
-        endpoint.database = 'postgres'
+        endpoint.database = @get('database') ? 'postgres'
 
         return endpoint
 
