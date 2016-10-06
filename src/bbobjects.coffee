@@ -3091,7 +3091,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
     #Waits til the instance is in the available state
     wait_for_available: (retries = 100, available_statuses) ->
-        available_statuses ?= ['available', 'backing-up']
+        available_statuses ?= ['available', 'backing-up', 'modifying']
 
         #first do a quick check using cached data...
         if @get_configuration().DBInstanceStatus in available_statuses
