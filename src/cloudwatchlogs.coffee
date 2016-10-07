@@ -155,12 +155,24 @@ cloudwatchlogs.LogStream = class LogStream
         nextToken = options.nextToken
         startFromHead = options.startFromHead is 'true'
 
-        response = @environment.CloudWatchLogs 'getLogEvents', {
-            logGroupName: @groupname
-            logStreamName: @name
-            nextToken
-            startFromHead
-        }
+        if options.filterPattern
+            params = {
+                logGroupName: @groupname
+                filterPattern: options.filterPattern
+                interleaved: true
+                nextToken
+            }
+            if options.all isnt 'yes'
+                params.logStreamNames: [@name]
+            response = @environment.CloudWatchLogs 'filterLogEvents', params
+        else
+
+            response = @environment.CloudWatchLogs 'getLogEvents', {
+                logGroupName: @groupname
+                logStreamName: @name
+                nextToken
+                startFromHead
+            }
 
         #Generate the navigation links
         build_link = (startFromHead, nextToken) =>
@@ -191,6 +203,13 @@ cloudwatchlogs.LogStream = class LogStream
         if newer
             navigation += link_html 'Newer events', newer
         navigation += link_html (if startFromHead then 'Switch to newest first' else 'Switch to oldest first'), reverse
+
+        navigation += """
+        <form action="" method="get">
+        <input name="filterPattern" type="text" placeholder="Search logs">
+        <input type="radio" name="all" value="yes"> All logs <input type="radio" name="all" value="no"> This log
+        </form>
+        """
         navigation += '\n</div>\n'
 
         #Write the body
