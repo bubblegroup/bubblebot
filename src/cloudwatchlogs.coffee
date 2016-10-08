@@ -163,7 +163,7 @@ cloudwatchlogs.LogStream = class LogStream
                 nextToken
             }
             if options.all isnt 'yes'
-                params.logStreamNames: [@name]
+                params.logStreamNames = [@name]
             response = @environment.CloudWatchLogs 'filterLogEvents', params
         else
 
