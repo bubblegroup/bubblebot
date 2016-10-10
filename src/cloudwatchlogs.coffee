@@ -160,8 +160,9 @@ cloudwatchlogs.LogStream = class LogStream
                 logGroupName: @groupname
                 filterPattern: options.filterPattern
                 interleaved: true
-                nextToken
             }
+            if nextToken
+                params.nextToken = nextToken
             if options.all isnt 'yes'
                 params.logStreamNames = [@name]
             response = @environment.CloudWatchLogs 'filterLogEvents', params
@@ -185,13 +186,20 @@ cloudwatchlogs.LogStream = class LogStream
 
         refresh = build_link startFromHead
 
-        #Include an older link unless we are at the beginning of start from head
-        if (not startFromHead) or nextToken
-            older = build_link startFromHead, response.nextBackwardToken
+        #If we are in filtering mode...
+        if options.filterPattern
+            if response.nextToken
+                older = build_link false, response.nextToken
 
-        #Include a newer link unless we are the beginning of normal
-        if startFromHead or nextToken
-            newer = build_link startFromHead, response.nextForwardToken
+        else
+
+            #Include an older link unless we are at the beginning of start from head
+            if (not startFromHead) or nextToken
+                older = build_link startFromHead, response.nextBackwardToken
+
+            #Include a newer link unless we are the beginning of normal
+            if startFromHead or nextToken
+                newer = build_link startFromHead, response.nextForwardToken
 
         reverse = build_link (not startFromHead)
 
@@ -204,10 +212,17 @@ cloudwatchlogs.LogStream = class LogStream
             navigation += link_html 'Newer events', newer
         navigation += link_html (if startFromHead then 'Switch to newest first' else 'Switch to oldest first'), reverse
 
+        if options.all is 'yes'
+            all_checked = 'checked'
+            this_checked = ''
+        else
+            all_checked = ''
+            this_checked = 'checked'
+
         navigation += """
         <form id="searchform" action="" method="get">
-        <input name="filterPattern" type="text" placeholder="Search logs">
-        <input type="radio" name="all" value="yes"> All logs <input type="radio" name="all" value="no" checked> This log
+        <input name="filterPattern" type="text" value="#{options.filterPattern ? ''}" placeholder="Search logs">
+        <input type="radio" name="all" value="yes" #{all_checked}> All logs <input type="radio" name="all" value="no" #{this_checked}> This log
         </form>
         """
         navigation += '\n</div>\n'
@@ -252,8 +267,14 @@ cloudwatchlogs.LogStream = class LogStream
         response.events.sort (a, b) -> (parseInt(a.timestamp) - parseInt(b.timestamp)) * (if startFromHead then 1 else -1)
 
         if response.events.length > 0
-            for {timestamp, message} in response.events
-                res.write '\n<div class="log_entry"><div class="timestamp">' + u.print_date(new Date(timestamp)) + '</div><pre class="message">' + escape_html(message) + '</pre></div>'
+            for {timestamp, message, logStreamName} in response.events
+                #If this is a search across multiple logs, include a link to the source log
+                if options.all is 'yes' and options.filterPattern
+                    log_link = ' <a href="' + (new LogStream @environment, @groupname, logStreamName).get_tail_url() + '">' + logStreamName + '</a>'
+                else
+                    log_link = ''
+
+                res.write '\n<div class="log_entry"><div class="timestamp">' + u.print_date(new Date(timestamp)) + log_link + '</div><pre class="message">' + escape_html(message) + '</pre></div>'
             res.write navigation
         else
             res.write '\n<div class="log_entry">No more events</div>'
