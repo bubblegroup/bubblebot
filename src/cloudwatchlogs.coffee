@@ -139,10 +139,11 @@ cloudwatchlogs.LogStream = class LogStream
         return u.context().server.get_logs_url @environment.id, @groupname, @name
 
     #Returns the most recent events.  Sorted newest to oldest
-    get_events: ->
+    get_events: (limit) ->
         response = @environment.CloudWatchLogs 'getLogEvents', {
             logGroupName: @groupname
             logStreamName: @name
+            limit
         }
         res = response.events ? []
         res.sort (a, b) -> (parseInt(a.timestamp) - parseInt(b.timestamp)) * -1
@@ -166,6 +167,12 @@ cloudwatchlogs.LogStream = class LogStream
                 params.nextToken = nextToken
             if options.all isnt 'yes'
                 params.logStreamNames = [@name]
+            else
+                #I think because we have more than 100 streams (the limit for filtering),
+                #we need to explicitly add streams, or it picks the first 100 to search.
+                #So we fetch the most recent 100 streams, plus the master stream
+                params.logStreamNames = ['bubblebot_server'].concat (id for {id} in u.context().server.list_sub_loggers(99))
+
             response = @environment.CloudWatchLogs 'filterLogEvents', params
         else
 

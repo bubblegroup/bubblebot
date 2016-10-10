@@ -579,8 +579,8 @@ bbserver.Server = class Server
         return log_stream
 
     #Returns an array of {id, description, timestamp} of recently created subloggers
-    list_sub_loggers: ->
-        return (u.extend(JSON.parse(message), {timestamp}) for {message, timestamp} in @get_sublogger_stream().get_events())
+    list_sub_loggers: (limit) ->
+        return (u.extend(JSON.parse(message), {timestamp}) for {message, timestamp} in @get_sublogger_stream().get_events(limit))
 
     #Retrieves the sublogger with the given id
     get_sub_logger: (id) -> bbobjects.bubblebot_environment().get_log_stream('bubblebot', id)
