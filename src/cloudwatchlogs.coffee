@@ -160,6 +160,7 @@ cloudwatchlogs.LogStream = class LogStream
                 logGroupName: @groupname
                 filterPattern: options.filterPattern
                 interleaved: true
+                startTime: Date.now() - ((options.days ? 1) * 24 * 60 * 60 * 1000)
             }
             if nextToken
                 params.nextToken = nextToken
@@ -189,7 +190,7 @@ cloudwatchlogs.LogStream = class LogStream
         #If we are in filtering mode...
         if options.filterPattern
             if response.nextToken
-                older = build_link false, response.nextToken
+                newer = build_link false, response.nextToken
 
         else
 
@@ -222,7 +223,7 @@ cloudwatchlogs.LogStream = class LogStream
         navigation += """
         <form id="searchform" action="" method="get">
         <input name="filterPattern" type="text" value="#{options.filterPattern ? ''}" placeholder="Search logs">
-        <input type="radio" name="all" value="yes" #{all_checked}> All logs <input type="radio" name="all" value="no" #{this_checked}> This log
+        <input type="radio" name="all" value="yes" #{all_checked}> All logs <input type="radio" name="all" value="no" #{this_checked}> This log   <input type="number" name="days" value=#{options.days ? 1}> days of results
         </form>
         """
         navigation += '\n</div>\n'
@@ -264,7 +265,7 @@ cloudwatchlogs.LogStream = class LogStream
         res.write navigation
 
         response.events ?= []
-        response.events.sort (a, b) -> (parseInt(a.timestamp) - parseInt(b.timestamp)) * (if startFromHead then 1 else -1)
+        response.events.sort (a, b) -> (parseInt(a.timestamp) - parseInt(b.timestamp)) * (if startFromHead or options.filterPattern then 1 else -1)
 
         if response.events.length > 0
             for {timestamp, message, logStreamName} in response.events
