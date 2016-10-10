@@ -223,7 +223,7 @@ cloudwatchlogs.LogStream = class LogStream
         navigation += """
         <form id="searchform" action="" method="get">
         <input name="filterPattern" type="text" value="#{options.filterPattern ? ''}" placeholder="Search logs">
-        <input type="radio" name="all" value="yes" #{all_checked}> All logs <input type="radio" name="all" value="no" #{this_checked}> This log   <input type="number" name="days" value=#{options.days ? 1}> days of results
+        <input type="radio" name="all" value="yes" #{all_checked}> All logs <input type="radio" name="all" value="no" #{this_checked}> This log   <input type="number" name="days" value=#{options.days ? 1}> days of results  <input type="submit">
         </form>
         """
         navigation += '\n</div>\n'
