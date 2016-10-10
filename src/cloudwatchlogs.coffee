@@ -205,9 +205,9 @@ cloudwatchlogs.LogStream = class LogStream
         navigation += link_html (if startFromHead then 'Switch to newest first' else 'Switch to oldest first'), reverse
 
         navigation += """
-        <form action="" method="get">
+        <form id="searchform" action="" method="get">
         <input name="filterPattern" type="text" placeholder="Search logs">
-        <input type="radio" name="all" value="yes"> All logs <input type="radio" name="all" value="no"> This log
+        <input type="radio" name="all" value="yes"> All logs <input type="radio" name="all" value="no" checked> This log
         </form>
         """
         navigation += '\n</div>\n'
@@ -220,6 +220,10 @@ cloudwatchlogs.LogStream = class LogStream
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/png" href="https://d1muf25xaso8hp.cloudfront.net/http://s3.amazonaws.com/appforest_uf/f1412116867925x202730323653668160/apple_touch_icon_precomposed.png?w=124.80000000000001&h=&fit=max" />
         <style>
+        #searchform {
+            margin-top: 15px;
+            margin-bottom: 35px;
+        }
         pre.message {
             margin-top: 5px;
             white-space: pre-line;
