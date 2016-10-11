@@ -157,20 +157,22 @@ cloudwatchlogs.LogStream = class LogStream
         startFromHead = options.startFromHead is 'true'
 
         if options.filterPattern
-            params = {
-                logGroupName: @groupname
-                filterPattern: options.filterPattern
-                interleaved: true
-                startTime: Date.now() - ((options.days ? 1) * 24 * 60 * 60 * 1000)
-            }
             if nextToken
                 #filtering next tokens tend to be really long (I think because they contain the
                 #scroll position for each log we are searching), so we store them in the db
                 {retrieved_token, retrieved_log_streams} = JSON.parse u.context().db.get_key(nextToken)
-                params.nextToken = retrieved_token
-                params.logStreamNames = retrieved_log_streams
+                params = {
+                    logGroupName: @groupname
+                    nextToken: retrieved_token
+                }
 
             else
+                params = {
+                    logGroupName: @groupname
+                    filterPattern: options.filterPattern
+                    interleaved: true
+                    startTime: Date.now() - ((options.days ? 1) * 24 * 60 * 60 * 1000)
+                }
                 if options.all isnt 'yes'
                     params.logStreamNames = [@name]
                 else
