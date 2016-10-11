@@ -166,14 +166,18 @@ cloudwatchlogs.LogStream = class LogStream
             if nextToken
                 #filtering next tokens tend to be really long (I think because they contain the
                 #scroll position for each log we are searching), so we store them in the db
-                params.nextToken = u.context().db.get_key(nextToken)
-            if options.all isnt 'yes'
-                params.logStreamNames = [@name]
+                {retrieved_token, retrieved_log_streams} = JSON.parse u.context().db.get_key(nextToken)
+                params.nextToken = retrieved_token
+                params.logStreamNames = retrieved_log_streams
+
             else
-                #I think because we have more than 100 streams (the limit for filtering),
-                #we need to explicitly add streams, or it picks the first 100 to search.
-                #So we fetch the most recent 100 streams, plus the master stream
-                params.logStreamNames = ['bubblebot_server'].concat (id for {id} in u.context().server.list_sub_loggers(99))
+                if options.all isnt 'yes'
+                    params.logStreamNames = [@name]
+                else
+                    #I think because we have more than 100 streams (the limit for filtering),
+                    #we need to explicitly add streams, or it picks the first 100 to search.
+                    #So we fetch the most recent 100 streams, plus the master stream
+                    params.logStreamNames = ['bubblebot_server'].concat (id for {id} in u.context().server.list_sub_loggers(99))
 
             response = @environment.CloudWatchLogs 'filterLogEvents', params
         else
@@ -202,7 +206,11 @@ cloudwatchlogs.LogStream = class LogStream
                 #Tokens are really long, so generate a shorter one and store the original
                 #in the database for 24 hours
                 new_token = u.gen_password()
-                u.context().db.set_key new_token, response.nextToken, Date.now() + 24 * 60 * 60 * 1000
+                data = JSON.stringify {
+                    retrieved_token: response.nextToken
+                    retrieved_log_streams: params.logStreamNames
+                }
+                u.context().db.set_key new_token, data, Date.now() + 24 * 60 * 60 * 1000
                 newer = build_link false, new_token
 
         else
