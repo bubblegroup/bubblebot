@@ -227,7 +227,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
         return null
 
     #Ensure that we periodically clean up expired keys
-    ensure_clear_scheduled: ->
+    _ensure_clear_scheduled: ->
         if @_clear_scheduled
             return
         @_clear_scheduled = true
