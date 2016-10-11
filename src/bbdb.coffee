@@ -355,3 +355,4 @@ class BBDBService extends templates.RDSService
 
 templates.add 'Service', 'BBDBService', new BBDBService 'BBDBCodebase'
 
+u = require './utilities'
