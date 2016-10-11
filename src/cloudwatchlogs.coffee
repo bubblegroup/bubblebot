@@ -194,6 +194,8 @@ cloudwatchlogs.LogStream = class LogStream
         #Generate the navigation links
         build_link = (startFromHead, nextToken) =>
             data = {}
+            if options.filterPattern
+                data.filterPattern = options.filterPattern
             if startFromHead
                 data.startFromHead = startFromHead
             if nextToken
