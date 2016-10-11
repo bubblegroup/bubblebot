@@ -164,7 +164,9 @@ cloudwatchlogs.LogStream = class LogStream
                 startTime: Date.now() - ((options.days ? 1) * 24 * 60 * 60 * 1000)
             }
             if nextToken
-                params.nextToken = nextToken
+                #filtering next tokens tend to be really long (I think because they contain the
+                #scroll position for each log we are searching), so we store them in the db
+                params.nextToken = u.context().db.get_key(nextToken)
             if options.all isnt 'yes'
                 params.logStreamNames = [@name]
             else
@@ -197,7 +199,11 @@ cloudwatchlogs.LogStream = class LogStream
         #If we are in filtering mode...
         if options.filterPattern
             if response.nextToken
-                newer = build_link false, response.nextToken
+                #Tokens are really long, so generate a shorter one and store the original
+                #in the database for 24 hours
+                new_token = u.gen_password()
+                u.context().db.set_key new_token, response.nextToken, Date.now() + 24 * 60 * 60 * 1000
+                newer = build_link false, new_token
 
         else
 

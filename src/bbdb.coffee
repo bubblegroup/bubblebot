@@ -206,6 +206,36 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
         @query "UPDATE scheduler SET owner = null WHERE id = $1", id
         return null
 
+    #
+    #Key-value store
+    #
+
+    #Key and value are both text.  Expires should be a timestamp.
+    set_key: (key, value, expires) ->
+        @_ensure_clear_scheduled()
+        @query "INSERT INTO keyvalue_store (key, value, expires) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE set value = $2, expires = $3", key, value, expires
+        return null
+
+
+    #Given the key, returns the value, or null if not found
+    get_key: (key) ->
+        res = @query "SELECT value FROM keyvalue_store WHERE key = $1", key
+        return res.rows[0]?.value
+
+    clear_expired_keys: ->
+        @query "DELETE FROM keyvalue_store WHERE expires < $1", Date.now()
+        return null
+
+    #Ensure that we periodically clean up expired keys
+    ensure_clear_scheduled: ->
+        if @_clear_scheduled
+            return
+        @_clear_scheduled = true
+        setTimeout =>
+            @_clear_scheduled = false
+            u.SyncRun 'clear_expired', =>
+                @clear_expired_keys()
+        , 10 * 60 * 1000
 
 
 bbobjects = require './bbobjects'
@@ -273,12 +303,22 @@ class BBDBCodebase extends templates.RDSCodebase
             PRIMARY KEY (owner_id)
         );
         """
+        """
+        CREATE TABLE keyvalue_store (
+            key text PRIMARY KEY,
+            value text,
+            expires bigint
+        )
+        """
     ]
 
 
     get_rollbacks: -> [
         """
         DROP TABLE bbobjects, history, scheduler, scheduler_owners;
+        """
+        """
+        DROP TABLE keyvalue_store;
         """
     ]
 
