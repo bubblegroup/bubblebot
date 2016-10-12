@@ -355,6 +355,16 @@ monitoring.Monitor = class Monitor
                     reason = err.stack
                 clearTimeout pg_hit_timeout
 
+            else if protocol is 'custom'
+                start = Date.now()
+                try
+                    policy.endpoint.custom_fn policy.endpoint
+                    result = true
+                catch err
+                    result = false
+                    reason = err.stack ? err.message
+                latency = Date.now() - start
+
             else
                 throw new Error 'monitoring: unrecognized protocol ' + protocol
 
