@@ -47,10 +47,14 @@ monitoring.Monitor = class Monitor
     update_policies: ->
         for uid, object of @to_monitor
             try
-                @policies[uid] = object.get_monitoring_policy()
-                @in_maintenance[uid] = object.maintenance()
+                @update_policy uid, object
             catch err
                 u.report 'Bug updating policy for ' + object + ':\n' + err.stack
+
+    #Update our cached policy / maintenance state for the given object and uid
+    update_policy: (uid, object) ->
+        @policies[uid] = object.get_monitoring_policy()
+        @in_maintenance[uid] = object.maintenance()
 
     monitor: (object) ->
         if not object
@@ -64,7 +68,7 @@ monitoring.Monitor = class Monitor
         u.log 'Monitor: monitoring ' + object + ' (' + uid + ')'
 
         #Set the initial policy
-        @policies[uid] = object.get_monitoring_policy()
+        @update_policy uid, object
         @health[uid] = UNKNOWN
 
         #and schedule the initial check
@@ -136,8 +140,11 @@ monitoring.Monitor = class Monitor
 
                 #Wait for a second before checking again
                 u.pause 1000
+
                 #make sure the policy is up to date...
-                policy = @policies[uid] = object.get_monitoring_policy()
+                @update_policy uid, object
+                policy = @policies[uid]
+
                 #and check again
                 [state, reason] = @get_state(uid, object, policy)
 
