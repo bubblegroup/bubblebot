@@ -1775,6 +1775,11 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
             if prev
                 u.reply 'There is already a credential for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name + '. To overwrite it, call this command again with overwrite set to true'
                 return
+
+        #Setting to empty string makes it null
+        if value is ''
+            value = null
+
         @set CREDENTIAL_PREFIX + name, value
         msg = 'Credential set for environment ' + @parent().id + ', set ' + @set_name() + ', name ' + name
         if not no_log
