@@ -1134,11 +1134,12 @@ bbobjects.Environment = class Environment extends BubblebotObject
         if @allow_outside_ssh()
             rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
 
-        #If this is not bubblebot, add the bubblebot security group
+        #If this is not bubblebot, add the bubblebot server
         if @id isnt constants.BUBBLEBOT_ENV
-            bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
+            bubblebot_ip_range = bbobjects.get_bbserver().get_public_ip_address() + '/32'
+
             #Allow bubblebot to connect on any port
-            rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}], IpProtocol: '-1'}
+            rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: '-1'}
 
         @ensure_security_group_rules group_name, rules
         return id
@@ -1162,9 +1163,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
             #if this is not bubblebot, let the bubblebot server connect
             if @id isnt constants.BUBBLEBOT_ENV
-                bubblebot_sg = bbobjects.bubblebot_environment().get_webserver_security_group()
+                bubblebot_ip_range = bbobjects.get_bbserver().get_public_ip_address() + '/32'
+
                 #Allow bubblebot to connect on this port
-                rules.push {UserIdGroupPairs: [{GroupId: bubblebot_sg}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+                rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
 
         @ensure_security_group_rules group_name, rules
         return id
@@ -2815,11 +2817,7 @@ bbobjects.EC2Instance = class EC2Instance extends AbstractBox
         software.private_key(path) this
 
     #Returns the address bubblebot can use for ssh / http requests to this instance
-    get_address: ->
-        if config.get('command_line', false)
-            @get_public_ip_address()
-        else
-            @get_private_ip_address()
+    get_address: -> @get_public_ip_address()
 
     get_public_dns: -> @get_data().PublicDnsName
 
