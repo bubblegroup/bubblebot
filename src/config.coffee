@@ -5,7 +5,7 @@ _config = null
 
 plugins = {}
 
-plugin_names = ['metrics', 'alerting']
+plugin_names = ['metrics', 'alerting', 'bug_report']
 
 #Adds the given plugin to this category
 config.add_plugin = (name, plugin) ->
