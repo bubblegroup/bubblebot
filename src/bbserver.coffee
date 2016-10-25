@@ -417,7 +417,15 @@ bbserver.Server = class Server
                         user_id = override_user_id ? u.context().user_id ? throw new Error 'no current user!'
                         @slack_client.confirm(user_id, msg)
                     announce: wrap_in_log 'Announce', @slack_client.announce.bind(@slack_client)
-                    report: wrap_in_log 'Report', @slack_client.report.bind(@slack_client)
+                    report: wrap_in_log 'Report', (msg) =>
+                        for plugin in config.get_plugins 'bug_report'
+                            try
+                                plugin.report msg
+                            catch err
+                                @slack_client.report 'Error trying to report a message to a plugin:\n' + err.stack
+
+                        @slack_client.report msg
+
                     report_no_log: @slack_client.report.bind(@slack_client)
                 }
 
