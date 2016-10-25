@@ -16,3 +16,5 @@ sentry.report = (msg) ->
 
 #https://github.com/getsentry/raven-node -- for some reason the Sentry client is called raven
 raven = require 'raven'
+u = require './../utilities'
+config = require './../config'
