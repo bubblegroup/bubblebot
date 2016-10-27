@@ -3388,7 +3388,10 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
 aws_config = (region) ->
     accessKeyId = config.get 'accessKeyId'
     secretAccessKey = config.get 'secretAccessKey'
-    res = {region}
+    res = {
+        region
+        maxRetries: 10
+    }
     if accessKeyId or secretAccessKey
         res.accessKeyId = accessKeyId
         res.secretAccessKey = secretAccessKey
