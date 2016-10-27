@@ -3379,6 +3379,9 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
             AllowReassociation: true
             InstanceId: new_instance.id
         }
+        #Our instance's address will have just changed, so force a refresh of the address
+        #cache
+        new_instance.get_data(true)
 
 
 #Given a region, gets the API configuration
