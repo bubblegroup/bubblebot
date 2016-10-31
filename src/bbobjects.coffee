@@ -548,6 +548,8 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Code for talking to AWS
 
+    cloudfront: (method, parameters) -> @aws 'CloudFront', method, parameters
+
     #Calls ec2 and returns the results
     ec2: (method, parameters) -> @aws 'EC2', method, parameters
 
@@ -1362,6 +1364,70 @@ bbobjects.Environment = class Environment extends BubblebotObject
             true
         else
             return @is_development()
+
+    #Creates a new cloudfront distribution.  Right now the only configurable parameter
+    #is the origin (we only support oneorigin right now), but can extend this function
+    #with more options.
+    #
+    #Returns the new cloudfront bbobject
+    create_cloudfront_distribution: (origin) ->
+        params = {
+            DistributionConfig: {
+                CallerReference: String(Date.now())
+                Origins: {
+                    Quantity: 1
+                    Items: [
+                        {
+                            Id: 'primary'
+                            DomainName: origin
+                            CustomOriginConfig: {
+                                HTTPPort: 80
+                                HTTPSPort: 443
+                                OriginProtocolPolicy: 'match-viewer'
+                                OriginSslProtocols: {
+                                    Quantity: 3
+                                    Items: ['TLSv1','TLSv1.1','TLSv1.2']
+                                }
+                            }
+                        }
+                    ]
+                }
+                DefaultCacheBehavior: {
+                    TargetOriginId: 'primary'
+                    ForwardedValues: {
+                        QueryString: false
+                        Cookies: {
+                            Forward: "none"
+                        }
+                    }
+                    TrustedSigners: {
+                        Enabled: false
+                        Quantity: 0
+                    }
+                    ViewerProtocolPolicy: 'allow-all'
+                    MinTTL: 0
+                    AllowedMethods: {
+                        Quantity: 2
+                        Items: ['GET', 'HEAD']
+                    }
+                    Compress: true
+                }
+                Comment: 'Created by Bubblebot to point to origin ' + origin
+                PriceClass: 'PriceClass_All'
+            }
+        }
+
+        #First create in cloudfront
+        u.log 'Creating cloudfront distribution: ' + JSON.stringify(params)
+        data = @cloudfront 'createDistribution', params
+        id = data.Distribution.Id
+
+        #then save it in bubblebot
+        distribution = bbobjects.instance 'CloudfrontDistribution', id
+        distribution.create this, origin
+
+        return distribution
+
 
     #Returns the elastic ip for this environment with the given name.  If no such
     #elastic ip exists, creates it (unless do_not_create is true)
@@ -3384,6 +3450,72 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
         new_instance.get_data(true)
 
 
+#Represents a Cloudfront distribution.  The id should be the aws id for the distribution
+bbobjects.CloudfrontDistribution = class CloudfrontDistribution extends BubblebotObject
+    create: (parent, name) ->
+        super parent.type, parent.id, {name}
+
+    toString: -> "Cloudfront #{@id} #{@get 'name'}"
+
+    #fetches the amazon metadata for this distribution and caches it
+    refresh: ->
+        data = @ec2 'getDistribution', {Id: @id}
+        cloudfront_cache.set @id, data.Distribution
+
+    describe_keys: -> u.extend super(), {
+        name: @get 'name'
+        status: @get_data().Status
+        endpoint: @endpoint()
+        more: 'Call the get_configuration command to see the raw AWS configuration'
+    }
+
+    get_configuration: -> @get_data(true)
+
+    get_configuration_cmd:
+        help: 'Fetches the configuration information about this distribution'
+        reply: true
+        groups: constants.BASIC
+
+    #Gets the domain name this distribution is accessible at
+    endpoint: -> @get_data().DomainName
+
+    exists_in_aws: ->
+        try
+            @get_data(true)
+            return true
+        catch err
+            if true #TODO: replace this with a check to make sure this error isn't whatever the error it throws for missing stuff
+                throw err
+            return false
+
+    #Retrieves the amazon metadata for this address.  If force_refresh is true,
+    #forces us not to use our cache
+    get_data: (force_refresh) ->
+        if force_refresh or not cloudfront_cache.get(@id)
+            @refresh()
+        return cloudfront_cache.get(@id)
+
+    #Disables the given cloudfront distribution and removes it from bubblebot
+    destroy: ->
+        configuration = @get_configuration()
+        configuration.Enabled = false
+        params = {
+            Id: @id
+            DistributionConfig: configuration
+        }
+
+        u.log 'Disabling cloudfront distribution: ' + JSON.stringify(params)
+        @cloudfront 'updateDistribution', params
+
+        @delete()
+
+    destroy_cmd:
+        help: 'Disables this cloudfront distribution'
+        reply: 'Distribution disabled.  To delete it permanently, use the AWS console'
+        groups: -> if @is_production() then constants.ADMIN else constants.BASIC
+        dangerous: -> @is_production()
+
+
 #Given a region, gets the API configuration
 aws_config = (region) ->
     accessKeyId = config.get 'accessKeyId'
@@ -3447,6 +3579,7 @@ class Cache
 
 instance_cache = new Cache(60 * 1000)
 eip_cache = new Cache(60 * 1000)
+cloudfront_cache = new Cache(60 * 1000)
 key_cache = new Cache(60 * 60 * 1000)
 sg_cache = new Cache(60 * 60 * 1000)
 vpc_to_subnets = new Cache(60 * 60 * 1000)
