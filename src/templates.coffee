@@ -218,6 +218,11 @@ templates.Service = class Service
 
     #Returns true if this version has passed all the tests for this service
     is_tested: (version) ->
+        #Allow the codebase to override the testing logic
+        codebase = @codebase()
+        if typeof(codebase.is_tested) is 'function'
+            return codebase.is_tested version
+
         tests = @get_tests()
         for test in tests
             if not test.is_tested version
@@ -226,6 +231,11 @@ templates.Service = class Service
 
     #Runs any not-passed test for this service against this version
     run_tests: (version) ->
+        #Allow the codebase to override the testing logic
+        codebase = @codebase()
+        if typeof(codebase.run_tests) is 'function'
+            return codebase.run_tests version
+
         tests = (test for test in @get_tests() when not test.is_tested version)
         u.reply 'Running the following tests: ' + tests.join(', ')
         for test in tests
@@ -804,6 +814,9 @@ templates.RDSCodebase = class RDSCodebase extends Codebase
         else
             return @get_migrations()[migration]
 
+    #Returns true if this version has a rollback defined
+    has_rollback: (version) -> @get_migration_data(version, true)
+
     #Returns the most up-to-date version of this codebase
     get_latest_version: ->
         version = join_rds_version_pieces @get_id(), @get_migrations().length - 1
@@ -1058,6 +1071,122 @@ templates.GithubRDSCodebase = class GithubRDSCodebase extends templates.RDSCodeb
         return num
 
 
+#Represents multiple independent database codebases, managed in github, and run on the same
+#database.
+#
+#Versions look like "codebase1_version-codebase2_version"
+#
+#Constructor takes a an array of GithubRDSCodebases
+templates.GithubMultiRDSCodebase = class GithubMultiRDSCodebase extends Codebase
+    constructor: (@codebases) ->
+
+    canonicalize: (version) ->
+        versions = version.split('-')
+        res = []
+        for codebase, idx in @codebases
+            canon = codebase.canonicalize versions[idx]
+            if not canon?
+                return null
+            res.push canon
+        return res.join('-')
+
+    debug_version: (version) ->
+        versions = version.split('-')
+        if versions.length isnt @codebases.length
+            return 'Need to provide ' + @codebases.length + ' versions, seperated by dashes'
+
+        for codebase, idx in @codebases
+            canon = codebase.canonicalize versions[idx]
+            if not canon?
+                return codebase.debug_version versions[idx]
+
+        throw new Error 'GithubMultiRDSCodebase: could not figure out what is wrong with version ' + version
+
+
+    ahead_of: (first, second) ->
+        first_versions = first.split('-')
+        second_versions = second.split('-')
+
+        for codebase, idx in @codebases
+            if not codebase.ahead_of first_versions[idx], second_versions[idx]
+                return false
+
+        return true
+
+    ahead_of_msg: (first, second) ->
+        first_versions = first.split('-')
+        second_versions = second.split('-')
+
+        for codebase, idx in @codebases
+            if not codebase.ahead_of first_versions[idx], second_versions[idx]
+                return codebase.ahead_of_msg first_versions[idx], second_versions[idx]
+
+        throw new Error 'GithubMultiRDSCodebase: is ahead of'
+
+    #The only merge we allow is fast-forward merges
+    merge: (base, head) ->
+        if @ahead_of head, base
+            return head
+        return null
+
+    pretty_print: (version) ->
+        versions = version.split('-')
+        return (codebase.pretty_print versions[idx] for codebase, idx in @codebases).join(', ')
+
+    #Returns the most up-to-date version of this codebase
+    get_latest_version: ->
+        return (codebase.get_latest_version() for codebase in @codebases).join('-')
+
+    #Returns true if upgrading the given rds_instance to the given version is reversible.
+    #If not reversible, will ask the user to confirm that it is okay to migrate anyway.
+    #
+    #If we are doing a rollback, but we can't, will warn the user and abort
+    confirm_reversible: (rds_instance, version) ->
+        versions = version.split('-')
+
+        for codebase, idx in @codebases
+            if not codebase.confirm_reversible rds_instance, versions[idx]
+                return false
+
+        return true
+
+    #Performs the migration on the given instance.
+    migrate_to: (rds_instance, version) ->
+        versions = version.split('-')
+
+        for codebase, idx in @codebases
+            codebase.migrate_to rds_instance, versions[idx]
+
+    #We don't return any tests.  Instead, we override the is_tested and run_tests
+    #methods
+    get_tests: -> []
+
+    #A version is tested if all its sub-versions are tested
+    is_tested: (version) ->
+        versions = version.split('-')
+
+        for codebase, idx in @codebases
+            tests = codebase.get_tests()
+            for test in tests
+                if not test.is_tested versions[idx]
+                    return false
+
+        return true
+
+    #Runs any not-passed test for this service against this version
+    run_tests: (version) ->
+        versions = version.split('-')
+
+        for codebase, idx in @codebases
+            tests = (test for test in codebase.get_tests() when not test.is_tested versions[idx])
+            for test in tests
+                if not test.run versions[idx]
+                    return
+
+    #This should generally be false.  If true, we will store the credentials in S3 instead
+    #of in the bubblebot database.
+    use_s3_credentials: -> false
+
 
 
 
@@ -1224,7 +1353,8 @@ templates.add 'Test', 'RDS_migration_try', {
                 u.log 'Comparison after migration:\n' + comparison
 
             #See if this migration has a rollback
-            no_rollback = not codebase.get_migration_data(version, true)
+            no_rollback = not codebase.has_rollback(version)
+
             if no_rollback
                 if not u.confirm 'We are testing a migration with no rollback: ' + version + '.  Are you sure you want to test and save it?'
                     u.log 'aborting because no rollback'
