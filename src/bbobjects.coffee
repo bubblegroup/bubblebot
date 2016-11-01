@@ -550,6 +550,8 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     cloudfront: (method, parameters) -> @aws 'CloudFront', method, parameters
 
+    elasticache: (method, parameters) -> @aws 'ElastiCache', method, parameters
+
     #Calls ec2 and returns the results
     ec2: (method, parameters) -> @aws 'EC2', method, parameters
 
@@ -1523,6 +1525,87 @@ bbobjects.Environment = class Environment extends BubblebotObject
             {name: 'name', required: true, help: 'The name to give to the imported ip address'}
         ]
         groups: constants.ADMIN
+
+
+    #Creates a new redis repgroup with the given name and parameters
+    create_redis_repgroup: (name, {CacheNodeType, CacheParameterGroupName}) ->
+        num = 1
+        get_id = -> @id.replace(/[^a-zA-Z0-9\-]/g,'-') + '-' + name + '-' + num
+        id_good = ->
+            redisgroup = bbobjects.instance('RedisReplicationGroup', get_id())
+            return not redisgroup.exists() and not redisgroup.exists_in_aws()
+        while not id_good()
+            num++
+
+        id = get_id()
+
+        CacheSubnetGroupName = #createCacheSubnetGroup
+        #We probably want to check to see what the environment's VPC is, see if we can find
+        #a subnet group in that VPC, and if not create one.
+        SecurityGroupIds = #Should have similar logic here.  We are using bubblebot_database_sg as the base for the
+        #our current production one
+
+        params = {
+            ReplicationGroupId: id
+            ReplicationGroupDescription: 'Created by Bubblebot for environment ' + this.id + ' with name ' + name
+            NumCacheClusters: 1
+            CacheNodeType
+            Engine: 'redis'
+            #EngineVersion  -- see if it will let us go with default
+            CacheParameterGroupName
+            CacheSubnetGroupName
+            SecurityGroupIds
+        }
+        u.log 'Creating new Redis Replication Group: ' + JSON.stringify(params)
+        @elasticache 'createReplicationGroup', params
+
+        redisgroup = bbobjects.instance('RedisReplicationGroup', id)
+
+        @_import_redis_repgroup name, redisgroup
+        return redisgroup
+
+
+    #Adds the given existing redisgroup to the current environment
+    _import_redis_repgroup: (name, redisgroup) ->
+        redisgroup.create this, {name}
+        @set 'redis_replication_group_' + name, redisgroup.id
+
+        u.reply 'Imported ' + redisgroup + ' into environment ' + this
+        return
+
+    #Retrieves the given redis repgroup for this environment, or returns null if it does not exist
+    get_redis_repgroup: (name) ->
+        id = @get 'redis_replication_group_' + name
+        if not id
+            return null
+        redisgroup = bbobjects.instance 'RedisReplicationGroup', id
+        if not redisgroup.exists()
+            return null
+        return redisgroup
+
+    #Imports an already existing redis repgroup into this environment,
+    import_redis_repgroup: (name, id) ->
+        redisgroup = bbobjects.instance 'RedisReplicationGroup', id
+        if redisgroup.exists()
+            u.reply 'We already have ' + id + ' in the database!  Parent is ' + redisgroup.parent()
+            return
+        if @get_redis_repgroup(name)?
+            u.reply 'This environment already has a redis replication group named ' + name
+            return
+        if not redisgroup.exists_in_aws()
+            u.reply 'We could not find a redis replication group with id ' + id
+            return
+
+        @_import_redis_repgroup name, redisgroup
+        return redisgroup
+
+    import_redis_repgroup_cmd:
+        help: "Imports a redis replication group created outside of bubblebot into bubblebot's management"
+        params: [
+            {name: 'name', required: true, help: 'The name we associate this group with; used to identity its function, create monitoring policies, etc'
+            {name: 'id', required: true, help: 'The id of the group to import'}
+        ]
+        groups: constants.BASIC
 
 
     #Returns the service for this environment with the given template name.  If create_on_missing
@@ -3516,6 +3599,118 @@ bbobjects.CloudfrontDistribution = class CloudfrontDistribution extends Bubblebo
         dangerous: -> @is_production()
 
 
+
+#Represents an ElastiCache redis replication group.  The id should be the AWS id
+#for the group
+bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotObject
+    create: (parent, name) ->
+        super parent.type, parent.id, {name}
+
+    startup: ->
+        super()
+        u.context().server?.monitor this
+
+    toString: -> "Redis Rep Group #{@id}"
+
+    #fetches the amazon metadata for this distribution and caches it
+    refresh: ->
+        data = @ec2 'describeReplicationGroups', {ReplicationGroupId: @id}
+        elasticache_cache.set @id, data.ReplicationGroups[0]
+
+    describe_keys: -> u.extend super(), {
+        name: @get 'name'
+        member_clusters: @get_data().MemberClusters
+        status: @status()
+        endpoint: @endpoint()
+        more: 'Call the get_configuration command to see the raw AWS configuration'
+    }
+
+    status: -> @get_data().Status
+
+    get_configuration: -> @get_data(true)
+
+    get_configuration_cmd:
+        help: 'Fetches the configuration information about this distribution'
+        reply: true
+        groups: constants.BASIC
+
+    #Gets the domain name this distribution is accessible at
+    endpoint: -> @get_data().ConfigurationEndpoint.Address + ':' + @get_data().ConfigurationEndpoint.Port
+
+    exists_in_aws: ->
+        try
+            @get_data(true)
+            return true
+        catch err
+            if true #TODO: replace this with a check to make sure this error isn't whatever the error it throws for missing stuff
+                throw err
+            return false
+
+    #Retrieves the amazon metadata for this address.  If force_refresh is true,
+    #forces us not to use our cache
+    get_data: (force_refresh) ->
+        if force_refresh or not elasticache_cache.get(@id)
+            @refresh()
+        return elasticache_cache.get(@id)
+
+    #Deletes the given Redis replication group
+    destroy: ->
+        if @is_production()
+            if not u.confirm 'This is a production cluster... are you sure you want to delete this?'
+                return
+
+        u.log 'Deleting Redis Replication Group ' + @id
+        @elasticache 'deleteReplicationGroup', {ReplicationGroupId: @id}
+
+        @delete()
+
+        u.reply 'Replication group ' + @id + ' deleted'
+
+    destroy_cmd:
+        help: 'Disables this replication group'
+        groups: -> if @is_production() then constants.ADMIN else constants.BASIC
+        dangerous: -> @is_production()
+
+    #Returns a description of how this redis cluster should be monitored
+    #
+    #The environment's template should define get_redis_monitoring_policy(name) to
+    #set it
+    get_monitoring_policy: ->
+        if not @exists()
+            return {monitor: false}
+        mp = @environment().template().get_redis_monitoring_policy? name
+        if not mp?
+            return {monitor: false}
+        return mp
+
+    #Returns true if this service is in maintenance mode (and thus should not be monitored)
+    maintenance: ->
+        #if the maintenance property is set, we are in maintenance mode
+        if @get 'maintenance'
+            return true
+
+        #If we are not available, we are in maintenance mode
+        if @status() isnt 'available'
+            #Force a recheck, since this likely means we are creating or destroying it
+            @get_configuration()
+        if @status() isnt 'available'
+            #Force a recheck, since this likely means we are creating or destroying it
+            return true
+
+        return false
+
+    #Sets whether or not we should enter maintenance mode
+    set_maintenance: (turn_on) ->
+        @set 'maintenance', turn_on
+        u.reply 'Maintenance mode is ' + (if turn_on then 'on' else 'off')
+        u.context().server._monitor.update_policies()
+
+    set_maintenance_cmd:
+        params: [{name: 'on', type: 'boolean', required: true, help: 'If true, turns maintenance mode on, if false, turns it off'}]
+        help: 'Turns maintenance mode on or off'
+        groups: constants.BASIC
+
+
 #Given a region, gets the API configuration
 aws_config = (region) ->
     accessKeyId = config.get 'accessKeyId'
@@ -3580,6 +3775,7 @@ class Cache
 instance_cache = new Cache(60 * 1000)
 eip_cache = new Cache(60 * 1000)
 cloudfront_cache = new Cache(60 * 1000)
+elasticache_cache = new Cache(60 * 1000)
 key_cache = new Cache(60 * 60 * 1000)
 sg_cache = new Cache(60 * 60 * 1000)
 vpc_to_subnets = new Cache(60 * 60 * 1000)
