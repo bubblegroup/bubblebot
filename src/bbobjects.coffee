@@ -3613,7 +3613,7 @@ bbobjects.CloudfrontDistribution = class CloudfrontDistribution extends Bubblebo
 
     #fetches the amazon metadata for this distribution and caches it
     refresh: ->
-        data = @ec2 'getDistribution', {Id: @id}
+        data = @cloudfront 'getDistribution', {Id: @id}
         cloudfront_cache.set @id, data.Distribution
 
     describe_keys: -> u.extend super(), {
