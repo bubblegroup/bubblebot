@@ -311,6 +311,14 @@ templates.RDSService = class RDSService extends Service
         permanent_options = @codebase().rds_options()
         sizing_options = @codebase().get_sizing instance
 
+        #Overwrite the sizing with anything set on the service
+        if instance.get('size')
+            sizing_options.DBInstanceClass = instance.get('size')
+        if instance.get('storage')
+            sizing_options.AllocatedStorage = instance.get('storage')
+        if instance.get('multi_az')
+            sizing_options.MultiAZ = instance.get('multi_az')
+
         #Most of the time we want to let the instance generate and store its own credentials,
         #but for special cases like BBDB we want to store the credentials in S3
         if @codebase().use_s3_credentials()
