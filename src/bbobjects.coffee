@@ -1157,7 +1157,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         rules = []
         #list of ports we allow databases to connect on
-        ports = [3306, 5432, 1521, 1433]
+        ports = [3306, 5432, 1521, 1433, 6379]
 
         for port in ports
             #Let any webserver in this environment connect to the database on this port
