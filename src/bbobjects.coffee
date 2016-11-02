@@ -3662,7 +3662,7 @@ bbobjects.CloudfrontDistribution = class CloudfrontDistribution extends Bubblebo
         {ETag, DistributionConfig} = @cloudfront 'getDistributionConfig', {Id: @id}
 
         DistributionConfig.Enabled = false
-        DistributionConfig.CallerReference = Date.now()
+        DistributionConfig.CallerReference = String(Date.now())
         DistributionConfig.Comment = 'Disabling'
 
         params = {
