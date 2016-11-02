@@ -1792,22 +1792,28 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 return constants.BASIC
 
     #copies the credential set of another environment
-    copy_credential_set: (set_name, copy_from_env) ->
+    copy_credential_set: (set_name, copy_from_env, skip_overwrites) ->
         my_set = @get_credential_set(set_name)
         their_set = bbobjects.instance('Environment', copy_from_env).get_credential_set(set_name)
         my_keys = my_set.all_credentials()
         their_keys = their_set.all_credentials()
-        overlap = []
-        overlap = (key for key in their_keys when key in my_keys)
-        if overlap.length > 0
-            if not u.confirm 'This operation would overwrite the following credentials: ' + overlap.join(', ') + '.  Are you sure you want to proceed?'
-                u.reply 'Okay, aborting'
-                return
 
+        if not skip_overwrites
+            overlap = []
+            overlap = (key for key in their_keys when key in my_keys)
+            if overlap.length > 0
+                if not u.confirm 'This operation would overwrite the following credentials: ' + overlap.join(', ') + '.  Are you sure you want to proceed?'
+                    u.reply 'Okay, aborting'
+                    return
+
+        copied = []
         for key in their_keys
+            if skip_overwrites and key in my_keys
+                continue
+            copied.push key
             my_set.set_credential key, their_set.get_credential(key), true, true
 
-        u.reply 'Okay, credentials copied over: ' + their_keys.join(', ')
+        u.reply 'Okay, credentials copied over: ' + copied.join(', ')
 
     copy_credential_set_cmd: ->
         help: 'Copies a credential set from another environment to this environment'
