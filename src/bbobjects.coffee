@@ -1568,7 +1568,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
 
     #Creates a new redis repgroup with the given name and parameters
-    create_redis_repgroup: (name, {CacheNodeType, CacheParameterGroupName}) ->
+    create_redis_repgroup: (name, {CacheNodeType, CacheParameterGroupName, EngineVersion}) ->
         num = 1
         get_id = =>
             #There's a 20 character limit, so we shave off stuff from the environment id
@@ -1612,7 +1612,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             NumCacheClusters: 1
             CacheNodeType
             Engine: 'redis'
-            #EngineVersion  -- see if it will let us go with default
+            EngineVersion
             CacheParameterGroupName
             CacheSubnetGroupName
             SecurityGroupIds
