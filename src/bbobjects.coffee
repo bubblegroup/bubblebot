@@ -1533,6 +1533,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         get_id = -> @id.replace(/[^a-zA-Z0-9\-]/g,'-') + '-' + name + '-' + num
         id_good = ->
             redisgroup = bbobjects.instance('RedisReplicationGroup', get_id())
+            redisgroup.cache_region @get_region()
             return not redisgroup.exists() and not redisgroup.exists_in_aws()
         while not id_good()
             num++
@@ -1610,6 +1611,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
         if @get_redis_repgroup(name)?
             u.reply 'This environment already has a redis replication group named ' + name
             return
+
+        redisgroup.cache_region @get_region()
         if not redisgroup.exists_in_aws()
             u.reply 'We could not find a redis replication group with id ' + id
             return
