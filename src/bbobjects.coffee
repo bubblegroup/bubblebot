@@ -1375,6 +1375,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     create_cloudfront_distribution: (origin) ->
         params = {
             DistributionConfig: {
+                Enabled: true
                 CallerReference: String(Date.now())
                 Origins: {
                     Quantity: 1
@@ -3704,11 +3705,28 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         reply: true
         groups: constants.BASIC
 
+    wait_for_available: (retries = 100, available_statuses) ->
+        available_statuses ?= ['available', 'backing-up', 'modifying']
+
+        #first do a quick check using cached data...
+        if @status() in available_statuses
+            return
+
+        #Then log and refresh the data
+        u.log 'waiting for redis cluster to be to be available (' + retries + '): ' + @status()
+        @get_configuration()
+        if @status() in available_statuses
+            return
+        else if retries is 0
+            throw new Error 'timed out while waiting for ' + @id + ' to be available: ' + @status()
+        else
+            u.pause 10000
+            @wait_for_available(retries - 1, available_statuses)
+
     #Gets the domain name this distribution is accessible at
     endpoint: ->
-        endpoint = @get_data().NodeGroups?[0]?.PrimaryEndpoint
-        if not endpoint
-            return null
+        @wait_for_available()
+        endpoint = @get_data().NodeGroups[0].PrimaryEndpoint
         return endpoint.Address + ':' + endpoint.Port
 
     exists_in_aws: ->
