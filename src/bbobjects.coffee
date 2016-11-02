@@ -3635,7 +3635,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
 
     #fetches the amazon metadata for this distribution and caches it
     refresh: ->
-        data = @ec2 'describeReplicationGroups', {ReplicationGroupId: @id}
+        data = @elasticache 'describeReplicationGroups', {ReplicationGroupId: @id}
         elasticache_cache.set @id, data.ReplicationGroups[0]
 
     describe_keys: -> u.extend super(), {
