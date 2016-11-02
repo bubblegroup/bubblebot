@@ -1430,7 +1430,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         return distribution
 
-    create_s3_bucket: (name) ->
+    #Creates a new s3 bucket.  Name is used to help find a free name for the bucket,
+    #and versioning if true turns on versioning
+    create_s3_bucket: (name, versioning) ->
         #We keep trying until we find a bucket that does not exist yet.
         attempt = =>
             id = @id + '-' + name + '-' + u.password()
@@ -1451,6 +1453,15 @@ bbobjects.Environment = class Environment extends BubblebotObject
                     return attempt()
                 else
                     throw err
+
+
+            if versioning
+                @s3.putBucketVersioning {
+                    Bucket: id
+                    VersioningConfiguration: {
+                        Status: 'Enabled'
+                    }
+                }
 
             s3bucket = bbobjects.instance 'S3Bucket', id
             s3bucket.create this, name
