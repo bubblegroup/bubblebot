@@ -3663,7 +3663,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
             @get_data(true)
             return true
         catch err
-            if String(err.message).indexOf('ReplicationGroupNotFoundFault') is -1
+            if String(err).indexOf('ReplicationGroupNotFoundFault') is -1
                 throw err
             return false
 
