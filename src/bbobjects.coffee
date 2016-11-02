@@ -2247,7 +2247,17 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             u.reply 'To override this, say: ' + command
             return
 
-        @template().deploy this, version, rollback, deployment_message
+        try
+            #If this is the initial deploy, we want to be in maintenance mode until the deploy succeeds
+            if not @version() and not @get('maintenance')
+                temporary_maintenance = true
+                @set 'maintenance', true
+
+            @template().deploy this, version, rollback, deployment_message
+        finally
+            #Undo the set maintenance above
+            if temporary_maintenance
+                @set 'maintenance', false
 
     deploy_cmd:
         sublogger: true
