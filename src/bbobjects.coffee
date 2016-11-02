@@ -1430,6 +1430,34 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         return distribution
 
+    create_s3_bucket: (name) ->
+        #We keep trying until we find a bucket that does not exist yet.
+        attempt = =>
+            id = @id + '-' + name + '-' + u.password()
+
+            params = {
+                Bucket: id
+                CreateBucketConfiguration: {
+                    LocationConstraint: @get_region()
+                }
+            }
+            u.log 'Creating s3 bucket: ' + JSON.stringify(params)
+
+            try
+                @s3.createBucket params
+            catch err
+                #TODO: if this is a name conflict error, call attempt again
+                if false
+                    return attempt()
+                else
+                    throw err
+
+            s3bucket = bbobjects.instance 'S3Bucket', id
+            s3bucket.create this, name
+            return s3bucket
+
+        return attempt()
+
 
     #Returns the elastic ip for this environment with the given name.  If no such
     #elastic ip exists, creates it (unless do_not_create is true)
@@ -1530,8 +1558,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Creates a new redis repgroup with the given name and parameters
     create_redis_repgroup: (name, {CacheNodeType, CacheParameterGroupName}) ->
         num = 1
-        get_id = -> @id.replace(/[^a-zA-Z0-9\-]/g,'-') + '-' + name + '-' + num
-        id_good = ->
+        get_id = => @id.replace(/[^a-zA-Z0-9\-]/g,'-') + '-' + name + '-' + num
+        id_good = =>
             redisgroup = bbobjects.instance('RedisReplicationGroup', get_id())
             redisgroup.cache_region @get_region()
             return not redisgroup.exists() and not redisgroup.exists_in_aws()
@@ -3740,6 +3768,67 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         groups: constants.BASIC
 
 
+
+
+#Represents an S3 Bucket.  Id is the bucket id
+bbobjects.S3Bucket = class S3Bucket extends BubblebotObject
+    create: (parent, name) ->
+        super parent.type, parent.id, {name}
+
+    toString: -> "S3 #{@id}"
+
+    #fetches the amazon metadata for this bucket and caches it
+    refresh: ->
+        data = @s3 'getBucketLocation', {Bucket: @id}
+        s3_cache.set @id, data
+
+    #Retrieves the amazon metadata for this bucket.  If force_refresh is true,
+    #forces us not to use our cache
+    get_data: (force_refresh) ->
+        if force_refresh or not s3_cache.get(@id)
+            @refresh()
+        return s3_cache.get(@id)
+
+    describe_keys: -> u.extend super(), {
+        name: @get('name')
+        location: @get_data().LocationConstraint
+    }
+
+    get_configuration: -> @get_data(true)
+
+    get_configuration_cmd:
+        help: 'Fetches the configuration information about this bucket'
+        reply: true
+        groups: constants.BASIC
+
+    exists_in_aws: ->
+        try
+            @get_data(true)
+            return true
+        catch err
+            if true #TODO: replace with actual error
+                throw err
+            return false
+
+    #Deletes the given Bucket
+    destroy: ->
+        u.log 'Deleting s3 bucket ' + @id
+        @s3 'deleteBucket', {Bucket: @id}
+        @delete()
+
+        u.reply 'Bucket ' + @id + ' deleted'
+
+    destroy_cmd:
+        help: 'Deletes this Bucket.  AWS will error if there is anything in it'
+        groups: -> if @is_production() then constants.ADMIN else constants.BASIC
+        dangerous: -> @is_production()
+
+
+
+
+
+
+
 #Given a region, gets the API configuration
 aws_config = (region) ->
     accessKeyId = config.get 'accessKeyId'
@@ -3813,7 +3902,7 @@ rds_subnet_groups = new Cache(60 * 60 * 1000)
 rds_cache = new Cache(60 * 1000)
 region_cache = new Cache(24 * 60 * 60 * 1000)
 aws_service_cache = new Cache(2 * 60 * 60 * 1000)
-
+s3_cache = new Cache(60 * 1000)
 
 
 config = require './config'
