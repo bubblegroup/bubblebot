@@ -3627,7 +3627,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
     create: (parent, name) ->
         super parent.type, parent.id, {name}
 
-    startup: ->
+    on_startup: ->
         super()
         u.context().server?.monitor this
 
