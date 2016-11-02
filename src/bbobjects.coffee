@@ -1539,11 +1539,29 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         id = get_id()
 
-        CacheSubnetGroupName = #createCacheSubnetGroup
-        #We probably want to check to see what the environment's VPC is, see if we can find
-        #a subnet group in that VPC, and if not create one.
-        SecurityGroupIds = #Should have similar logic here.  We are using bubblebot_database_sg as the base for the
-        #our current production one
+        environment = @environment()
+
+        #We need to have a subnet group for this.  Check to see if there's already a subnet
+        #group in this environment's VPC
+        vpc = environment.get_vpc()
+        groups = @elasticache('describeCacheSubnetGroups', {}).CacheSubnetGroups
+        for group in groups
+            if group.VpcId is vpc
+                CacheSubnetGroupName = group.CacheSubnetGroupName
+                break
+
+        #If we didnd't find one, create one
+        if not CacheSubnetGroupName?
+            CacheSubnetGroupName = 'bubblebot-' + vpc
+            params = {
+                CacheSubnetGroupName
+                CacheSubnetGroupDescription: 'Created automatically by Bubblebot for VPC ' + vpc
+                SubnetIds: [environment.get_subnet()]
+            }
+            u.log 'Creating a new cache subnet group: ' + JSON.stringify params
+            res = @elasticache 'createCacheSubnetGroup', params
+
+        SecurityGroupIds = [environment.get_database_security_group()]
 
         params = {
             ReplicationGroupId: id
