@@ -3657,7 +3657,9 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
 
     #Gets the domain name this distribution is accessible at
     endpoint: ->
-        endpoint = @get_data().NodeGroups[0].PrimaryEndpoint
+        endpoint = @get_data().NodeGroups?[0]?.PrimaryEndpoint
+        if not endpoint
+            return null
         return endpoint.Address + ':' + endpoint.Port
 
     exists_in_aws: ->
