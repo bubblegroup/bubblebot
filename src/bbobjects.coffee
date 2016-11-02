@@ -3696,9 +3696,13 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
     get_monitoring_policy: ->
         if not @exists()
             return {monitor: false}
-        mp = @environment().template().get_redis_monitoring_policy? name
+        mp = @environment().template().get_redis_monitoring_policy? this, name
         if not mp?
             return {monitor: false}
+        mp.endpoint = {
+            protocol: 'redis'
+            host: @endpoint()
+        }
         return mp
 
     #Returns true if this service is in maintenance mode (and thus should not be monitored)

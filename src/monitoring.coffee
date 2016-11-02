@@ -348,7 +348,7 @@ monitoring.Monitor = class Monitor
                     block = u.Block 'monitor hitting pg'
                     pg_hit_timeout = setTimeout ->
                         block.fail 'timed out after 5 seconds'
-                    , 10000
+                    , 5000
                     u.sub_fiber ->
                         start = Date.now()
                         db.query 'select 1'
@@ -361,6 +361,33 @@ monitoring.Monitor = class Monitor
                     result = false
                     reason = err.stack
                 clearTimeout pg_hit_timeout
+
+            else if protocol is 'redis'
+                try
+                    block = u.Block 'connecting'
+
+                    redis_hit_timeout = setTimeout ->
+                        block.fail 'timed out after 5 seconds'
+                    , 5000
+
+                    client = redis.createClient 'redis://' + policy.endpoint.host
+                    client.on 'error', (err) -> block.fail err
+
+                    start = Date.now()
+                    client.get 'x', (err, reply) ->
+                        if err
+                            block.fail err
+                        else
+                            block.success Date.now() - start
+
+                    latency = block.wait()
+                    result = true
+                    reason = null
+                catch err
+                    result = false
+                    reason = err.stack
+                clearTimeout redis_hit_timeout
+
 
             else if protocol is 'custom'
                 start = Date.now()
@@ -394,3 +421,4 @@ config = require './config'
 request = require 'request'
 databases = require './databases'
 bbserver = require './bbserver'
+redis = require 'redis'
