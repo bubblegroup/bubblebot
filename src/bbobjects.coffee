@@ -1620,7 +1620,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     import_redis_repgroup_cmd:
         help: "Imports a redis replication group created outside of bubblebot into bubblebot's management"
         params: [
-            {name: 'name', required: true, help: 'The name we associate this group with; used to identity its function, create monitoring policies, etc'
+            {name: 'name', required: true, help: 'The name we associate this group with; used to identity its function, create monitoring policies, etc'}
             {name: 'id', required: true, help: 'The id of the group to import'}
         ]
         groups: constants.BASIC
