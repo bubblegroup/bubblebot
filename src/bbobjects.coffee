@@ -3659,11 +3659,16 @@ bbobjects.CloudfrontDistribution = class CloudfrontDistribution extends Bubblebo
 
     #Disables the given cloudfront distribution and removes it from bubblebot
     destroy: ->
-        configuration = @get_configuration()
-        configuration.Enabled = false
+        {ETag, DistributionConfig} = @cloudfront 'getDistributionConfig', {Id: @id}
+
+        DistributionConfig.Enabled = false
+        DistributionConfig.CallerReference = Date.now()
+        DistributionConfig.Comment = 'Disabling'
+
         params = {
+            IfMatch: ETag
+            DistributionConfig
             Id: @id
-            DistributionConfig: configuration
         }
 
         u.log 'Disabling cloudfront distribution: ' + JSON.stringify(params)
