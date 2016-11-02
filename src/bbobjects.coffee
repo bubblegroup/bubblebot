@@ -3639,7 +3639,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         elasticache_cache.set @id, data.ReplicationGroups[0]
 
     describe_keys: -> u.extend super(), {
-        name: @get 'name'
+        name: @get('name')
         member_clusters: @get_data().MemberClusters
         status: @status()
         endpoint: @endpoint()
@@ -3703,7 +3703,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
     get_monitoring_policy: ->
         if not @exists()
             return {monitor: false}
-        mp = @environment().template().get_redis_monitoring_policy? this, name
+        mp = @environment().template().get_redis_monitoring_policy? this, @get('name')
         if not mp?
             return {monitor: false}
         mp.endpoint = {
