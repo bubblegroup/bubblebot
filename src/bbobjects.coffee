@@ -1586,7 +1586,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Adds the given existing redisgroup to the current environment
     _import_redis_repgroup: (name, redisgroup) ->
-        redisgroup.create this, {name}
+        redisgroup.create this, name
         @set 'redis_replication_group_' + name, redisgroup.id
 
         u.reply 'Imported ' + redisgroup + ' into environment ' + this
