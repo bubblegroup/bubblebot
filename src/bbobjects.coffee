@@ -1570,7 +1570,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Creates a new redis repgroup with the given name and parameters
     create_redis_repgroup: (name, {CacheNodeType, CacheParameterGroupName}) ->
         num = 1
-        get_id = => @id.replace(/[^a-zA-Z0-9\-]/g,'-') + '-' + name + '-' + num
+        get_id = =>
+            #There's a 20 character limit, so we shave off stuff from the environment id
+            @id[...20 - (name.length + 5)].replace(/[^a-zA-Z0-9\-]/g,'-') + '-' + name + '-' + num
         id_good = =>
             redisgroup = bbobjects.instance('RedisReplicationGroup', get_id())
             redisgroup.cache_region @get_region()
