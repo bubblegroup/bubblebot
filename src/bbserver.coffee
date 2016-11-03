@@ -507,7 +507,8 @@ bbserver.Server = class Server
                             try
                                 bbobjects.instance(typename, id).on_startup()
                             catch err
-                                u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
+                                if err.reason not in [u.CANCEL, u.USER_TIMEOUT, u.EXTERNAL_CANCEL, u.EXPECTED]
+                                    u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
 
                 u.log 'Startup complete'
 
