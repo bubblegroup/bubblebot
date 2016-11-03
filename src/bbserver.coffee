@@ -470,47 +470,51 @@ bbserver.Server = class Server
 
             #Tell the various objects to start themselves up
             u.SyncRun 'startup', =>
-                @build_context('startup')
+                try
+                    @build_context('startup')
 
-                #Make sure we have at least one user who is an admin
-                @get_admins()
+                    #Make sure we have at least one user who is an admin
+                    @get_admins()
 
-                #See if it looks like we crashed.  If we see a startup before
-                #we see a graceful shutdown, or we don't see a graceful shutdown in the last
-                #1000 events, it was probably a crash
-                evts = @get_server_log_stream().get_events()
-                found_gc = false
-                for {message} in evts
-                    if message.indexOf('STARTUP') is 0
-                        break
-                    else if message.indexOf('GRACEFUL_SHUTDOWN') is 0
-                        found_gc = true
-                        break
+                    #See if it looks like we crashed.  If we see a startup before
+                    #we see a graceful shutdown, or we don't see a graceful shutdown in the last
+                    #1000 events, it was probably a crash
+                    evts = @get_server_log_stream().get_events()
+                    found_gc = false
+                    for {message} in evts
+                        if message.indexOf('STARTUP') is 0
+                            break
+                        else if message.indexOf('GRACEFUL_SHUTDOWN') is 0
+                            found_gc = true
+                            break
 
-                if not found_gc
-                    for user in bbobjects.list_users()
-                        if user.is_in_group constants.BASIC
-                            u.message user.id, 'Uh oh, it looks like we crashed.  If you were in the middle of something, like deploying code, you may need to restart it.'
+                    if not found_gc
+                        for user in bbobjects.list_users()
+                            if user.is_in_group constants.BASIC
+                                u.message user.id, 'Uh oh, it looks like we crashed.  If you were in the middle of something, like deploying code, you may need to restart it.'
 
-                #log startup (see crash code above)
-                u.log 'STARTUP'
+                    #log startup (see crash code above)
+                    u.log 'STARTUP'
 
-                #Run the remainder of this on a fresh logger
-                @create_sub_logger 'startup'
+                    #Run the remainder of this on a fresh logger
+                    @create_sub_logger 'startup'
 
-                #Make a list of each type that has a startup function
-                for typename, cls of bbobjects
-                    if (cls::) and typeof(cls::on_startup) is 'function'
-                        u.log 'Startup: loading ' + typename + 's...'
-                        for id in u.db().list_objects typename
-                            u.log 'Startup: sending on_startup() to ' + id
-                            try
-                                bbobjects.instance(typename, id).on_startup()
-                            catch err
-                                if err.reason not in [u.CANCEL, u.USER_TIMEOUT, u.EXTERNAL_CANCEL, u.EXPECTED]
-                                    u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
+                    #Make a list of each type that has a startup function
+                    for typename, cls of bbobjects
+                        if (cls::) and typeof(cls::on_startup) is 'function'
+                            u.log 'Startup: loading ' + typename + 's...'
+                            for id in u.db().list_objects typename
+                                u.log 'Startup: sending on_startup() to ' + id
+                                try
+                                    bbobjects.instance(typename, id).on_startup()
+                                catch err
+                                    if err.reason not in [u.CANCEL, u.USER_TIMEOUT, u.EXTERNAL_CANCEL, u.EXPECTED]
+                                        u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
 
-                u.log 'Startup complete'
+                    u.log 'Startup complete'
+                catch err
+                    if err.reason not in [u.CANCEL, u.USER_TIMEOUT, u.EXTERNAL_CANCEL, u.EXPECTED]
+                        throw err
 
     #Starts a long operation on its own fiber
     run_fiber: (name, fn) ->
