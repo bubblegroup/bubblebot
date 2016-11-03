@@ -3461,6 +3461,12 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         [client, done] = (new databases.Postgres this).get_client()
         session.write 'Connected to database\n\n'
 
+        #Handle notices
+        client.on 'notice', (msg) ->
+            session.write 'notice: ' + msg + '\n'
+        client on 'error', (err) ->
+            session.write 'error: ' + String(err) + '\n'
+
         try
             while (input = session.get_next_input()) not in ['exit', 'cancel', session.CLOSED]
                 u.log 'Input: ' + input

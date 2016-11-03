@@ -16,20 +16,18 @@ databases.Postgres = class Postgres
 
     #Returns [client, done]
     get_client: ->
-        block = u.Block 'getting client'
-        pg.connect @get_connection_string(), (err, client, done) ->
-            if err
-                block.fail err
-            else
-                block.success [client, done]
-        client = block.wait()
+        client = new Client @get_connection_string()
+        block = u.Block 'connecting'
+        client.connect block.make_cb()
 
         #This will happen if pg sends an error in between queries
         #Capture it and throw it if we try to use the client again
-        #client.on 'error', (err) ->
-        #    client._had_error = err
+        client.on 'error', (err) ->
+            client._had_error = err
 
-        return client
+        done = -> client.end()
+
+        return [client, done]
 
     #Helper function for running queries
     _query: (client, cb, statement, args) ->

@@ -39,7 +39,7 @@
     "moment-timezone": "^0.5.4",
     "passport": "^0.3.2",
     "passport-slack": "0.0.6",
-    "pg": "^4.5.5",
+    "pg": "^6.1.0",
     "prompt": "^1.0.0",
     "raven": "^0.12.1",
     "redis": "^2.6.3",
