@@ -386,6 +386,11 @@ monitoring.Monitor = class Monitor
                 catch err
                     result = false
                     reason = err.stack
+                finally
+                    try
+                        client?.quit()
+                    catch e
+                        u.log 'Error quitting redis client:\n' + e.stack
                 clearTimeout redis_hit_timeout
 
 
