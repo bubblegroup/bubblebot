@@ -25,7 +25,10 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
     #Dependencies for GPG key verification
     instance.run "sudo yum install -y pygpgme --disablerepo='librato_librato-amazonlinux-collectd'", {timeout: 5 * 60 * 1000}
     instance.run "sudo yum install -y yum-utils --disablerepo='librato_librato-amazonlinux-collectd'", {timeout: 5 * 60 * 1000}
-    instance.run "sudo yum -q makecache -y --disablerepo='*' --enablerepo='librato_librato-amazonlinux-collectd'", {timeout: 5 * 60 * 1000}
+
+    #This has been failing a lot... adding some retries to see if this helps:
+    u.retry 5, 5000, ->
+        instance.run "sudo yum -q makecache -y --disablerepo='*' --enablerepo='librato_librato-amazonlinux-collectd'", {timeout: 5 * 60 * 1000}
 
     #Enable the EPEL repository
     instance.run "sudo yum install -y epel-release"
