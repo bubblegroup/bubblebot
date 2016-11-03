@@ -22,10 +22,20 @@ databases.Postgres = class Postgres
                 block.fail err
             else
                 block.success [client, done]
-        return block.wait()
+        client = block.wait()
+
+        #This will happen if pg sends an error in between queries
+        #Capture it and throw it if we try to use the client again
+        client.on 'error', (err) ->
+            client._had_error = err
+
+        return client
 
     #Helper function for running queries
     _query: (client, cb, statement, args) ->
+        if client._had_error
+            throw client._had_error
+
         if args.length > 0
             client.query statement, args, cb
         else
@@ -42,15 +52,12 @@ databases.Postgres = class Postgres
     #Runs the query and returns the results
     query: (statement, args...) ->
         [client, done] = @get_client()
-        block = u.Block statement
-        cb = (err, result) ->
+        try
+            block = u.Block statement
+            @_query client, block.make_cb(), statement, args
+            return block.wait()
+        finally
             done()
-            if err
-                block.fail err
-            else
-                block.success result
-        @_query client, cb, statement, args
-        return block.wait()
 
     #Runs the given function as a transaction
     #
