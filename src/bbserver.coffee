@@ -247,9 +247,9 @@ bbserver.Server = class Server
                         @using_ssl = true
 
                 #Make sure bbserver is in the database
-                bbserver = bbobjects.get_bbserver()
-                if not bbserver.exists()
-                    bbserver.create bbobjects.bubblebot_environment(), 'bbserver', constants.ACTIVE, 'blank'
+                my_server = bbobjects.get_bbserver()
+                if not my_server.exists()
+                    my_server.create bbobjects.bubblebot_environment(), 'bbserver', constants.ACTIVE, 'blank'
 
                 server_app = express()
                 server_app.use body_parser.json {limit: '5mb'}
