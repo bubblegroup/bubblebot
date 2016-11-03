@@ -95,6 +95,7 @@ startup_bbserver = (instance) ->
     if _startup_ran
         return
     _startup_ran = true
+
     software.metrics() instance
 
 _cached_bbdb_instance = null
@@ -1903,13 +1904,14 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 u.log 'Newer than 10 minutes: ' + String(instance)
                 continue
 
+            #If we have a bubblebot role, don't delete this
+            if instance.bubblebot_role()
+                u.log 'Has bubblebot role: ' + String(instance)
+
             #if it is not saved in the database, this is a good candidate for deletion...
-            if not instance.exists()
-                if not instance.bubblebot_role()
-                    u.log 'Not in database: ' + String(instance)
-                    to_delete.push {instance, reason: 'instance not in database'}
-                else
-                    u.log 'Has bubblebot role: ' + String(instance)
+            else if not instance.exists()
+                u.log 'Not in database: ' + String(instance)
+                to_delete.push {instance, reason: 'instance not in database'}
 
             #otherwise, see if we know why it should exist
             else
