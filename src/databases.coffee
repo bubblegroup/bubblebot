@@ -26,8 +26,8 @@ databases.Postgres = class Postgres
 
         #This will happen if pg sends an error in between queries
         #Capture it and throw it if we try to use the client again
-        client.on 'error', (err) ->
-            client._had_error = err
+        #client.on 'error', (err) ->
+        #    client._had_error = err
 
         return client
 
