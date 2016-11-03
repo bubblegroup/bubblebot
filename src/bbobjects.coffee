@@ -31,6 +31,9 @@ BUILTIN_GROUP_DESCRIPTION[constants.BASIC] = 'Users who can give commands to bub
 BUILTIN_GROUP_DESCRIPTION[constants.IGNORE] = 'Users who are ignored by bubblebot'
 bbobjects.BUILTIN_GROUP_DESCRIPTION = BUILTIN_GROUP_DESCRIPTION
 
+#Track the id of bbserver, so that we can load the environment
+bbserver_id = null
+
 #Returns the bubblebot server (creating it if it does not exist)
 #
 #We do not manage the bubblebot server in the database, since we need to be able to find it
@@ -86,7 +89,11 @@ bbobjects.get_bbserver = ->
 
     startup_bbserver instance
 
+    bbserver_id = instance.id
+
     return instance
+
+
 
 _startup_ran = false
 #Code that we run each time on startup to make sure bbserver is up to date.  Should
@@ -391,7 +398,10 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return (bbobjects.instance child_type, child_id for [child_type, child_id] in list)
 
     #Retrieves the environment that this is in
-    environment: -> @parent 'Environment'
+    environment: ->
+        if @id is bbserver_id
+            return bbobjects.bubblebot_environment()
+        @parent 'Environment'
 
     #Returns true if this is a development object.  See also is_production.  Generally,
     #we want to use @is_development() rather than (not @is_production()) for things
