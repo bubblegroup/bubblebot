@@ -96,7 +96,11 @@ startup_bbserver = (instance) ->
         return
     _startup_ran = true
 
-    software.metrics() instance
+    try
+        software.metrics() instance
+    catch err
+        #We don't want to kill server startup if this fails
+        u.log err
 
 _cached_bbdb_instance = null
 #Returns or creates and returns the rds instance for bbdb
