@@ -2708,6 +2708,7 @@ bbobjects.Test = class Test extends BubblebotObject
         groups: constants.BASIC
 
     mark_tested: (version) ->
+        u.log 'Marking test ' + @id + ' version ' + version + ' as tested'
         @add_history 'test_passed', version
 
     #Called to erase a record of a successful test pass

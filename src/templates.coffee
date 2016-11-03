@@ -117,6 +117,7 @@ templates.Service = class Service
                 u.reply "Your version was no longer ahead of the production version -- someone else probably deployed in the interim.  We were able to automatically merge it and will continue trying to deploy: " + merged
                 #Make sure the new version passes the tests
                 if not @ensure_tested instance, version
+                    u.log 'Tests did not pass so aborting deploy'
                     return
 
         #Okay, we have a tested version that is ahead of the current version, so deploy it and announce!
@@ -212,6 +213,7 @@ templates.Service = class Service
             u.reply 'Version ' + version + ' has not been tested, running tests now...'
             @run_tests version
             if not @is_tested version
+                u.log 'Ensure tested returning false because version ' + version + ' is not tested'
                 return false
 
         return true
@@ -221,11 +223,13 @@ templates.Service = class Service
         #Allow the codebase to override the testing logic
         codebase = @codebase()
         if typeof(codebase.is_tested) is 'function'
+            u.log 'Using codebase is_tested function'
             return codebase.is_tested version
 
         tests = @get_tests()
         for test in tests
             if not test.is_tested version
+                u.log 'is_tested: returning false because test ' + test.id + ' says that version ' + version + ' is not tested'
                 return false
         return true
 
