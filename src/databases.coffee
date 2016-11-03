@@ -16,7 +16,7 @@ databases.Postgres = class Postgres
 
     #Returns [client, done]
     get_client: ->
-        client = new Client @get_connection_string()
+        client = new pg.Client @get_connection_string()
         block = u.Block 'connecting'
         client.connect block.make_cb()
 
