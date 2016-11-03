@@ -464,6 +464,10 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         ensure_switcher = =>
             u.SyncRun 'ensure_switcher', =>
                 try
+                    #Handle the case of the instance being deleted while this is running
+                    if not instance.exists()
+                        return
+
                     server.build_context()
                     @ensure_switcher_correct(instance)
                 catch err
