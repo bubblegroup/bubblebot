@@ -1146,9 +1146,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
         #If this is not bubblebot, add the bubblebot server
         if @id isnt constants.BUBBLEBOT_ENV
             bubblebot_ip_range = bbobjects.get_bbserver().get_public_ip_address() + '/32'
+            bubblebot_private_ip_range = bbobjects.get_bbserver().get_private_ip_address() + '/32'
 
             #Allow bubblebot to connect on any port
-            rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: '-1'}
+            rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}, {CidrIp: bubblebot_private_ip_range}], IpProtocol: '-1'}
 
         @ensure_security_group_rules group_name, rules
         return id
@@ -1173,9 +1174,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
             #if this is not bubblebot, let the bubblebot server connect
             if @id isnt constants.BUBBLEBOT_ENV
                 bubblebot_ip_range = bbobjects.get_bbserver().get_public_ip_address() + '/32'
+                bubblebot_private_ip_range = bbobjects.get_bbserver().get_private_ip_address() + '/32'
 
                 #Allow bubblebot to connect on this port
-                rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+                rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}, {CidrIp: bubblebot_private_ip_range}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
 
         @ensure_security_group_rules group_name, rules
         return id
@@ -2838,6 +2840,7 @@ bbobjects.EC2Instance = class EC2Instance extends AbstractBox
             template: @get 'build_template_id'
             public_dns: @get_public_dns()
             address: @get_address()
+            private_address: @get_private_ip_address()
             bubblebot_role: @bubblebot_role()
             tags: (k + ': ' +v for k, v of @get_tags()).join(', ')
             age: u.format_time(Date.now() - @launch_time())
@@ -2926,6 +2929,15 @@ bbobjects.EC2Instance = class EC2Instance extends AbstractBox
                 return null
             @refresh()
         return instance_cache.get(@id)
+
+    #Fetches the current state of this instance
+    get_configuration: -> @get_data(true)
+
+    get_configuration_cmd:
+        help: 'Fetches the configuration information about this server from AWS'
+        reply: true
+
+        groups: constants.BASIC
 
     exists_in_aws: ->
         try
@@ -3094,7 +3106,9 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     #                     to clone the given DB Instance
     #
     #sizing_options -- things that control the DB size / cost, can be changed after creation
-    #                  {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible}
+    #                  {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, outside_world_accessible}
+    #                   outside_world_accessible means we set 0.0.0.0 as having access to it.  We always set the RDS parameter
+    #                   PubliclyAccessible to true because otherwise bubblebot can't access it.
     #
     #credentials -- optional.  If not included, we generate credentials automatically and store them
     #in the bubblebot database.  If included, caller is responsible for storing the credentials.
@@ -3103,7 +3117,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     #the database; if 'just_write', writes to the database without creating
     create: (parent, permanent_options, sizing_options, credentials, bootstrap) ->
         {Engine, EngineVersion, RestoreTime, cloned_from} = permanent_options ? {}
-        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options ? {}
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, outside_world_accessible} = sizing_options ? {}
 
         if bootstrap is 'just_create' and not credentials?
             throw new Error 'Need to include credentials when using just_create'
@@ -3134,7 +3148,10 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             @set 'MasterUsername', MasterUsername
             @set 'MasterUserPassword', MasterUserPassword
 
-        VpcSecurityGroupIds = [@environment().get_database_security_group(PubliclyAccessible)]
+        #Save our outside_world_accessible setting
+        @set 'outside_world_accessible', outside_world_accessible
+
+        VpcSecurityGroupIds = [@environment().get_database_security_group(outside_world_accessible)]
         DBSubnetGroupName = @environment().get_rds_subnet_group()
 
         StorageEncrypted = (DBInstanceClass not in ['db.t2.micro', 'db.t2.small', 'db.t2.medium'])
@@ -3152,7 +3169,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 MultiAZ
                 StorageType
                 Iops
-                PubliclyAccessible
+                PubliclyAccessible: true #This always needs to be true to allow bubblebot access
 
                 DBSubnetGroupName
             }
@@ -3175,6 +3192,9 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 VpcSecurityGroupIds
                 MasterUserPassword
             }
+
+
+
             #We have to wait for it to be available before we can modify it.  We set a
             #very long timeout because copying the data can take a while
             @wait_for_available(1000, ['available'])
@@ -3211,7 +3231,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 MultiAZ #true if we want to make it multi-AZ
                 StorageType #standard | gp2 | io1
                 Iops #must be a multiple of 1000, and from 3x to 10x of storage amount.  Only if storagetype is io1
-                PubliclyAccessible #boolean, if true it means it can be accessed from the outside world
+                PubliclyAccessible: true #This always needs to be true to allow bubblebot access
 
                 #Credentials
 
@@ -3274,7 +3294,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
     #returns true if any of the sizing options changes could cause downtime
     are_changes_unsafe: (sizing_options) ->
-        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops} = sizing_options
         unsafe = false
         if DBInstanceClass?
             unsafe = true
@@ -3289,7 +3309,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     #
     #unsafe_okay: if true, allows making changes that would cause downtime
     resize: (sizing_options, unsafe_okay) ->
-        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, PubliclyAccessible} = sizing_options
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, outside_world_accessible} = sizing_options
 
         if @are_changes_unsafe(sizing_options) and not unsafe_okay
             throw new Error 'making unsafe changes without unsafe_okay'
@@ -3297,9 +3317,10 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         #If we are change the storage type we have to reboot afterwards
         reboot_required = StorageType?
 
-        #If we are changing publically accessible, we need to update the list of security groups
-        if PubliclyAccessible?
-            VpcSecurityGroupIds = [@environment().get_database_security_group(PubliclyAccessible)]
+        #If we are changing outside-world accessible, we need to update the list of security groups
+        if outside_world_accessible?
+            @set 'outside_world_accessible', outside_world_accessible
+            VpcSecurityGroupIds = [@environment().get_database_security_group(outside_world_accessible)]
 
         params = {
             ApplyImmediately: true
@@ -3309,7 +3330,6 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             MultiAZ
             StorageType
             Iops
-            PubliclyAccessible
         }
 
         @wait_for_available(100, ['available'])
@@ -3526,9 +3546,9 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         DBInstanceClass = if instance_class is 'go' then my_config.DBInstanceClass else instance_class
         StorageType = my_config.StorageType
         Iops = my_config.Iops
-        PubliclyAccessible = my_config.PubliclyAccessible
         permanent_options = {cloned_from: @id}
-        sizing_options = {DBInstanceClass, MultiAZ, StorageType, PubliclyAccessible, Iops}
+        outside_world_accessible = @get 'outside_world_accessible'
+        sizing_options = {DBInstanceClass, MultiAZ, StorageType, outside_world_accessible, Iops}
 
         u.reply 'Beginning clone...'
 
