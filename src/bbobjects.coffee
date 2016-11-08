@@ -3205,11 +3205,12 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             u.log 'Updating the credentials; setting MasterUserPassword, and changing VpcSecurityGroupIds to ' + JSON.stringify(VpcSecurityGroupIds)
             @rds 'modifyDBInstance', params
 
-            u.log 'Updating the credentials complete: ' + JSON.stringify(@get_configuration true)
+            u.log 'Modification command sent, waiting for it to complete'
+            @wait_for_modifications_complete()
 
-            @wait_for_available(100, ['available'])
+            u.log 'Modification complete: ' + JSON.stringify(@get_configuration true)
 
-            u.log 'instance is available; sending test command'
+            u.log 'Sending test command'
             u.log JSON.stringify (new databases.Postgres this).query('SELECT 1').rows
             u.log 'test command successful'
 
@@ -3338,16 +3339,16 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
         @rds 'modifyDBInstance', params
 
-        u.log 'Resizing RDB succesful'
-        @get_configuration true
-
         if reboot_required
+            u.log 'Reboot required. Waiting for instance to be available, then doing reboot'
+            @get_configuration true
             @wait_for_available(100, ['available'])
             @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
-            @wait_for_available(100, ['available'])
+            u.log 'Reboot initiated'
 
-        #Force a refresh of our cache
-        @get_configuration true
+        u.log 'Waiting for modifications to complete'
+        @wait_for_modifications_complete()
+        u.log 'Resizing RDB succesful'
 
         return null
 
@@ -3368,6 +3369,48 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         else
             u.pause 10000
             @wait_for_available(retries - 1, available_statuses)
+
+    #Make sure we are no longer modifying anything
+    wait_for_modifications_complete: ->
+        retries = 20
+        ready = false
+        while not ready
+            u.pause 10000
+            config = @get_configuration(true)
+            ready = true
+
+            if config.DBInstanceStatus isnt 'available'
+                u.log 'Waiting for DBInstanceStatus to be available: ' + config.DBInstanceStatus
+                ready = false
+
+            for k, v of config.PendingModifiedValues ? {}
+                u.log 'Waiting for Pending Modification: ' + k
+                ready = false
+
+            for membership in config.OptionGroupMemberships ? []
+                if membership.Status isnt 'in-sync'
+                    u.log 'Waiting for OptionGroupMembership ' + membership.OptionGroupName + ' to be in-sync: ' + membership.Status
+                    ready = false
+
+            for parameter_group in config.DBParameterGroups ? []
+                if parameter_group.ParameterApplyStatus isnt 'in-sync'
+                    u.log 'Waiting for DBParameterGroup ' + parameter_group.DBParameterGroupName + ' to be in-sync: ' + parameter_group.ParameterApplyStatus
+                    ready = false
+
+            for security_group in config.VpcSecurityGroups ? []
+                if security_group.Status isnt 'active'
+                    u.log 'Waiting for VpcSecurityGroup ' + security_group.VpcSecurityGroupId + ' to be in active: ' + security_group.Status
+                    ready = false
+
+            if not ready
+                if retries is 0
+                    throw new Error 'timed out waiting for modifications to complete'
+                else
+                    u.log 'Retries remaining: ' + retries
+                    retries--
+
+        u.log 'Done waiting for modifications to complete'
+
 
     #Fetches the current state of this instance from RDS
     get_configuration: (force_refresh) ->
