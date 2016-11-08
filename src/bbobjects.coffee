@@ -1149,7 +1149,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
             bubblebot_private_ip_range = bbobjects.get_bbserver().get_private_ip_address() + '/32'
 
             #Allow bubblebot to connect on any port
-            rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}, {CidrIp: bubblebot_private_ip_range}], IpProtocol: '-1'}
+            rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: '-1'}
+            rules.push {IpRanges: [{CidrIp: bubblebot_private_ip_range}], IpProtocol: '-1'}
 
         @ensure_security_group_rules group_name, rules
         return id
@@ -1177,7 +1178,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 bubblebot_private_ip_range = bbobjects.get_bbserver().get_private_ip_address() + '/32'
 
                 #Allow bubblebot to connect on this port
-                rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}, {CidrIp: bubblebot_private_ip_range}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+                rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+                rules.push {IpRanges: [{CidrIp: bubblebot_private_ip_range}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
 
         @ensure_security_group_rules group_name, rules
         return id
@@ -1286,10 +1288,17 @@ bbobjects.Environment = class Environment extends BubblebotObject
             @get_security_group_data(group_name, true)
             return @ensure_security_group_rules(group_name, rules, retries - 1)
 
-        #apply the changes...
         GroupId = @get_security_group_id(group_name)
+
+        #First, remove any rules we need to get rid of...
+        if to_remove.length > 0
+            u.log 'Removing: ' + JSON.stringify {GroupId, IpPermissions: to_remove}
+            @ec2 'revokeSecurityGroupIngress', {GroupId, IpPermissions: to_remove}
+
+        #Then add the new rules...
         if to_add.length > 0
             try
+                u.log 'Adding: ' + JSON.stringify {GroupId, IpPermissions: to_add}
                 @ec2 'authorizeSecurityGroupIngress', {GroupId, IpPermissions: to_add}
             catch err
                 #If it is a duplicate rule, force a refresh of the cache, then retry
@@ -1298,9 +1307,6 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 else
                     throw err
 
-
-        if to_remove.length > 0
-            @ec2 'revokeSecurityGroupIngress', {GroupId, IpPermissions: to_remove}
 
         #then refresh our cache and confirm they got applied
         return refresh_and_retry()
