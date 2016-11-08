@@ -3193,24 +3193,18 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 MasterUserPassword
             }
 
-
-
             #We have to wait for it to be available before we can modify it.  We set a
             #very long timeout because copying the data can take a while
             @wait_for_available(1000, ['available'])
-            u.log 'Updating the credentials...'
+            u.log 'Updating the credentials; setting MasterUserPassword, and changing VpcSecurityGroupIds to ' + JSON.stringify(VpcSecurityGroupIds)
             @rds 'modifyDBInstance', params
-            u.log 'Updating the credentials complete'
-            u.pause 1000
-            @get_configuration true
-            u.pause 1000
+
+            u.log 'Updating the credentials complete: ' + JSON.stringify(@get_configuration true)
+
             @wait_for_available(100, ['available'])
+
             u.log 'instance is available; sending test command'
-            u.retry =>
-                u.pause 1000
-                @get_configuration true
-                u.log 'Sending test command...'
-                u.log JSON.stringify (new databases.Postgres this).query('SELECT 1').rows
+            u.log JSON.stringify (new databases.Postgres this).query('SELECT 1').rows
             u.log 'test command successful'
 
         else
