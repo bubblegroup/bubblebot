@@ -1282,6 +1282,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
                 throw new Error "trying to roll back migration #{migration} but we are at #{current}"
 
             #Run the migration
+            u.log 'Applying rollback ' + codebase_id + ' ' + migration + ':\n' + rollback_data
             t.query rollback_data
 
             #Update the migration table
