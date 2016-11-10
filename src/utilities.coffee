@@ -160,8 +160,15 @@ u.set_default_loggers = (loggers) -> u.default_loggers = loggers
 #If we are not on any fiber, returns null
 u.context = (fiber) ->
     fiber ?= Fiber.current
-    fiber?.current_context ?= {}
-    return fiber?.current_context ? null
+    if not fiber?
+        return null
+
+    if not fiber.current_context
+        fiber.current_context = {}
+        fiber.current_context.events = new events.EventEmitter()
+
+    return fiber.current_context
+
 
 #Shortcut for getting the current context's databse
 u.db = -> u.context()?.db
@@ -512,6 +519,9 @@ u.SyncRun = SyncRun = (cpu_name, cb) ->
 
                 u.array_remove u.active_fibers, f
 
+                #Destroy the context
+                f.current_context?.events.emit 'destroy'
+
                 #Keeping a reference to the fiber will hold it in memory permanently
                 f = null
 
@@ -614,3 +624,4 @@ crypto = require 'crypto'
 moment = require 'moment'
 require 'moment-timezone'
 config = require './config'
+events = require 'events'

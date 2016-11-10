@@ -162,7 +162,14 @@ get_connection = (host, private_key) ->
         throw new Error 'missing private key!'
 
     context = u.context()
-    ssh_connections = context.ssh_connections ?= {}
+    if not context.ssh_connections
+        context.ssh_connections = {}
+        context.events.on 'destroy', ->
+            for host, conn of context.ssh_connections
+                conn.end()
+            context.ssh_connections = null
+
+    ssh_connections = context.ssh_connections
 
     if not ssh_connections[host]
 

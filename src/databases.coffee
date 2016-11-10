@@ -4,6 +4,8 @@ databases.Postgres = class Postgres
     #rds_instance can be the rds_instance or an rds service: just needs to support endpoint
     constructor: (@rds_instance) ->
 
+    toString: -> 'Postgres: ' + @rds_instance.toString()
+
     #Gets the connection string for talking to this database
     get_connection_string: ->
         endpoint = @rds_instance.endpoint()
@@ -12,6 +14,16 @@ databases.Postgres = class Postgres
 
         {user, password, host, port, database} = endpoint
         conn_string = "postgres://#{user}:#{password}@#{host}:#{port}/#{database}"
+        return conn_string
+
+    #Gets the connection string in the format that dblink expects
+    get_dblink_connection_string: ->
+        endpoint = @rds_instance.endpoint()
+        if not endpoint?
+            throw new Error 'endpoint not available!'
+
+        {user, password, host, port, database} = endpoint
+        conn_string = "user=#{user} password=#{password} host=#{host} port=#{port} dbname=#{database}"
         return conn_string
 
     #Returns [client, done]
