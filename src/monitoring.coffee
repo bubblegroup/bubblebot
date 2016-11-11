@@ -293,7 +293,7 @@ monitoring.Monitor = class Monitor
         return res.join '\n'
 
     #Returns a description of the monitoring policies of all monitored objects
-    policies: ->
+    get_policies: ->
         res = []
 
         for uid, object of @to_monitor

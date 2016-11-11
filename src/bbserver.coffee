@@ -1632,7 +1632,7 @@ class Monitor extends Command
 
     run: (show_policies) ->
         if show_policies
-            u.reply 'Policies:\n' + @server._monitor.policies()
+            u.reply 'Policies:\n' + @server._monitor.get_policies()
         else
             u.reply @server._monitor.statuses()
 
