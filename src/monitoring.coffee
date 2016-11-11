@@ -268,12 +268,20 @@ monitoring.Monitor = class Monitor
         total_time = Date.now() - @start_time
         res.push 'Bubblebot has been up for ' + u.format_time(total_time)
         res.push ''
+
+        healthy = []
+        other = []
+
         for uid, object of @to_monitor
             if @health[uid] is HEALTHY
                 uptime = (total_time - (@downtime[uid] ? 0)) / total_time
-                res.push String(object) + ': ' + @health[uid] + ' (' + u.format_percent(uptime) + ')'
+                healthy.push String(object) + ': ' + @health[uid] + ' (' + u.format_percent(uptime) + ')'
             else
-                res.push String(object) + ': ' + @health[uid]
+                other.push String(object) + ': ' + @health[uid]
+
+        #First show unhealthy, then healthy
+        res.push other...
+        res.push healthy...
 
         res.push '\n\nChecks per second: ' + u.format_decimal(total_checks / (total_time / 1000))
 
