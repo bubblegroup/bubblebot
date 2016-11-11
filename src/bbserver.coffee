@@ -1403,7 +1403,7 @@ class New extends Command
     help: 'Creates a new environment'
     params: [
         {name: 'id', type: 'string', required: true, help:"The id of the new environment"}
-        {name: 'template', type: 'string', required: true, help: "The environment template to use to build this environment.  Pass 'blank' to create an empty environment"}
+        {name: 'template', type: 'list', options: templates.list.bind(null, 'Environment'), required: true, help: "The environment template to use to build this environment.  Pass 'blank' to create an empty environment"}
         {name: 'type', type: 'list', required: true, help: 'What kind of environment this is', options: -> [bbobjects.PROD, bbobjects.QA, bbobjects.DEV]}
         {name: 'region', type: 'string', help: 'The AWS region to host this environment in.  Defaults to same as bubblebot.'}
         {name: 'vpc', type: 'string', help: 'The AWS VPC id to host this environment in.  Defaults to same as bubblebot.'}
