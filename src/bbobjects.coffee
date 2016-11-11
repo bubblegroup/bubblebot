@@ -3865,6 +3865,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         mp = @environment().template().get_redis_monitoring_policy? this, @get('name')
         if not mp?
             return {monitor: false}
+        mp.frequency ?= 5000
         mp.endpoint = {
             protocol: 'redis'
             host: @endpoint()
