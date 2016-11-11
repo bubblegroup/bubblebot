@@ -170,7 +170,7 @@ monitoring.Monitor = class Monitor
     get_state: (uid, object, policy) ->
         #If we've turned of monitoring, that is our state
         if policy.monitor is false
-            reutrn [NOT_MONITORING]
+            return [NOT_MONITORING]
 
         #first, see if the object thinks it is in maintenance mode
         if @in_maintenance[uid]
