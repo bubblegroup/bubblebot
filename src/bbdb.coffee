@@ -36,6 +36,8 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
         catch err
             if String(err.message).indexOf('duplicate key value violates unique constraint') isnt -1
                 throw new Error 'We already have an object with type ' + type + ' and id ' + id
+            else
+                throw err
 
     #Deletes this object from the database
     delete_object: (type, id) ->
