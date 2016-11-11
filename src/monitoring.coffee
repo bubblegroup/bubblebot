@@ -339,7 +339,9 @@ monitoring.Monitor = class Monitor
                 block = u.Block clean_url
                 request url, block.make_cb()
                 timed_out = setTimeout ->
-                    block.fail 'timed out after ' + timeout
+                    setTimeout ->
+                        block.fail 'timed out after ' + timeout
+                    , 1000 #In case bubblebot CPU is overwhelmed
                 , timeout
                 try
                     res = block.wait()
@@ -360,7 +362,9 @@ monitoring.Monitor = class Monitor
                 try
                     block = u.Block 'monitor hitting pg'
                     pg_hit_timeout = setTimeout ->
-                        block.fail 'timed out after 5 seconds'
+                        setTimeout ->
+                            block.fail 'timed out after 6 seconds'
+                        , 1000
                     , 5000
                     u.sub_fiber ->
                         start = Date.now()
@@ -380,7 +384,9 @@ monitoring.Monitor = class Monitor
                     block = u.Block 'connecting'
 
                     redis_hit_timeout = setTimeout ->
-                        block.fail 'timed out after 5 seconds'
+                        setTimeout ->
+                            block.fail 'timed out after 5 seconds'
+                        , 1000 #in case bubblebot cpu is overwhelmed
                     , 5000
 
                     client = redis.createClient 'redis://' + policy.endpoint.host
