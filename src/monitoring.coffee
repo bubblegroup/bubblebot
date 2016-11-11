@@ -104,6 +104,7 @@ monitoring.Monitor = class Monitor
 
         policy = @policies[uid]
         if policy.monitor is false
+            @health[uid] = NOT_MONITORING
             return
 
         #Check its current state and reason
