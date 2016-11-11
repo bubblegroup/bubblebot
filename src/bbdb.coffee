@@ -29,9 +29,13 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
 
     #Creates a new object, optionally with the given parent and initial properties
     create_object: (type, id, parent_type, parent_id, initial_properties) ->
-        query = "INSERT INTO bbobjects (type, id, parent_type, parent_id, properties) VALUES ($1, $2, $3, $4, $5::jsonb)"
-        @query query, type, id, parent_type, parent_id, JSON.stringify(initial_properties)
-        return null
+        try
+            query = "INSERT INTO bbobjects (type, id, parent_type, parent_id, properties) VALUES ($1, $2, $3, $4, $5::jsonb)"
+            @query query, type, id, parent_type, parent_id, JSON.stringify(initial_properties)
+            return null
+        catch err
+            if String(err.message).indexOf('duplicate key value violates unique constraint') isnt -1
+                throw new Error 'We already have an object with type ' + type + ' and id ' + id
 
     #Deletes this object from the database
     delete_object: (type, id) ->
