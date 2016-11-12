@@ -2206,6 +2206,30 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             else
                 return constants.BASIC
 
+    #Prints the log urls for this service
+    logs: ->
+        servers = @servers()
+        urls = []
+        for server in servers
+            if typeof(server.logs) is 'function'
+                url = server.logs()
+            else if typeof server.template()?.logs is 'function'
+                url = server.template().logs server
+            else
+                url = null
+            if url?
+                urls.push url
+        if urls.length is 0
+            return 'Did not find any log urls'
+        else
+            return 'Found the following log urls:\n' + urls.join('\n')
+
+    logs_cmd:
+        help: 'Queries the underlying servers for log urls'
+        groups: constants.BASIC
+        reply: true
+
+
     #Returns the template for this service or null if not found
     template: ->
         prefix = @parent().id + '-'
