@@ -55,7 +55,8 @@ monitoring.Monitor = class Monitor
     #Update our cached policy / maintenance state for the given object and uid
     update_policy: (uid, object) ->
         @policies[uid] = object.get_monitoring_policy()
-        @in_maintenance[uid] = object.maintenance()
+        if @policies[uid].monitor isnt false
+            @in_maintenance[uid] = object.maintenance()
 
     monitor: (object) ->
         if not object
