@@ -3572,7 +3572,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                     session.write '> ' + input + '\n'
                     block = u.Block 'querying'
                     client.query input, block.make_cb()
-                    res = block.wait()
+                    res = block.wait(30 * 60 * 1000)
                     if res.rows?.length > 0
                         for row in res.rows
                             session.write JSON.stringify(row) + '\n'
