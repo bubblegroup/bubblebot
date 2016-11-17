@@ -2229,14 +2229,17 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         groups: constants.BASIC
         reply: true
 
+    #Returns the id of the template for this service
+    template_id: ->
+        prefix = @parent().id + '-'
+        return @id[prefix.length..]
 
     #Returns the template for this service or null if not found
     template: ->
-        prefix = @parent().id + '-'
-        template = @id[prefix.length..]
-        if not template
+        template_id = @template_id()
+        if not template_id
             return null
-        return templates.get('Service', template)
+        return templates.get('Service', template_id)
 
     codebase: -> @template().codebase()
 
