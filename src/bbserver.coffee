@@ -235,6 +235,8 @@ bbserver.Server = class Server
             if environment.exists()
                 if environment.get_environment_token() isnt pass
                     environment = null
+            else
+                environment = null
 
         if environment
             fn environment
