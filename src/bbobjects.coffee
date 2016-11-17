@@ -1718,6 +1718,20 @@ bbobjects.Environment = class Environment extends BubblebotObject
         groups: constants.BASIC
 
 
+    #Gets a token that we can use to make calls to bubblebot from this environment
+    get_environment_token: ->
+        token = @get 'bubblebot_environment_token'
+        if token
+            return token
+        token = u.gen_password 20
+        @set 'bubblebot_environment_token', token
+        return token
+
+    get_environment_token_cmd:
+        help: 'Displays the token for this environment that we use to call bubblebot'
+        dangerous: -> @is_production()
+        reply: true
+
     #Gets a credential set for this environment, creating it if it does not exist
     get_credential_set: (set_name) ->
         set = bbobjects.instance 'CredentialSet', @id + '-' + set_name
