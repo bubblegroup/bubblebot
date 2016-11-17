@@ -224,6 +224,26 @@ bbserver.Server = class Server
                 u.report 'Error handling http request:\n' + err.stack
                 next err
 
+    #Given a web request, checks for the environment's credentials
+    #Should be basic auth, username = environment id, password = environment token
+    #
+    #Calls fn with the environment, or returns a 401 response if no valid login
+    with_environment: (req, res, fn) ->
+        {name, pass} = basic_auth(req) ? {}
+        if name
+            environment = bbobjects.instance('Environment', name)
+            if environment.exists()
+                if environment.get_environment_token() isnt pass
+                    environment = null
+
+        if environment
+            fn environment
+        else
+            res.statusCode = 401
+            res.setHeader('WWW-Authenticate', 'Basic realm="bubblebot environment"')
+            res.end('Access denied')
+
+
     #should listen on port 8081 for commands such as shutdown
     start: ->
         u.SyncRun 'start', =>
@@ -1831,6 +1851,7 @@ passport = require 'passport'
 passport_slack = require 'passport-slack'
 session = require 'express-session'
 body_parser = require 'body-parser'
+basic_auth = require 'basic-auth'
 templates = require './templates'  #not actually used but useful for the Console command
 
 #Testing
