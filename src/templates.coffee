@@ -410,6 +410,61 @@ templates.RDSService = class RDSService extends Service
     get_tests: -> @codebase().get_tests()
 
 
+#Represents a service that's a database managed by some other service
+#
+#Can instantiate directly:
+#
+#get_endpoint(service_instance) -- function that retrieves the database endpoint
+#
+#codebase id -- this should either be an RDSCodebase or one that implementes
+#the migrate_to functions.
+#
+#monitoring_policy which should be a (service_instance) -> policy function
+#We automatically add the endpoint info to the policy function
+#
+templates.DBService = class DBService extends Service
+    constructor: (@get_endpoint, @codebase_id, @monitoring_policy) ->
+
+    codebase: -> templates.get 'Codebase', @codebase_id
+
+    get_monitoring_policy: (service_instance) ->
+        endpoint = @get_endpoint(service_instance)
+        if not endpoint
+            return {monitor: false}
+
+        policy = @monitoring_policy service_instance
+        policy.monitor ?= true
+        policy.frequency ?= 2000
+        policy.endpoint ?= {
+            protocol: 'postgres'
+        }
+        return policy
+
+    #We don't actually replace database boxes since that's generally a bad idea,
+    #but when we call replace we make sure it is up to date with the latest version
+    replace: (instance) ->
+        version = instance.version()
+        if not version?
+            return
+
+        @codebase().migrate_to instance, version
+
+    #We don't manage the underlying box, so this returns null
+    servers: (instance) -> []
+
+
+    endpoint: (instance) -> @get_endpoint instance
+
+    #Before deploying, we want to confirm that the migration is reversibe.
+    deploy_safe: (instance, version) ->
+        if not @codebase().confirm_reversible @rds_instance(instance), version
+            return false
+
+        return true
+
+    get_tests: -> @codebase().get_tests()
+
+
 #Base class for services that have a single box.  They take a template,
 #an array of tests, and a switcher function that takes the service instance
 #and returns the switcher that controls where traffic is routed
