@@ -1056,9 +1056,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #Creates and returns a new ec2 server in this environment, and returns the id
     #
     #ImageId and InstanceType are the ami and type to create this with
-    create_server_raw: (ImageId, InstanceType, IamInstanceProfile) ->
+    create_server_raw: (ImageId, InstanceType, IamInstanceProfile, security_group_id) ->
         KeyName = @get_keypair_name()
-        SecurityGroupIds = [@get_webserver_security_group()]
+        security_group_id ?= @get_webserver_security_group()
+        SecurityGroupIds = [security_group_id]
         SubnetId = @get_subnet()
         MaxCount = 1
         MinCount = 1
@@ -2465,7 +2466,7 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
     _build: (parent, size, name, ami, software_to_install, do_verify) ->
         environment = parent.environment()
 
-        id = environment.create_server_raw ami, size
+        id = environment.create_server_raw ami, size, null, @template().get_security_group_id?(environment)
         ec2instance = bbobjects.instance 'EC2Instance', id
         try
             ec2instance.create parent, name, constants.BUILDING, @id

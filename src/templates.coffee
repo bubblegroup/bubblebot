@@ -465,11 +465,30 @@ templates.DBService = class DBService extends Service
     get_tests: -> @codebase().get_tests()
 
 
+#Implements the switcher interface for having the endpoint change on deploys
+null_switcher = (service_instance) ->
+    return {
+        #Return the public dns of the active instance
+        endpoint: -> @get_instance().get_public_dns()
+
+        #Switch is a no-op, since nothing needs to be updated
+        switch: -> null
+
+        #We just return whatever instance the service says should be active
+        get_instance: -> service_instance.template().get_active_instance(service_instance)
+
+    }
+
+
 #Base class for services that have a single box.  They take a template,
 #an array of tests, and a switcher function that takes the service instance
 #and returns the switcher that controls where traffic is routed
+#
+#If switcher is null, we don't keep the endpoint constant -- instead, we just
+#replace the box
 templates.SingleBoxService = class SingleBoxService extends templates.Service
     constructor: (@build_id, @test_ids, @switcher, @monitoring_policy) ->
+        @switcher ?= null_switcher
 
     #Retrieve the ec2build object for this service
     ec2build: -> bbobjects.instance 'EC2Build', @build_id
@@ -1546,7 +1565,7 @@ templates.EC2Build = class EC2Build
     get_replacement_interval: -> 24 * 60 * 60 * 1000
 
 
-class BlankCodebase extends templates.Codebase
+templates.BlankCodebase = class BlankCodebase extends templates.Codebase
     canonicalize: -> 'blank'
     ahead_of: -> true
     ahead_of_msg: -> throw new Error 'nope'
