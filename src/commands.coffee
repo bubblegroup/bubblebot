@@ -149,6 +149,17 @@ commands.set_config = (name, value) ->
         u.log 'config set successfully'
         process.exit()
 
+commands.get_config = (name) ->
+    u.SyncRun 'get_config', ->
+        config.init()
+        config.set 'command_line', true
+        config.init_account_specific()
+
+        res = config.get_secure name
+        u.log 'config for ' + name + ': '
+        u.log res
+        process.exit()
+
 #Prints the help for the bubblebot command line tool
 commands.print_help = ->
     u.log 'Available commands:'
@@ -158,6 +169,7 @@ commands.print_help = ->
     u.log '  update  -- updates the bubblebot code (npm update bubblebot)'
     u.log '  dev -- builds bubblebot assuming a development symlink'
     u.log '  set_config [name] [value] -- stores a secure config option in s3.  Pass file:/path/to/file for value to read in a file.'
+    u.log '  get_config [name] -- retrieves a config set by set_config'
     process.exit()
 
 
