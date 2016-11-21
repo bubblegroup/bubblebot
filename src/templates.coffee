@@ -469,7 +469,7 @@ templates.DBService = class DBService extends Service
 null_switcher = (service_instance) ->
     return {
         #Return the public dns of the active instance
-        endpoint: -> @get_instance().get_public_dns()
+        endpoint: -> @get_instance()?.get_public_dns()
 
         #Switch is a no-op, since nothing needs to be updated
         switch: -> null
