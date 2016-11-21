@@ -447,7 +447,20 @@ templates.DBService = class DBService extends Service
         if not version?
             return
 
-        @codebase().migrate_to instance, version
+        @codebase().migrate_to @get_fake_box(instance), version
+
+    #Returns a fake RDS instance that we can pass to things that support it.  This is a
+    #hack to work around the fact that I built RDS support before generic database support.
+    #At some point, should refactor so that we go in the other direction
+    get_fake_box: (instance) => return {
+        endpoint: => @endpoint instance
+
+        #We need this so that migration manager will work.  We currently only support postgres
+        get_configuration: -> {
+            Engine: 'postgres'
+        }
+    }
+
 
     #We don't manage the underlying box, so this returns null
     servers: (instance) -> []
@@ -457,17 +470,13 @@ templates.DBService = class DBService extends Service
 
     #Before deploying, we want to confirm that the migration is reversibe.
     deploy_safe: (instance, version) ->
-        if not @codebase().confirm_reversible instance, version
+        if not @codebase().confirm_reversible @get_fake_box(instance), version
             return false
 
         return true
 
     get_tests: -> @codebase().get_tests()
 
-    #We need this so that migration manager will work.  We currently only support postgres
-    get_configuration: -> {
-        Engine: 'postgres'
-    }
 
 
 #Implements the switcher interface for having the endpoint change on deploys
