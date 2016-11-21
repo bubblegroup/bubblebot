@@ -181,6 +181,17 @@ class WebSession
     """
 
 
+#Utility for converting multiple certificates stored in a file / string into an array
+BEGIN_CERTIFICATE = '-----BEGIN CERTIFICATE-----'
+END_CERTIFICATE = '-----END CERTIFICATE-----'
+parse_chain = (raw) ->
+    strip_end = (cert) -> cert.split(END_CERTIFICATE)[0] + END_CERTIFICATE + '\n'
+
+    pieces = raw.split(BEGIN_CERTIFICATE)
+    certs = (BEGIN_CERTIFICATE + strip_end(piece) for piece in pieces when piece)
+    return certs
+
+
 bbserver.Server = class Server
     constructor: ->
         @root_command = new RootCommand(this)
@@ -253,9 +264,9 @@ bbserver.Server = class Server
                 @db = @_build_bbdb()
 
                 if config.get('bubblebot_use_https')
-                    cert = config.get_secure 'ssl_cert', true
                     key = config.get_secure 'ssl_key', true
-                    ca = config.get_secure 'ssl_intermediate', true
+                    cert = parse_chain config.get_secure 'ssl_cert', true
+                    ca = parse_chain config.get_secure 'ssl_intermediate', true
                     if not cert
                         setTimeout ->
                             u.report 'Config option bubblebot_use_https is turned on, but we were not able to load a cert.  Use the set_config command with key "ssl_cert" to set a cert, and "ssl_intermediate" to set an intermediate.'
