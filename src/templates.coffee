@@ -457,7 +457,7 @@ templates.DBService = class DBService extends Service
 
     #Before deploying, we want to confirm that the migration is reversibe.
     deploy_safe: (instance, version) ->
-        if not @codebase().confirm_reversible this, version
+        if not @codebase().confirm_reversible instance, version
             return false
 
         return true
