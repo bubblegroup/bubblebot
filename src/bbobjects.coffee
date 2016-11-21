@@ -1932,10 +1932,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
             #if it is newer than 10 minutes, skip it
             if Date.now() - instance.launch_time() < 10 * 60 * 1000
                 u.log 'Newer than 10 minutes: ' + String(instance)
-                continue
 
             #If we have a bubblebot role, don't delete this
-            if instance.bubblebot_role()
+            else if instance.bubblebot_role()
                 u.log 'Has bubblebot role: ' + String(instance)
 
             #if it is not saved in the database, this is a good candidate for deletion...
