@@ -2363,12 +2363,15 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             return
         codebase = @codebase()
         leader_version = codebase.canonicalize leader.version()
+        if not leader_version
+            u.report this + ' has leader ' + leader_id + ' but leader does not have a version set'
+            return
         my_version = codebase.canonicalize @version()
         if my_version is leader_version
             return
 
         #make sure the leader version is ahead of the current version
-        if not @codebase().ahead_of leader_version, my_version
+        if my_version and not @codebase().ahead_of leader_version, my_version
             u.report this + ' is set up to follow ' + leader + ' but leader version ' + leader_version + ' is not ahead of our version ' + my_version
             return
 
