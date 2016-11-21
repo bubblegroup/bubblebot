@@ -1059,7 +1059,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
     create_server_raw: (ImageId, InstanceType, IamInstanceProfile, security_group_id) ->
         KeyName = @get_keypair_name()
         security_group_id ?= @get_webserver_security_group()
-        SecurityGroupIds = [security_group_id]
+        if Array.isArray security_group_id
+            SecurityGroupIds = security_group_id
+        else
+            SecurityGroupIds = [security_group_id]
         SubnetId = @get_subnet()
         MaxCount = 1
         MinCount = 1
