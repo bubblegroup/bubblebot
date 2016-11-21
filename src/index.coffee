@@ -37,3 +37,4 @@ bubblebot.bbobjects = require './bbobjects'
 bubblebot.plugins = require './plugins'
 bubblebot.constants = require './constants'
 bubblebot.databases = require './databases'
+bubblebot.bbserver = bbserver
