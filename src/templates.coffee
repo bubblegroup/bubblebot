@@ -464,6 +464,11 @@ templates.DBService = class DBService extends Service
 
     get_tests: -> @codebase().get_tests()
 
+    #We need this so that migration manager will work.  We currently only support postgres
+    get_configuration: -> {
+        Engine: 'postgres'
+    }
+
 
 #Implements the switcher interface for having the endpoint change on deploys
 null_switcher = (service_instance) ->
