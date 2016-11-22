@@ -142,7 +142,11 @@ templates.Service = class Service
 
         #Replace the existing servers with the new version
         u.retry 3, 30000, =>
-            instance.replace()
+            try
+                instance.replace()
+            catch err
+                u.log 'Error trying to replace:\n' + err.stack
+                throw err
 
         #Let the user know we are finished
         u.reply 'We are finished rolling out the new version'
