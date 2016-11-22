@@ -1400,7 +1400,7 @@ migration_managers.postgres = class PostgresMigrator extends databases.Postgres
             t.query 'CREATE SCHEMA IF NOT EXISTS bubblebot'
 
             #Create the table
-            t.query 'CREATE TABLE migrations (codebase_id varchar(512), migration int, CONSTRAINT migrations_pk PRIMARY KEY (codebase_id))'
+            t.query 'CREATE TABLE bubblebot.migrations (codebase_id varchar(512), migration int, CONSTRAINT migrations_pk PRIMARY KEY (codebase_id))'
 
 
     #Returns a string that represents the state of the database's schema.  Used for
