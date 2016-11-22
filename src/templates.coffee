@@ -1187,6 +1187,8 @@ templates.GithubMultiRDSCodebase = class GithubMultiRDSCodebase extends Codebase
     constructor: (@codebases) ->
 
     canonicalize: (version) ->
+        if not version?
+            return null
         versions = version.split('-')
         res = []
         for codebase, idx in @codebases
