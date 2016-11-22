@@ -1908,6 +1908,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     remove_stale_entries_from_db_cmd:
         help: 'Recursively deletes children from the database that used to correspond to an AWS object that we can no longer find'
+        sublogger: true
 
     #Goes through and audits instances to see if they should be deleted
     audit_instances: (aggressive, auto_delete_mode, from_scheduled) ->
