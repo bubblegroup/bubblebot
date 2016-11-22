@@ -2352,31 +2352,37 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
 
     #If we have a leader, see if it is ahead of us; if so, deploy
     check_leader: ->
-        leader_id = @get 'leader'
-        if not leader_id
+        leaders = @get 'leader'
+        if not leaders
             u.log 'This instance does not have a leader'
             return
-        leader = bbobjects.instance('ServiceInstance', leader_id)
-        if not leader.exists()
-            u.report this + ' has leader ' + leader_id + ' but that id does not exist'
-            return
-        codebase = @codebase()
-        leader_version = codebase.canonicalize leader.version()
-        if not leader_version
-            u.report this + ' has leader ' + leader_id + ' but leader does not have a version set'
-            return
-        my_version = codebase.canonicalize @version()
+
+        leader_versions = []
+        for leader_id in leaders.split(',')
+            leader = bbobjects.instance('ServiceInstance', leader_id)
+            if not leader.exists()
+                u.report this + ' has leader ' + leader_id + ' but that id does not exist'
+                return
+
+            leader_version = leader.codebase().canonicalize leader.version()
+            if not leader_version
+                u.report this + ' has leader ' + leader_id + ' but leader does not have a version set'
+                return
+            leader_versions.push leader_version
+
+        my_version = @codebase().canonicalize @version()
+        leader_version = leader_versions.join('-')
         if my_version is leader_version
             return
 
         #make sure the leader version is ahead of the current version
         if my_version and not @codebase().ahead_of leader_version, my_version
-            u.report this + ' is set up to follow ' + leader + ' but leader version ' + leader_version + ' is not ahead of our version ' + my_version
+            u.report this + ' is set up to follow ' + leaders + ' but leader version ' + leader_version + ' is not ahead of our version ' + my_version
             return
 
         #do a deploy
-        u.reply this + ' is set to follow ' + leader + ', so deploying ' + leader_version + ' to it'
-        @template().deploy this, leader_version, false, 'Following leader: ' + leader
+        u.reply this + ' is set to follow ' + leaders + ', so deploying ' + leader_version + ' to it'
+        @template().deploy this, leader_version, false, 'Following leader: ' + leaders
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: ->
