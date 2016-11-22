@@ -46,8 +46,57 @@ ssh.shell = (host, private_key) ->
     stream = block.wait()
     return stream
 
-ssh.run = (host, private_key, cmd, options) ->
+#Like run, but uses a shell instead of opening up a connection
+ssh.shell_run = (host, private_key, cmd, options) ->
     {can_fail, timeout, no_log, logger} = options ? {}
+
+    if not logger?
+        if no_log
+            logger = ->
+        else
+            logger = u.get_logger('log')
+
+    logger '\Shell: ' + host + ': ' + cmd
+
+    output = []
+
+    stdout_log = new LogFlusher 'stdout', logger
+    stderr_log = new LogFlusher 'stderr', logger
+
+    stream = ssh.shell host, private_key
+
+    on_data = (data) ->
+        stdout_log.write data
+        output.push data
+    stream.on 'data', on_data
+
+    on_stderr_data = (data) ->
+        stderr_log.write data
+        output.push data
+    stream.stderr.on 'data', on_stderr_data
+
+    stream.write cmd + '\n'
+
+    block = u.Block 'wait'
+    setTimeout ->
+        block.success()
+    , timeout ? 10 * 1000
+    block.wait(timeout + 10000)
+
+    stream.end()
+
+    stdout_log.flush(true)
+    stderr_log.flush(true)
+
+    output = output.join ''
+
+    return output
+
+
+ssh.run = (host, private_key, cmd, options) ->
+    {can_fail, timeout, no_log, logger, shell} = options ? {}
+    if shell
+        return ssh.shell_run host, private_key, cmd, options
 
     if not logger?
         if no_log
