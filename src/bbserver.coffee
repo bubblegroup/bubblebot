@@ -542,12 +542,14 @@ bbserver.Server = class Server
                         if (cls::) and typeof(cls::on_startup) is 'function'
                             u.log 'Startup: loading ' + typename + 's...'
                             for id in u.db().list_objects typename
-                                u.log 'Startup: sending on_startup() to ' + id
-                                try
-                                    bbobjects.instance(typename, id).on_startup()
-                                catch err
-                                    if err.reason not in [u.CANCEL, u.USER_TIMEOUT, u.EXTERNAL_CANCEL, u.EXPECTED]
-                                        u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
+                                do (id) ->
+                                    u.sub_fiber ->
+                                        u.log 'Startup: sending on_startup() to ' + id
+                                        try
+                                            bbobjects.instance(typename, id).on_startup()
+                                        catch err
+                                            if err.reason not in [u.CANCEL, u.USER_TIMEOUT, u.EXTERNAL_CANCEL, u.EXPECTED]
+                                                u.report 'Error sending startup to ' + typename + ' ' + id + ': ' + (err.stack ? err)
 
                     u.log 'Startup complete'
                 catch err
