@@ -3009,8 +3009,7 @@ bbobjects.EC2Instance = class EC2Instance extends AbstractBox
 
     exists_in_aws: ->
         try
-            @refresh()
-            return true
+            return @get_configuration()?
         catch err
             if String(err).indexOf('InvalidInstanceID.NotFound') isnt -1
                 return false
