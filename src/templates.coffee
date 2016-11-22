@@ -395,8 +395,8 @@ templates.RDSService = class RDSService extends Service
     resize_cmd:
         sublogger: true
         help: 'Modifies an existing RDS instance'
-        dangerous: -> @is_production()
-        groups: -> if @is_production() then constants.ADMIN else constants.BASIC
+        dangerous: (instance) -> instance.is_production()
+        groups: (instance) -> if instance.is_production() then constants.ADMIN else constants.BASIC
 
 
     #Imports a given rds instance to be this services instance
