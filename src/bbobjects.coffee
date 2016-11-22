@@ -2456,6 +2456,14 @@ bbobjects.EC2Build = class EC2Build extends BubblebotObject
         codebase: @codebase()
     }
 
+    #Removes from the database
+    destroy: ->
+        @delete()
+        u.reply 'Build ' + @id + ' removed from the database'
+
+    destroy_cmd:
+        help: 'Removes this EC2Build from the database'
+
     #Get the lowest version of this build in the given region.  Useful for building
     #lowest-common-denominator AMIs
     #
