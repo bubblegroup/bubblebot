@@ -315,11 +315,8 @@ templates.RDSService = class RDSService extends Service
 
     wait_for_available: (instance) -> @rds_instance(instance).wait_for_available()
 
-    #Gets the parameters we use to create a new RDS instance
-    get_params_for_creating_instance: (instance) ->
-        permanent_options = @codebase().rds_options()
+    get_sizing_params: (instance) ->
         sizing_options = @codebase().get_sizing instance
-
         #Overwrite the sizing with anything set on the service
         if instance.get('size')
             sizing_options.DBInstanceClass = instance.get('size')
@@ -327,6 +324,14 @@ templates.RDSService = class RDSService extends Service
             sizing_options.AllocatedStorage = instance.get('storage')
         if instance.get('multi_az')
             sizing_options.MultiAZ = instance.get('multi_az')
+
+    #Gets the parameters we use to create a new RDS instance
+    #
+    #NOTE: This will re-generate S3-stored credentials!
+    get_params_for_creating_instance: (instance) ->
+        permanent_options = @codebase().rds_options()
+
+        sizing_options = @get_sizing_params instance
 
         #Most of the time we want to let the instance generate and store its own credentials,
         #but for special cases like BBDB we want to store the credentials in S3
@@ -354,6 +359,45 @@ templates.RDSService = class RDSService extends Service
         rds_instance.create instance, permanent_options, sizing_options, credentials
 
         instance.set 'rds_instance', rds_instance.id
+
+    #Resizes this rds instance to match whatever the specified parameters are
+    resize: (instance) ->
+        rds_instance = @rds_instance(instance)
+        config = rds_instance.get_configuration(true)
+
+        new_sizing = @get_sizing_params instance
+
+        changes = {}
+
+        keys = ['AllocatedStorage', 'DBInstanceClass', 'BackupRetentionPeriod', 'MultiAZ', 'StorageType', 'Iops', 'outside_world_accessible']
+        for key in keys
+            current_state = config[key] ? '[unknown]'
+            suggested_state = new_sizing[key]
+            if u.confirm 'Change ' + key + '?  Currently, it is ' + current_state + ', and if we were re-creating this db, we would set it to ' + suggested_state
+                type = if key in ['AllocatedStorage', 'BackupRetentionPeriod', 'Iops'] then 'number' else 'string'
+                changes[key] = bbserver.do_cast type, u.ask 'Please enter new value for ' + key
+
+        if not u.confirm 'Okay, we will make the following changes: ' + JSON.stringify(changes, null, 4)
+            u.reply 'Okay, aborting'
+            return
+
+        unsafe_okay = u.confirm 'Are you okay with making changes that could cause downtime?'
+
+        if instance.is_production() and unsafe_okay
+            if not u.confirm 'This is a production instance.  You just said you were okay with downtime. Are you sure you know what you are doing?'
+                u.reply 'Okay, aborting'
+                return
+
+        u.reply 'Initiating resize...'
+        rds_instance.resize sizing_options, unsafe_okay
+        u.reply 'Resize complete'
+
+    resize_cmd:
+        sublogger: true
+        help: 'Modifies an existing RDS instance'
+        dangerous: -> @is_production()
+        groups: -> if @is_production() then constants.ADMIN else constants.BASIC
+
 
     #Imports a given rds instance to be this services instance
     import: (instance, instance_id, MasterUsername, MasterUserPassword) ->
