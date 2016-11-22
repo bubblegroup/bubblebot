@@ -80,8 +80,10 @@ databases.Postgres = class Postgres
         _should_done = true
         _rolled_back = false
 
+        _my_timeout = null
+
         t = {
-            set_timeout: (@timeout) ->
+            set_timeout: (timeout) -> _my_timeout = timeout
 
             rollback: =>
                 if _rolled_back
@@ -103,7 +105,7 @@ databases.Postgres = class Postgres
 
                 block = u.Block statement
                 @_query client, block.make_cb(), statement, args
-                return block.wait(@timeout)
+                return block.wait(_my_timeout)
 
             #Convenience function for acquiring an advisory lock
             advisory_lock: (text) ->
