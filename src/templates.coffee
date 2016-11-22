@@ -379,7 +379,7 @@ templates.RDSService = class RDSService extends Service
                 type = if key in ['AllocatedStorage', 'BackupRetentionPeriod', 'Iops'] then 'number' else 'string'
                 changes[key] = bbserver.do_cast type, u.ask 'Please enter new value for ' + key
 
-        if not u.confirm 'Okay, we will make the following changes: ' + JSON.stringify(changes, null, 4)
+        if not u.confirm 'Okay, we will make the following changes: ' + JSON.stringify(changes, null, 4) + '\nShall we proceed?'
             u.reply 'Okay, aborting'
             return
 
