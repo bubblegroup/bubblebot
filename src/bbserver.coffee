@@ -542,7 +542,7 @@ bbserver.Server = class Server
                         if (cls::) and typeof(cls::on_startup) is 'function'
                             u.log 'Startup: loading ' + typename + 's...'
                             for id in u.db().list_objects typename
-                                do (id) ->
+                                do (id, typename) ->
                                     u.sub_fiber ->
                                         u.log 'Startup: sending on_startup() to ' + id
                                         try
