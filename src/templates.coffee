@@ -325,6 +325,8 @@ templates.RDSService = class RDSService extends Service
         if instance.get('multi_az')
             sizing_options.MultiAZ = instance.get('multi_az')
 
+        return sizing_options
+
     #Gets the parameters we use to create a new RDS instance
     #
     #NOTE: This will re-generate S3-stored credentials!
