@@ -395,8 +395,8 @@ templates.RDSService = class RDSService extends Service
     resize_cmd: ->
         sublogger: true
         help: 'Modifies an existing RDS instance'
-        dangerous: -> @is_production()
-        groups: -> if @is_production() then constants.ADMIN else constants.BASIC
+        dangerous: (instance) -> instance.is_production()
+        groups: (instance) -> if instance.is_production() then constants.ADMIN else constants.BASIC
 
 
     #Imports a given rds instance to be this services instance
@@ -721,17 +721,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         help: 'Sets the size of the box for this service'
         reply: 'Size successfully set'
         groups: constants.BASIC
-        dangerous: -> @environment().is_production()
-
-    console: (instance) -> @get_active_instance(instance).console()
-
-    console_cmd:
-        help: "Opens up a console for interacting with the server directly"
-        groups: ->
-            if @environment().is_production()
-                return constants.ADMIN
-            else
-                return constants.BASIC
+        dangerous: (instance) -> instance.is_production()
 
 #Base class for codebases
 templates.Codebase = class Codebase

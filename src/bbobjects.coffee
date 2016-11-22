@@ -344,7 +344,13 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
                     if command_object is 'raw'
                         cmd = v.call(template, this)
                     else
-                        cmd = bbserver.build_command u.extend {run: v.bind(template, this), target: template}, command_object
+                        new_command_object = u.extend {}, command_object
+                        if typeof(new_command_object.groups) is 'function'
+                            new_command_object.groups = new_command_object.groups.bind(template, this)
+                        if typeof(new_command_object.dangerous) is 'function'
+                            new_command_object.dangerous = new_command_object.dangerous.bind(template, this)
+
+                        cmd = bbserver.build_command u.extend {run: v.bind(template, this), target: template}, new_command_object
 
                     template_commands[k] = cmd
 
