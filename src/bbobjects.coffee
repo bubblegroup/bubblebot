@@ -3391,12 +3391,14 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             VpcSecurityGroupIds = [@environment().get_database_security_group(outside_world_accessible)]
 
         params = {
+            DBInstanceIdentifier: @id
             ApplyImmediately: true
             AllocatedStorage
             DBInstanceClass
             BackupRetentionPeriod
             MultiAZ
             StorageType
+            VpcSecurityGroupIds
             Iops
         }
 
