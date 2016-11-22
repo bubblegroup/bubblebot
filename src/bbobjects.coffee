@@ -3416,7 +3416,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             u.log 'Reboot initiated'
 
         u.log 'Waiting for modifications to complete'
-        @wait_for_modifications_complete()
+        @wait_for_modifications_complete(100)
         u.log 'Resizing RDB succesful'
 
         return null
@@ -3440,8 +3440,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             @wait_for_available(retries - 1, available_statuses)
 
     #Make sure we are no longer modifying anything
-    wait_for_modifications_complete: ->
-        retries = 20
+    wait_for_modifications_complete: (retries = 20) ->
         ready = false
         while not ready
             u.pause 10000
