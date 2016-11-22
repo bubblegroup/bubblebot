@@ -389,7 +389,7 @@ templates.RDSService = class RDSService extends Service
                 return
 
         u.reply 'Initiating resize...'
-        rds_instance.resize sizing_options, unsafe_okay
+        rds_instance.resize changes, unsafe_okay
         u.reply 'Resize complete'
 
     resize_cmd:
@@ -1662,3 +1662,4 @@ u = require './utilities'
 config = require './config'
 software = require './software'
 crypto = require 'crypto'
+bbserver = require './bbserver'
