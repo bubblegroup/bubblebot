@@ -985,7 +985,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
 
     #Creates a new RDS instance for development purposes
-    create_db: (id, Engine, EngineVersion, MultiAZ, DBInstanceClass, StorageType, outside_world_accessible, hours) ->
+    create_db: (id, Engine, EngineVersion, MultiAZ, DBInstanceClass, AllocatedStorage, StorageType, outside_world_accessible, hours) ->
         permanent_options = {Engine, EngineVersion}
         if StorageType is 'io1'
             Iops = bbserver.do_cast 'number', u.ask 'Enter a value for Iops:'
@@ -1041,6 +1041,12 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 type: 'list'
                 options: -> ['db.t2.micro', 'db.t2.small', 'db.t2.medium', 'db.t2.large', 'db.r3.large', 'db.r3.xlarge', 'db.r3.2xlarge', 'db.r3.4xlarge', 'db.r3.8xlarge', 'db.m4.large', 'db.m4.xlarge', 'db.m4.2xlarge', 'db.m4.4xlarge', 'db.m4.10xlarge']
                 help: 'The instance class'
+            }
+            {
+                name: 'AllocatedStorage'
+                required: true
+                type: 'number'
+                help: 'The storage in GB (min is 5)'
             }
             {
                 name: 'StorageType'
