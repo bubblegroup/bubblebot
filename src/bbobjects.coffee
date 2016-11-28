@@ -1620,7 +1620,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 if cache_parameters[parameter.ParameterName] isnt parameter.ParameterValue
                     problem = true
                     u.log 'Group has parameter ' + cache_parameters[parameter.ParameterName] + ' set to ' + parameter.ParameterValue + ' but expecting ' + cache_parameters[parameter.ParameterName]
-            for k, v in cache_parameters
+            for k, v of cache_parameters
                 if found[k] isnt v
                     problem = true
                     u.log 'Expecting ' + k + ' to be ' + v + ' but group has ' + found[k]
