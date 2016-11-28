@@ -1617,11 +1617,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
             problem = false
             for parameter in parameters
                 found[parameter.ParameterName] = parameter.ParameterValue
-                if cache_parameters[parameter.ParameterName] isnt parameter.ParameterValue
+                if String(cache_parameters[parameter.ParameterName]) isnt String(parameter.ParameterValue)
                     problem = true
                     u.log 'Group has parameter ' + cache_parameters[parameter.ParameterName] + ' set to ' + parameter.ParameterValue + ' but expecting ' + cache_parameters[parameter.ParameterName]
             for k, v of cache_parameters
-                if found[k] isnt v
+                if String(found[k]) isnt String(v)
                     problem = true
                     u.log 'Expecting ' + k + ' to be ' + v + ' but group has ' + found[k]
             if problem
@@ -1652,7 +1652,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         @elasticache('createCacheParameterGroup', params)
 
         #Modify the group to set the new parameters
-        ParameterNameValues = ({ParameterName: k, ParameterValue: v} for k, v of cache_parameters)
+        ParameterNameValues = ({ParameterName: k, ParameterValue: String(v)} for k, v of cache_parameters)
         params = {
             CacheParameterGroupName: name
             ParameterNameValues
