@@ -1590,8 +1590,86 @@ bbobjects.Environment = class Environment extends BubblebotObject
         groups: constants.ADMIN
 
 
+    #Gets / creates an elasticache parameter group with the given parameters
+    get_elasticache_param_group: (EngineVersion, cache_parameters) ->
+        u.log 'Searching for elasticache parameter groups...'
+
+        #See if we have one already
+        groups = @elasticache('describeCacheParameterGroups', {}).CacheParameterGroups
+
+        #Make matching easier...
+        EngineVersion = 'redis' + EngineVersion
+
+        for group in groups
+            u.log 'Checking group ' + group.CacheParameterGroupName
+            #make sure it matches the engine version
+            if EngineVersion.indexOf(group.CacheParameterGroupFamily) isnt 0
+                u.log 'CacheParameterGroupFamily ' + group.CacheParameterGroupFamily + ' does not match ' + EngineVersion
+                continue
+
+            #make sure the parameters are correct
+            params = {
+                CacheParameterGroupName: group.CacheParameterGroupName,
+                Source: 'user'
+            }
+            parameters = @elasticache('describeCacheParameters', params).Parameters
+            found = {}
+            problem = false
+            for parameter in parameters
+                found[parameter.ParameterName] = parameter.ParameterValue
+                if cache_parameters[parameter.ParameterName] isnt parameter.ParameterValue
+                    problem = true
+                    u.log 'Group has parameter ' + cache_parameters[parameter.ParameterName] + ' set to ' + parameter.ParameterValue + ' but expecting ' + cache_parameters[parameter.ParameterName]
+            for k, v in cache_parameters
+                if found[k] isnt v
+                    problem = true
+                    u.log 'Expecting ' + k + ' to be ' + v + ' but group has ' + found[k]
+            if problem
+                continue
+
+            u.log 'Parameter group ' + group.CacheParameterGroupName + ' matches requirements'
+            return group.CacheParameterGroupName
+
+        #checks to see if we have a group with this name
+        name_free = (name) ->
+            for group in groups
+                if group.CacheParameterGroupName is name
+                    return false
+            return true
+
+        #Gets a free name for the new group
+        idx = 0
+        while not name_free('bubblebot' + idx)
+            idx++
+        name =  'bubblebot' + idx
+
+        params = {
+            CacheParameterGroupName: name
+            CacheParameterGroupFamily: EngineVersion.split('.')[..1].join('.')
+            Description: 'Auto-created by Bubblebot with params ' + (k + '=' + v for k, v of cache_parameters).join(', ')
+        }
+        u.log 'Did not find a parameter group matching requirements, so creating one: ' + JSON.stringify params
+        @elasticache('createCacheParameterGroup', params)
+
+        #Modify the group to set the new parameters
+        ParameterNameValues = ({ParameterName: k, ParameterValue: v} for k, v of cache_parameters)
+        params = {
+            CacheParameterGroupName: name
+            ParameterNameValues
+        }
+        u.log 'And setting the parameters: ' + JSON.stringify params
+        @elasticache('modifyCacheParameterGroup', params)
+
+        return name
+
+
+
     #Creates a new redis repgroup with the given name and parameters
-    create_redis_repgroup: (name, {CacheNodeType, CacheParameterGroupName, EngineVersion}) ->
+    #
+    #Should send either CacheParameterGroupName or cache_parameters.  Cache parameters is a
+    #key / value list of parameters to change from the default -- will automatically create
+    #a cache parameter group with those parameters if it does not exists
+    create_redis_repgroup: (name, {CacheNodeType, CacheParameterGroupName, cache_parameters, EngineVersion}) ->
         num = 1
         get_id = =>
             #There's a 20 character limit, so we shave off stuff from the environment id
@@ -1606,6 +1684,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
         id = get_id()
 
         environment = @environment()
+
+        if not CacheParameterGroupName
+            if not cache_parameters
+                throw new Error 'must send either CacheParameterGroupName or cache_parameters'
+            CacheParameterGroupName = @get_elasticache_param_group EngineVersion, cache_parameters
 
         #We need to have a subnet group for this.  Check to see if there's already a subnet
         #group in this environment's VPC
