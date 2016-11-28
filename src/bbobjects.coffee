@@ -3769,7 +3769,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
         #Handle notices
         client.on 'notice', (msg) ->
-            session.write 'notice: ' + msg + '\n'
+            session.write msg + '\n'
         client.on 'error', (err) ->
             session.write 'error: ' + String(err) + '\n'
 
