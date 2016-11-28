@@ -983,6 +983,81 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         groups: constants.BASIC
 
+
+    #Creates a new RDS instance for development purposes
+    create_db: (id, Engine, EngineVersion, MultiAZ, DBInstanceClass, StorageType, outside_world_accessible, hours) ->
+        permanent_options = {Engine, EngineVersion}
+        if StorageType is 'io1'
+            Iops = bbserver.do_cast 'number', u.ask 'Enter a value for Iops:'
+        sizing_options = {MultiAZ, DBInstanceClass, StorageType, Iops, outside_world_accessible}
+
+        u.reply 'Beginning creation...'
+
+        box = bbobjects.instance 'RDSInstance', id
+        box.create environment, permanent_options, sizing_options
+
+        #Make sure we remind the user to destroy this when finished
+        interval = hours * 60 * 60 * 1000
+        box.set 'expiration_time', Date.now() + (interval * 2)
+        box.schedule_once interval, 'follow_up'
+
+        u.reply 'Okay, your box is ready:\n' + box.describe()
+
+    create_db_cmd:
+        help: 'Creates a new, empty database for testing purposes.  Reminds you to destroy it later.'
+        sublogger: true
+        groups: constants.BASIC
+        params: [
+            {
+                name: 'id'
+                required: true
+                validate: (id) ->
+                    while id.match(/[^a-z0-9\-]/)?
+                        id = u.ask 'id should only be lower-case letters, numbers, and hyphens... please enter a new id:'
+                    return id
+                help: 'The id of the new instance... should be lower-case letters, numbers, and hyphens'
+            }
+            {
+                name: 'Engine'
+                required: true
+                type: 'list'
+                options: -> ['postgres']
+                help: 'Which database -- currently only support postgres through bubblebot'
+            }
+            {
+                name: 'EngineVersion'
+                required: true
+                help: 'Which engine version'
+            }
+            {
+                name: 'MultiAZ'
+                required: true
+                type: 'boolean'
+                help: 'If true, creates this as a MultiAZ database'
+            }
+            {
+                name: 'DBInstanceClass'
+                required: true
+                type: 'list'
+                options: -> ['db.t2.micro', 'db.t2.small', 'db.t2.medium', 'db.t2.large', 'db.r3.large', 'db.r3.xlarge', 'db.r3.2xlarge', 'db.r3.4xlarge', 'db.r3.8xlarge', 'db.m4.large', 'db.m4.xlarge', 'db.m4.2xlarge', 'db.m4.4xlarge', 'db.m4.10xlarge']
+                help: 'The instance class'
+            }
+            {
+                name: 'StorageType'
+                required: true
+                type: 'list'
+                options: -> ['gp2', 'standard', 'io1']
+                help: 'The storage type.  When in doubt, pick gp2.'
+            }
+            {
+                name: 'outside_world_accessible'
+                required: true
+                type: 'boolean'
+                help: 'If true, opens the firewall so any computer can access this database'
+            }
+            {name: 'hours', required: true, type: 'number', help: 'The number of hours you need this clone for'}
+        ]
+
     #Given a key, value pair, returns a list of instanceids that match that pair
     get_instances_by_tag: (key, value) ->
         #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
