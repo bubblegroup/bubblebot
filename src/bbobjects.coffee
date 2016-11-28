@@ -989,7 +989,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         permanent_options = {Engine, EngineVersion}
         if StorageType is 'io1'
             Iops = bbserver.do_cast 'number', u.ask 'Enter a value for Iops:'
-        sizing_options = {MultiAZ, DBInstanceClass, StorageType, Iops, outside_world_accessible}
+        sizing_options = {MultiAZ, DBInstanceClass, AllocatedStorage, StorageType, Iops, outside_world_accessible}
 
         u.reply 'Beginning creation...'
 
