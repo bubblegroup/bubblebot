@@ -74,8 +74,19 @@ ssh.shell_run = (host, private_key, cmd, options) ->
         stderr_log.write data
         output.push data
     stream.stderr.on 'data', on_stderr_data
+    stream.stderr.on 'err'
 
     stream.write cmd + '\n'
+
+    stream.on 'error', (err) ->
+        msg = 'Error from shell_run: ' + String(err)
+        stdout_log.write msg
+        output.push msg
+
+    stream.stderr.on 'error', (err) ->
+        msg = 'Stderr error from shell_run: ' + String(err)
+        stderr_log.write msg
+        output.push msg
 
     block = u.Block 'wait'
     setTimeout ->
@@ -247,6 +258,17 @@ get_connection = (host, private_key) ->
         block.wait()
 
         ssh_connections[host] = conn
+
+        #If we get further errors, we just want to close the connection
+        conn.on 'error', (err) ->
+            if ssh_connections[host] is conn
+                delete ssh_connections[host]
+            try
+                conn.end()
+            catch err
+                true
+
+
     return ssh_connections[host]
 
 u = require './utilities'
