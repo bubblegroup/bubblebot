@@ -4013,6 +4013,12 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
     get_monitoring_policy: ->
         if not @exists()
             return {monitor: false}
+
+        #At the moment, we can't monitor elasticache instances that are not in the same
+        #VPC as bubblebot, because elasticache instances are not accessible publicly.
+        if @environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
+            return {monitor: false}
+
         mp = @environment().template().get_redis_monitoring_policy? this, @get('name')
         if not mp?
             return {monitor: false}
