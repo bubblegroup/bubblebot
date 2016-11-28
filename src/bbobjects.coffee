@@ -994,7 +994,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
         u.reply 'Beginning creation...'
 
         box = bbobjects.instance 'RDSInstance', id
-        box.create environment, permanent_options, sizing_options
+        box.create this, permanent_options, sizing_options
 
         #Make sure we remind the user to destroy this when finished
         interval = hours * 60 * 60 * 1000
