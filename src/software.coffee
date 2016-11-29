@@ -41,6 +41,9 @@ software.supervisor = (name, command, pwd) -> (instance) ->
     instance.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\ndirectory=' + pwd + '\n\nEOF'
     instance.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
 
+    #Set a big ulimit
+    instance.run "echo '* soft nofile 1000000\n* hard nofile 1000000\n* soft nproc 1000000\n* hard nproc 1000000' | sudo tee /etc/security/limits.d/large.conf"
+
 #Make sure ports are exposed and starts supervisord
 software.supervisor_start = (can_fail) -> (instance) ->
     #If supervisord is already running, kills it.
