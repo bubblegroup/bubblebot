@@ -129,8 +129,8 @@ monitoring.Monitor = class Monitor
                     if action.threshold? and not actions[action_name] and downtime > action.threshold
                         #If there's a limit on how frequently we can report to this action,
                         #make sure we are within the limit
-                        if action.limit? and @last_action_times[uid]?[action]
-                            within_limit = (Date.now() - @last_action_times[uid][action]) > action.limit
+                        if action.limit? and @last_action_times[uid]?[action_name]
+                            within_limit = (Date.now() - @last_action_times[uid][action_name]) > action.limit
                         else
                             within_limit = true
 
