@@ -242,8 +242,7 @@ monitoring.Monitor = class Monitor
                     u.report 'Monitoring: method call failed, could not find ' + method + ' on ' + object
                     return
 
-                u.SyncRun 'monitor_method_call', =>
-                    @server.build_context msg
+                @server.run_fiber msg, =>
                     object[method] params...
 
             when 'plugin'
