@@ -2605,7 +2605,6 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         sublogger: true
         help: 'Restarts the underlying boxes for this service'
         groups: constants.BASIC
-        reply: 'Restart complete'
         dangerous: true
 
 
@@ -3518,7 +3517,6 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     restart_cmd:
         sublogger: true
         help: 'Restarts the database'
-        reply: 'Restart complete'
         dangerous: -> @is_production()
         groups: (aws) -> if aws and @is_production() then constants.ADMIN else constants.BASIC
         sublogger: true
