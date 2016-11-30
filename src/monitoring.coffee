@@ -364,9 +364,9 @@ monitoring.Monitor = class Monitor
                     block = u.Block 'monitor hitting pg'
                     pg_hit_timeout = setTimeout ->
                         setTimeout ->
-                            block.fail 'timed out after 6 seconds'
+                            block.fail 'timed out after 10 seconds'
                         , 1000
-                    , 5000
+                    , 9000
                     u.sub_fiber ->
                         start = Date.now()
                         db.query 'select 1'
