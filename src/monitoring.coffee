@@ -319,6 +319,10 @@ monitoring.Monitor = class Monitor
         retries = policy.endpoint.retries ? 2
         timeout = policy.endpoint.timeout ? 10000
 
+        #Compensate for cross-vpc traffic
+        if object.environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
+            timeout += 8000
+
         while retries > 0
 
             if protocol in ['http', 'https']
@@ -364,9 +368,9 @@ monitoring.Monitor = class Monitor
                     block = u.Block 'monitor hitting pg'
                     pg_hit_timeout = setTimeout ->
                         setTimeout ->
-                            block.fail 'timed out after 10 seconds'
+                            block.fail 'timed out after ' + timeout
                         , 1000
-                    , 9000
+                    , timeout
                     u.sub_fiber ->
                         start = Date.now()
                         db.query 'select 1'
@@ -386,9 +390,9 @@ monitoring.Monitor = class Monitor
 
                     redis_hit_timeout = setTimeout ->
                         setTimeout ->
-                            block.fail 'timed out after 5 seconds'
+                            block.fail 'timed out after ' + timeout
                         , 1000 #in case bubblebot cpu is overwhelmed
-                    , 5000
+                    , timeout
 
                     client = redis.createClient 'redis://' + policy.endpoint.host
                     client.on 'error', (err) -> block.fail err
@@ -447,3 +451,4 @@ request = require 'request'
 databases = require './databases'
 bbserver = require './bbserver'
 redis = require 'redis'
+bbobjects = require './bbobjects'
