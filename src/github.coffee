@@ -1,8 +1,5 @@
 github = exports
 
-#Github rate limits, and since a lot of this information is fixed, cache it
-github_cache = new bbobjects.Cache 24 * 60 * 60 * 1000
-
 github.Repo = class Repo
     constructor: (@org, @project, @username, @access_token, @abbrev = 10) ->
 
@@ -187,3 +184,6 @@ config = require './config'
 u = require './utilities'
 software = require './software'
 bbobjects = require './bbobjects'
+
+#Github rate limits, and since a lot of this information is fixed, cache it
+github_cache = new bbobjects.Cache 24 * 60 * 60 * 1000
