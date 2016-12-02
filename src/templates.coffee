@@ -133,12 +133,13 @@ templates.Service = class Service
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
         #In case this is a leader, have all services do a quick check...
-        u.log 'Calling check_leader on all service instances...'
-        for service_instance in bbobjects.list_all('ServiceInstance')
-            do (service_instance) ->
-                u.log 'Checking leader for ' + service_instance
-                u.sub_fiber ->
-                    service_instance.check_leader()
+        if deployment_message isnt constants.LEADER_DEPLOY_MESSAGE
+            u.log 'Calling check_leader on all service instances...'
+            for service_instance in bbobjects.list_all('ServiceInstance')
+                do (service_instance) ->
+                    u.log 'Checking leader for ' + service_instance
+                    u.sub_fiber ->
+                        service_instance.check_leader()
 
         #Replace the existing servers with the new version
         u.retry 3, 30000, =>

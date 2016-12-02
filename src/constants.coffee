@@ -18,3 +18,7 @@ constants.BUILD_COMPLETE = 'build complete'
 constants.ACTIVE = 'active'
 constants.FINISHED = 'finished'
 constants.TERMINATING = 'terminating'
+
+#The message we use when following a leader -- we need to know it to avoid circular
+#leader deploys
+constants.LEADER_DEPLOY_MESSAGE = 'Catching up with our leader'

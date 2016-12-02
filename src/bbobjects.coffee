@@ -2552,8 +2552,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             return
 
         #do a deploy
+        try
+
         u.reply this + ' is set to follow ' + leaders + ', so deploying ' + leader_version + ' to it'
-        @template().deploy this, leader_version, false, 'Following leader: ' + leaders
+        @template().deploy this, leader_version, false, constants.LEADER_DEPLOY_MESSAGE
 
     #Returns a description of how this service should be monitored
     get_monitoring_policy: ->
