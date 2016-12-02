@@ -1,5 +1,8 @@
 github = exports
 
+#Github rate limits, and since a lot of this information is fixed, cache it
+github_cache = new bbobjects.Cache 24 * 60 * 60 * 1000
+
 github.Repo = class Repo
     constructor: (@org, @project, @username, @access_token, @abbrev = 10) ->
 
@@ -108,8 +111,26 @@ github.Repo = class Repo
         if body
             options.body = JSON.stringify body
             options.headers['Content-Type'] = 'application/json'
+
+        if (method ? 'GET').toLowerCase() is 'get'
+            use_cache = true
+            cached_data = github_cache.get url
+            if cached_data?
+                options.headers['If-None-Match'] = cached_data.etag
+        else
+            use_cache = false
+
         request url, options, block.make_cb()
-        return block.wait()
+        res = block.wait()
+
+        if res.statusCode is 304
+            res = cached_data.res
+        else if use_cache
+            etag = res.headers['etag']
+            if etag?
+                github_cache.set url, {etag, res}
+
+        return res
 
     #Retrieves the body from the response, throwing an error if not retrievable
     extract: (res, url) ->
@@ -165,3 +186,4 @@ request = require 'request'
 config = require './config'
 u = require './utilities'
 software = require './software'
+bbobjects = require './bbobjects'

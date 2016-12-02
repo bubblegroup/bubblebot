@@ -4232,7 +4232,7 @@ get_aws_service = (name, region) ->
 
 
 #We keep a cache of AWS data in memory to avoid constantly pinging the API
-class Cache
+bbobjects.Cache = class Cache
     constructor: (@interval) ->
 
         @data = {}
