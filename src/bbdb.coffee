@@ -104,7 +104,7 @@ bbdb.BBDatabase = class BBDatabase extends databases.Postgres
     #Returns all events since a given timestamp
     history_since: (history_type, history_id, since = 0) ->
         query = "SELECT * FROM history WHERE history_type = $1 AND history_id = $2 AND timestamp > $3 ORDER BY timestamp"
-        result = @query query, history_type, history_id, n_entries
+        result = @query query, history_type, history_id, since
         return result.rows
 
     #Finds entries for the given parameters
