@@ -522,6 +522,10 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     recent_history: (event_type, n_entries) ->
         u.db().recent_history @history_type(event_type), @id, n_entries
 
+    #List all the entries since the given timestamp
+    history_since: (event_type, since) ->
+        u.db().history_since @history_type(event_type), @id, since
+
     #Returns the user who created this
     creator: ->
         user_id = @get 'creator'
