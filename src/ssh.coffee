@@ -74,7 +74,6 @@ ssh.shell_run = (host, private_key, cmd, options) ->
         stderr_log.write data
         output.push data
     stream.stderr.on 'data', on_stderr_data
-    stream.stderr.on 'err'
 
     stream.write cmd + '\n'
 
