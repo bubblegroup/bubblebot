@@ -2264,7 +2264,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         template = @id[prefix.length..]
         templates.verify 'Service', template
 
-        super environment.type, environment.id
+        super environment.type, environment.id, {initializing: true}
 
     #Destroys this service (backing its metadata up first)
     destroy: ->
@@ -2489,17 +2489,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             u.reply 'To override this, say: ' + command
             return
 
-        try
-            #If this is the initial deploy, we want to be in maintenance mode until the deploy succeeds
-            if not @version() and not @get('maintenance')
-                temporary_maintenance = true
-                @set 'maintenance', true
-
-            @template().deploy this, version, rollback, deployment_message
-        finally
-            #Undo the set maintenance above
-            if temporary_maintenance
-                @set 'maintenance', false
+        @template().deploy this, version, rollback, deployment_message
 
     deploy_cmd:
         sublogger: true
@@ -2577,6 +2567,11 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         if @get 'maintenance'
             return true
 
+        #If initializing is true (ie, we haven't completed our first successful replace),
+        #we are also in maintenance mode
+        if @get 'initializing'
+            return true
+
         return false
 
     #Sets whether or not we should enter maintenance mode
@@ -2593,6 +2588,10 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     #Replaces the underlying boxes for this service
     replace: ->
         @template().replace this
+
+        #Mark this is no-longer initializing
+        @set 'initializing', false
+
         #Make sure we update monitoring policies since endpoints may have changed
         u.context().server?._monitor.update_policies()
 
