@@ -793,70 +793,72 @@ bbserver.Server = class Server
             return
 
         u.SyncRun 'new_conversation', =>
-            context = u.context()
-            @build_context(msg)
-            context.user_id = user_id
-            context.original_message = msg
-            context.current_user = -> bbobjects.instance 'User', user_id
+            try
+                context = u.context()
+                @build_context(msg)
+                context.user_id = user_id
+                context.original_message = msg
+                context.current_user = -> bbobjects.instance 'User', user_id
 
-            #If we are not in the basic group, we are not allowed to talk to the bot
-            current_user = context.current_user()
-            if not current_user.is_in_group constants.BASIC
-                #if we are not in the ignore group, and we haven't been reported to the admins
-                #yet, let them know we have a new user
-                @_reported_new_users ?= {}
-                if not @_reported_new_users[current_user.id]
-                    @_reported_new_users[current_user.id] = true
-                    if not current_user.is_in_group constants.IGNORE
-                        u.report 'A new user is attempting to talk to bubblebot.  The user is ' + current_user + '.  Consider adding to a security group, such as ' + [constants.ADMIN, constants.TRUSTED, constants.BASIC, constants.IGNORE].join(', ')
+                #If we are not in the basic group, we are not allowed to talk to the bot
+                current_user = context.current_user()
+                if not current_user.is_in_group constants.BASIC
+                    #if we are not in the ignore group, and we haven't been reported to the admins
+                    #yet, let them know we have a new user
+                    @_reported_new_users ?= {}
+                    if not @_reported_new_users[current_user.id]
+                        @_reported_new_users[current_user.id] = true
+                        if not current_user.is_in_group constants.IGNORE
+                            u.report 'A new user is attempting to talk to bubblebot.  The user is ' + current_user + '.  Consider adding to a security group, such as ' + [constants.ADMIN, constants.TRUSTED, constants.BASIC, constants.IGNORE].join(', ')
 
-                u.log 'Ignoring command from unauthorized user ' + current_user
-                return
+                    u.log 'Ignoring command from unauthorized user ' + current_user
+                    return
 
-            #If the command is lengthy, it can create a sublogger...
-            context.create_sub_logger = (silent) =>
-                sub_logger = @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
-                link = sub_logger.get_tail_url()
-                if not silent
-                    u.reply 'Logging transcript for ' + msg + ': ' + link
+                #If the command is lengthy, it can create a sublogger...
+                context.create_sub_logger = (silent) =>
+                    sub_logger = @create_sub_logger u.fiber_id() + ' ' + current_user.name() + ' ' + msg
+                    link = sub_logger.get_tail_url()
+                    if not silent
+                        u.reply 'Logging transcript for ' + msg + ': ' + link
 
-            u.log current_user.name() + ': ' + msg
+                u.log current_user.name() + ': ' + msg
 
-            parsed_args = parse_command msg
+                parsed_args = parse_command msg
 
 
-            #if there are ;s in the parsed commands, split on the semi-colons and run as seperate commands
-            to_run = []
-            while parsed_args.indexOf(';') isnt -1
-                to_run.push parsed_args[...parsed_args.indexOf(';')]
-                parsed_args = parsed_args[parsed_args.indexOf(';') + 1..]
-            to_run.push parsed_args
+                #if there are ;s in the parsed commands, split on the semi-colons and run as seperate commands
+                to_run = []
+                while parsed_args.indexOf(';') isnt -1
+                    to_run.push parsed_args[...parsed_args.indexOf(';')]
+                    parsed_args = parsed_args[parsed_args.indexOf(';') + 1..]
+                to_run.push parsed_args
 
-            for args in to_run
-                if args.length is 0
-                    continue
-                try
+                for args in to_run
+                    if args.length is 0
+                        continue
+
                     u.context().parsed_message = args
                     @root_command.execute [], args
-                catch err
-                    cmd = context.original_message
 
-                    if err.reason is u.CANCEL
-                        u.reply 'Cancelled: ' + cmd
-                    else if err.reason is u.USER_TIMEOUT
-                        u.reply 'Timed out waiting for your reply: ' + cmd
-                    else if err.reason is u.EXPECTED
-                        u.reply 'Operation failed:\n' + err.message
-                    else if err.reason is u.EXTERNAL_CANCEL
-                        u.uncancel_fiber()
-                        u.reply 'Cancelled (via the cancel cmd): ' + cmd
-                    else
-                        u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
-                        if context.user_id
-                            current_user = bbobjects.instance('User', context.user_id)
-                        if not current_user?.is_in_group(constants.ADMIN)
-                            name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
-                            u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
+            catch err
+                cmd = context?.original_message
+
+                if err.reason is u.CANCEL
+                    u.reply 'Cancelled: ' + cmd
+                else if err.reason is u.USER_TIMEOUT
+                    u.reply 'Timed out waiting for your reply: ' + cmd
+                else if err.reason is u.EXPECTED
+                    u.reply 'Operation failed:\n' + err.message
+                else if err.reason is u.EXTERNAL_CANCEL
+                    u.uncancel_fiber()
+                    u.reply 'Cancelled (via the cancel cmd): ' + cmd
+                else
+                    u.reply 'Sorry, I hit an unexpected error trying to handle ' + cmd + ': ' + err.stack ? err
+                    if context.user_id
+                        current_user = bbobjects.instance('User', context.user_id)
+                    if not current_user?.is_in_group(constants.ADMIN)
+                        name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
+                        u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
 
     graceful_shutdown: (no_restart) ->
         user = u.current_user()
