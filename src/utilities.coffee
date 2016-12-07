@@ -290,8 +290,10 @@ u.expected_error = (msg) ->
     throw err
 
 #Marks this fiber as cancelled, and schedules it to run
-u.cancel_fiber = (fiber) ->
-    fiber._externally_cancelled = true
+#
+#Reason allows inserting a custom reason
+u.cancel_fiber = (fiber, reason) ->
+    fiber._externally_cancelled = reason ? true
     setTimeout ->
         start_fiber_run fiber
     , 1
@@ -327,6 +329,14 @@ class Block
     #See if this fiber has been marked as cancelled externally: if so, throw a cancellation error.
     check_cancelled: ->
         if Fiber.current._externally_cancelled
+            #If it's a custom reason, clear the cancel state and throw an error with that reason
+            if typeof(Fiber.current._externally_cancelled) is 'string'
+                reason = Fiber.current._externally_cancelled
+                Fiber.current._externally_cancelled = null
+                err = new Error reason
+                err.reason = reason
+                throw err
+
             err = new Error 'this fiber was cancelled'
             err.reason = u.EXTERNAL_CANCEL
             throw err
@@ -491,6 +501,10 @@ fiber_id_counter = 0
 u.fiber_id = (fiber) ->
     fiber ?= Fiber.current
     return fiber._fiber_id
+
+#Gets the current fiber
+u.fiber = -> Fiber.current
+
 
 # #### u.SyncRun
 #Runs the callback in a fiber.  Safe to call either from within a fiber or from non-fiber

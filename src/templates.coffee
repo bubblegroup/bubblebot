@@ -53,6 +53,11 @@ templates.Environment = class Environment
 templates.add 'Environment', 'blank', new Environment()
 
 
+#Code for allowing one deploy to interrupt another
+deployment_interrupts = {}
+INTERRUPT_REASON = 'another deploy interrupted'
+
+
 #Extend this to build service templates
 #
 #Children should define the following:
@@ -94,18 +99,27 @@ templates.Service = class Service
 
         deployment_message ?= @get_deployment_message instance, version
 
-        #Make sure it passed the tests
-        if not @ensure_tested instance, version
+        #Allows us to be interrupted by another deploy
+        ensure_tested = =>
+            deployment_interrupts[u.fiber_id()] = {instance_id: instance.id, version, fiber: u.fiber()}
+            try
+                return @ensure_tested instance, version
+            catch err
+                #If we get interrupted by another deployment, and we are now no longer ahead of the prodcution
+                #version, we can continue
+                if err.reason isnt INTERRUPT_REASON or codebase.ahead_of version, instance.version()
+                    throw err
+                else
+                    return true
+            finally
+                delete deployment_interrupts[u.fiber_id()]
+
+        #Make sure it passes the tests
+        if not ensure_tested()
             return
 
-        #Hook to add any custom logic for making sure the deployment is safe
-        if @deploy_safe?
-            if not @deploy_safe instance, version
-                u.reply 'Aborting deployment'
-                return
-
         #make sure that the version hasn't been updated in the interim
-        while instance.version() and not codebase.ahead_of version, instance.version()
+        while instance.version() and not codebase.ahead_of(version, instance.version())
             #see if we can merge
             merged = codebase.merge version, instance.version()
             if not merged
@@ -118,9 +132,15 @@ templates.Service = class Service
                 version = merged
                 u.reply "Your version was no longer ahead of the production version -- someone else probably deployed in the interim.  We were able to automatically merge it and will continue trying to deploy: " + merged
                 #Make sure the new version passes the tests
-                if not @ensure_tested instance, version
+                if not ensure_tested()
                     u.log 'Tests did not pass so aborting deploy'
                     return
+
+        #Hook to add any custom logic for making sure the deployment is safe
+        if @deploy_safe?
+            if not @deploy_safe instance, version
+                u.reply 'Aborting deployment'
+                return
 
         #Okay, we have a tested version that is ahead of the current version, so deploy it and announce!
         instance.set 'version', version
@@ -133,6 +153,11 @@ templates.Service = class Service
         #Notify re: the deployment
         u.announce username + ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.\nDeployment message: *' + deployment_message + '*'
         u.reply 'Your deploy was successful! Rolling out the new version now...'
+
+        #Interrupt anyone trying to deploy to the same service who isn't ahead of us
+        for fiber_id, data of deployment_interrupts
+            if data.instance_id is instance.id and not codebase.ahead_of(data.version, version)
+                u.cancel_fiber data.fiber, INTERRUPT_REASON
 
         #In case this is a leader, have all services do a quick check...
         if deployment_message isnt constants.LEADER_DEPLOY_MESSAGE
