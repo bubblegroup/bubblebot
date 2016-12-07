@@ -548,12 +548,14 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return @toString() + '\n\n' + u.make_table(describe_table)
 
     #A list of things used by describe.  Can be extended by children
-    describe_keys: -> {
-        Parent: @parent()
-        Owner: @owner()
-        Creator: @creator()
-        Environment: @environment()
-    }
+    describe_keys: ->
+        template_keys = @template?()?.describe_keys?(this) ? {}
+        return u.extend {}, template_keys, {
+            Parent: @parent()
+            Owner: @owner()
+            Creator: @creator()
+            Environment: @environment()
+        }
 
     describe_cmd:
         help: 'Describes this'

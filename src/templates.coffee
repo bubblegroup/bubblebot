@@ -47,6 +47,8 @@ templates.Environment = class Environment
 
     on_startup: -> #no-op
 
+    describe_keys: (instance) -> {}
+
 #A blank environment...
 templates.add 'Environment', 'blank', new Environment()
 
