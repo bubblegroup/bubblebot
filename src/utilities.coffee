@@ -332,13 +332,11 @@ class Block
             #If it's a custom reason, clear the cancel state and throw an error with that reason
             if typeof(Fiber.current._externally_cancelled) is 'string'
                 reason = Fiber.current._externally_cancelled
-                Fiber.current._externally_cancelled = null
-                err = new Error reason
-                err.reason = reason
-                throw err
+            else
+                reason = u.EXTERNAL_CANCEL
 
             err = new Error 'this fiber was cancelled'
-            err.reason = u.EXTERNAL_CANCEL
+            err.reason = reason
             throw err
 
     wait: (timeout) ->

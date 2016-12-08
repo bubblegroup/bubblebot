@@ -110,6 +110,7 @@ templates.Service = class Service
                 if err.reason isnt INTERRUPT_REASON or codebase.ahead_of version, instance.version()
                     throw err
                 else
+                    u.uncancel_fiber()
                     return true
             finally
                 delete deployment_interrupts[u.fiber_id()]
