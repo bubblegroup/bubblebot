@@ -321,7 +321,7 @@ monitoring.Monitor = class Monitor
 
         #Compensate for cross-vpc traffic
         if object.environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
-            timeout += 8000
+            timeout += 20000
 
         while retries > 0
 
