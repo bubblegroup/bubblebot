@@ -98,7 +98,7 @@ software.node = (version) -> do_once 'node ' + version, (instance) ->
 
     instance.run 'git clone https://github.com/tj/n'
     instance.run 'cd n; sudo make install'
-    instance.run 'cd n/bin; sudo ./n ' + version
+    instance.run 'cd n/bin; sudo ./n ' + version, {timeout: 360000} #usually runs < 90 seconds, so if this keeps happening, probably just need to retry
     instance.run 'rm -rf n'
 
 
