@@ -101,19 +101,22 @@ templates.Service = class Service
 
         #Allows us to be interrupted by another deploy
         ensure_tested = =>
-            deployment_interrupts[u.fiber_id()] = {instance_id: instance.id, version, fiber: u.fiber()}
+            my_fiber_id = u.fiber_id()
+            deployment_interrupts[my_fiber_id] = {instance_id: instance.id, version, fiber: u.fiber()}
             try
                 return @ensure_tested instance, version
             catch err
                 #If we get interrupted by another deployment, and we are now no longer ahead of the prodcution
                 #version, we can continue
-                if err.reason isnt INTERRUPT_REASON or codebase.ahead_of version, instance.version()
+                if err.reason isnt INTERRUPT_REASON
                     throw err
                 else
                     u.uncancel_fiber()
+                    if codebase.ahead_of version, instance.version()
+                        throw new Error 'We got a deployment interrupt message, but we are ahead of the production version.  This should not happen.  Our version: ' + version + ', and service version: ' + instance.version()
                     return true
             finally
-                delete deployment_interrupts[u.fiber_id()]
+                delete deployment_interrupts[my_fiber_id]
 
         #Make sure it passes the tests
         if not ensure_tested()
