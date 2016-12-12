@@ -995,7 +995,7 @@ bbserver.CommandTree = class CommandTree
     add: (name, command) ->
         @subcommands[name] = command
 
-    #Lists all available subcommands
+    #Lists all available subcommands.  Returns a [{name, command}...] array.
     #
     #We return commands first and trees second.  We return commands that anyone
     #can run first.
@@ -1005,11 +1005,11 @@ bbserver.CommandTree = class CommandTree
         cmds = []
         for k, v of @get_commands()
             if v instanceof CommandTree
-                trees.push k
+                trees.push {name: k, command: v}
             else if v.groups is constants.BASIC
-                open_cmds.push k
+                open_cmds.push {name: k, command: v}
             else
-                cmds.push k
+                cmds.push {name: k, command: v}
         return [].concat open_cmds, cmds, trees
 
     #Gets the subcommand, returning null if not found
@@ -1031,8 +1031,8 @@ bbserver.CommandTree = class CommandTree
         if args.length is 0
             prompt = 'You entered ' + prev_args.join(' ') + ', which is a partial command.\nPlease enter remaining arguments (or "cancel" to abort).\nOptions are:\n\n'
             options_table = []
-            for name in @list()
-                options_table.push [name, @get_command(name).help_string(true)]
+            for {name, command} in @list()
+                options_table.push [name, command.help_string(true)]
             prompt += u.make_table options_table
             msg = u.ask prompt
             args = parse_command msg
@@ -1064,8 +1064,7 @@ bbserver.CommandTree = class CommandTree
             header = "\n*#{prev}*\n\n#{@help_string()}\n\n*#{prev}* has the following sub-commands:\n\n"
 
         table = []
-        for name in @list()
-            command = @get_command(name)
+        for {name, command} in @list()
             full = prev + ' ' + name
             table.push [full, command.help_string(true)]
 
