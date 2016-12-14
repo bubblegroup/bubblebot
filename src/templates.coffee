@@ -125,7 +125,7 @@ templates.Service = class Service
         #make sure that the version hasn't been updated in the interim
         while instance.version() and not codebase.ahead_of(version, instance.version())
             #see if we can merge
-            merged = codebase.merge version, instance.version()
+            merged = codebase.canonicalize codebase.merge(version, instance.version())
             if not merged
                 u.reply "Your version is no longer ahead of the production version (#{instance.version()}) -- someone else probably deployed in the interim.  We tried to automatically merge it but were unable to, so we are aborting."
                 return
