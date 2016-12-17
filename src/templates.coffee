@@ -155,7 +155,7 @@ templates.Service = class Service
         instance.add_history 'deploy', version, {username, deployment_message, rollback}
 
         #Notify re: the deployment
-        u.announce username + ' deployed version ' + version + ' to ' + instance + '.  We are rolling out the new version now.\nDeployment message: *' + deployment_message + '*'
+        u.announce 'Deployment to ' + instance + ': ' + username + ' deployed version ' + version + '.  We are rolling out the new version now.\nDeployment message: *' + deployment_message + '*'
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
         #Interrupt anyone trying to deploy to the same service who isn't ahead of us
