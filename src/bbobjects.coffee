@@ -3918,15 +3918,22 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
 
     #Switches this elastic ip to point at a new instance
     switch: (new_instance) ->
+        old_instance = @get_instance()
+
         u.log 'Switching eip ' + @id + ' to point to instance ' + new_instance.id
         @ec2 'associateAddress', {
             AllocationId: @id
             AllowReassociation: true
             InstanceId: new_instance.id
         }
+
         #Our instance's address will have just changed, so force a refresh of the address
         #cache
         new_instance.get_data(true)
+
+        #Same with old instance, if it exists
+        if old_instance?
+            old_instance.get_data(true)
 
 
 #Represents a Cloudfront distribution.  The id should be the aws id for the distribution

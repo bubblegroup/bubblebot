@@ -751,7 +751,7 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
         instance.set 'size', new_size
 
     set_size_cmd: ->
-        params: [{name: 'new_size', type: 'number', required: true}]
+        params: [{name: 'new_size', type: 'text', required: true}]
         help: 'Sets the size of the box for this service'
         reply: 'Size successfully set'
         groups: constants.BASIC
