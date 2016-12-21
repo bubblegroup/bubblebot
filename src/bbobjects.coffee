@@ -882,6 +882,7 @@ bbobjects.put_s3_config = (Key, Body) ->
     bbobjects.bubblebot_environment().s3 'putObject', {Bucket: bbobjects.get_s3_config_bucket(), Key, Body}
 
 
+temporary_security_groups_in_use = {}
 
 bbobjects.Environment = class Environment extends BubblebotObject
     create: (type, template, region, vpc) ->
@@ -1236,7 +1237,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             #Allow other boxes in this security group to connect on any port
             {UserIdGroupPairs: [{GroupId: id}], IpProtocol: '-1'}
         ]
-        #If this a server people are allowed to SSH into directly, open port 22.
+        #If this is a server people are allowed to SSH into directly, open port 22.
         if @allow_outside_ssh()
             rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
 
@@ -1280,6 +1281,34 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         @ensure_security_group_rules group_name, rules
         return id
+
+    #If we need to temporarily open up a connection, creates a group with the given rules, and then runs
+    #fn, passing in the id of that group
+    with_temporary_security_group: (rules, fn) ->
+        try
+            #find a group we are not currently using
+            i = 0
+            while temporary_security_groups_in_use[i]
+                i++
+            temp_id = i
+            temporary_security_groups_in_use[temp_id] = true
+
+            group_name = 'bubblebot_temp_' + String(temp_id)
+
+            #Ensure the group exists and we have up to date data
+            @get_security_group_data group_name, true
+            group_id = @get_security_group_id group_name
+
+            #Apply our rules to this group
+            @ensure_security_group_rules group_name, rules
+
+            u.log 'Using temporary security group ' + group_id + ' (' + group_name + ')'
+            fn group_id, group_name
+
+        finally
+            #release our claim on this temporary group
+            delete temporary_security_groups_in_use[temp_id]
+
 
     #Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
     #Creates the group if there is not one with this name.
@@ -1477,12 +1506,14 @@ bbobjects.Environment = class Environment extends BubblebotObject
         else
             return @is_development()
 
-    #Creates a new cloudfront distribution.  Right now the only configurable parameter
-    #is the origin (we only support oneorigin right now), but can extend this function
-    #with more options.
+    #Creates a new cloudfront distribution.
+    #
+    #We are adding parameters as we need them:
+    #origin -- the origin
+    #CustomErrorResponses -- an array of CustomErrorResponse objects (see api docs)
     #
     #Returns the new cloudfront bbobject
-    create_cloudfront_distribution: (origin) ->
+    create_cloudfront_distribution: (origin, CustomErrorResponse) ->
         params = {
             DistributionConfig: {
                 Enabled: true
@@ -1529,6 +1560,11 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 PriceClass: 'PriceClass_All'
             }
         }
+        if CustomErrorResponses?
+            params.DistributionConfig.CustomErrorResponses = {
+                Quantity: CustomErrorResponses.length
+                Items: CustomErrorResponses
+            }
 
         #First create in cloudfront
         u.log 'Creating cloudfront distribution: ' + JSON.stringify(params)
@@ -3589,6 +3625,44 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         u.log 'Resizing RDB succesful'
 
         return null
+
+    #Temporarily grants access for this ip_address to talk to this database.
+    #
+    #Calls fn once the firewall is open, then closes the firewall afterwards
+    grant_temporary_access: (ip_address, fn) ->
+        #Create a temporary security group
+        rules = [{IpRanges: [{CidrIp: ip_address + '/32'}], IpProtocol: '-1'}]
+        @environment().with_temporary_security_group rules, (security_group_id) =>
+            current_security_groups = (group.VpcSecurityGroupId for group in @get_configuration(true).VpcSecurityGroups ? [])
+            u.log 'We are going to open temporary access to ' this + ' from ' + ip_address
+            u.log 'Currently, ' + this + ' has the following security groups set: ' + current_security_groups.join(', ')
+            u.log 'We are going to add temporary security group ' + security_group_id
+            new_security_groups = [security_group_id].concat current_security_groups
+
+            params = {
+                DBInstanceIdentifier: @id
+                ApplyImmediately: true
+                VpcSecurityGroupIds: new_security_groups
+            }
+
+            @wait_for_available 20, ['available', 'backing-up']
+            @rds 'modifyDBInstance', params
+            try
+                u.log 'Adding group initiated, waiting for it to complete'
+                @wait_for_modifications_complete(100)
+                u.log 'Okay, security group is added'
+                fn()
+
+            finally
+                u.log 'Okay, we are now going to remove the temporary security group from ' + this
+                @wait_for_available 100, ['available', 'backing-up']
+                params = {
+                    DBInstanceIdentifier: @id
+                    ApplyImmediately: true
+                    VpcSecurityGroupIds: current_security_groups
+                }
+                @rds 'modifyDBInstance', params
+                u.log 'Removing group initiated'
 
     #Waits til the instance is in the available state
     wait_for_available: (retries = 100, available_statuses) ->
