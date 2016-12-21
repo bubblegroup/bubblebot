@@ -1513,7 +1513,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     #CustomErrorResponses -- an array of CustomErrorResponse objects (see api docs)
     #
     #Returns the new cloudfront bbobject
-    create_cloudfront_distribution: (origin, CustomErrorResponse) ->
+    create_cloudfront_distribution: (origin, CustomErrorResponses) ->
         params = {
             DistributionConfig: {
                 Enabled: true
