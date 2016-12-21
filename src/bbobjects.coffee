@@ -3634,7 +3634,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         rules = [{IpRanges: [{CidrIp: ip_address + '/32'}], IpProtocol: '-1'}]
         @environment().with_temporary_security_group rules, (security_group_id) =>
             current_security_groups = (group.VpcSecurityGroupId for group in @get_configuration(true).VpcSecurityGroups ? [])
-            u.log 'We are going to open temporary access to ' this + ' from ' + ip_address
+            u.log 'We are going to open temporary access to ' + this + ' from ' + ip_address
             u.log 'Currently, ' + this + ' has the following security groups set: ' + current_security_groups.join(', ')
             u.log 'We are going to add temporary security group ' + security_group_id
             new_security_groups = [security_group_id].concat current_security_groups
