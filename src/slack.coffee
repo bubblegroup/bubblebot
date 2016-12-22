@@ -82,6 +82,12 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         if not channel.is_im
             return
 
+        #Filter out messages more than 5 minutes old (in case slack has issues
+        #and sends us old messages)
+        if parseFloat(message.ts) * 1000 < Date.now() - (5 * 60 * 1000)
+            u.report 'Slack sent us an old message: ' + message.ts + ' ' + message.text
+            return
+
         #if there is no user, ignore it
         if not message.user
             return
