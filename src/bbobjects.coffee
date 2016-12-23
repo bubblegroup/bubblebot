@@ -1360,14 +1360,19 @@ bbobjects.Environment = class Environment extends BubblebotObject
         #we do this by removing empty arrays, nulls, and certain auto-generated fields,
         #then converting to JSON with a consistent key order and comparing
         clean = (obj) ->
-            if obj? and typeof(obj) is 'object'
-                ret = {}
-                for k, v of obj
-                    if v? and (not Array.isArray(v) or v.length > 0) and k not in ['UserId']
-                        ret[k] = clean v
-                return ret
-            else
+            if not obj? or typeof(obj) isnt 'object'
                 return obj
+
+            is_array = Array.isArray obj
+
+            ret = if is_array then [] else {}
+            for k, v of obj
+                if v? and (not Array.isArray(v) or v.length > 0) and k not in ['UserId']
+                    if is_array
+                        ret.push clean v
+                    else
+                        ret[k] = clean v
+            return ret
 
         to_string = (r) -> stable_stringify(clean(r))
 
@@ -1418,6 +1423,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         #First, remove any rules we need to get rid of...
         if to_remove.length > 0
+            to_remove = clean to_remove
             u.log 'Removing: ' + JSON.stringify {GroupId, IpPermissions: to_remove}
             @ec2 'revokeSecurityGroupIngress', {GroupId, IpPermissions: to_remove}
 
