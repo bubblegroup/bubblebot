@@ -390,7 +390,7 @@ templates.RDSService = class RDSService extends Service
         if instance.get 'rds_instance'
             throw new Error 'already have an instance'
 
-        rds_instance = bbobjects.instance 'RDSInstance', instance.id + '-instance1'
+        rds_instance = bbobjects.instance 'RDSInstance', instance.id + '-inst1'
 
         {permanent_options, sizing_options, credentials} = @get_params_for_creating_instance instance
 
@@ -494,6 +494,138 @@ templates.RDSService = class RDSService extends Service
 
 
     get_tests: -> @codebase().get_tests()
+
+    #Performs a one-time upgrade operation that requires replacing the database.
+    #
+    #Codebase is responsible for defining the upgrade, and the replication function:
+    #
+    #-Should have a function with the same name as the upgrade, that takes (rds_instance, for_real)
+    # The for-real parameter is so that we can do any additional testing against the upgraded database
+    # that we wouldn't want to do for the actual migration
+    #
+    #-Should have a function prepare_for_replication(rds_instance) that we call on the current instance
+    # before doing a clone.  prepare_for_replication should return an abort function that we can call if
+    # something fails
+    #
+    #-Should have a function replicate(from_rds_instance, to_rds_instance, ready_cb) that does the replication,
+    # and calls ready_cb(end_replication_cb) when it is sufficiently up to date to do the transfer.  end_replication_cb
+    # is called by upgrade once replication should be (gracefully) shut off.
+    #
+    #-Should have a function get_upgrade_services(service_instance) that returns a list of services that need to be replaced on upgrade
+    #
+    upgrade: (instance, name, for_real) ->
+        if for_real and instance.is_production()
+            if not u.confirm 'Just to double-check, do you really want to run ' + name + ' on ' + instance + '?'
+                u.reply 'Okay, aborting'
+                return
+
+        #Ensure that all the functions are defined
+        codebase = @codebase()
+
+        upgrade_fn = codebase[name]
+        if typeof(upgrade_fn) isnt 'function'
+            u.reply 'Could not find a function on the codebase named ' + name
+            return
+
+        prepare_for_replication = codebase.prepare_for_replication
+        if typeof(prepare_for_replication) isnt 'function'
+            u.reply 'Could not find a function on the codebase named prepare_for_replication'
+            return
+
+        replicate = codebase.replicate
+        if typeof(replicate) isnt 'function'
+            u.reply 'Could not find a function on the codebase named replicate'
+            return
+
+        get_upgrade_services = codebase.get_upgrade_services
+        if typeof(get_upgrade_services) isnt 'function'
+            u.reply 'Could not find a function on the codebase named get_upgrade_services'
+            return
+
+        current_rds_instance = @rds_instance(instance)
+
+        #Pick a new id
+        #In practice this will toggle between 1 + 2, for now:
+        counter = 1
+        while current_rds.indexOf('instance' + counter) isnt -1 or current_rds.indexOf('inst' + counter) isnt -1
+            counter++
+        new_id = instance.id + '-inst' + String(counter)
+
+        u.reply 'Preparing for replication on ' + current_rds_instance
+        abort = prepare_for_replication current_rds_instance
+        if typeof(abort) isnt 'function'
+            u.reply 'Warning: no abort function returned by prepare_for_replication; please abort manually if necessary'
+            abort = null
+
+        try
+            #Create a clone
+            u.reply 'Creating the clone: ' + new_id
+            my_config = current_rds_instance.get_configuration(true)
+            MultiAZ = my_config.MultiAZ
+            DBInstanceClass = my_config.DBInstanceClass
+            StorageType = my_config.StorageType
+            Iops = my_config.Iops
+            permanent_options = {cloned_from: current_rds_instance.id}
+            outside_world_accessible = current_rds_instance.get 'outside_world_accessible'
+            sizing_options = {DBInstanceClass, MultiAZ, StorageType, outside_world_accessible, Iops}
+
+            new_rds_instance = bbobjects.instance 'RDSInstance', new_id
+            new_rds_instance.create instance, permanent_options, sizing_options
+
+            u.reply 'Clone created, running upgrade function'
+
+            upgrade_fn new_rds_instance, for_real
+
+            u.reply 'Upgrade function complete, beginning replication...'
+
+            replicate current_rds_instance, new_rds_instance, (end_replication_cb) =>
+                u.sub_fiber =>
+                    #Do the switch-over
+                    if for_real
+                        u.reply "Replication is up to date, so replacing #{current_rds_instance.id} with #{new_rds_instance.id}"
+                        services = get_upgrade_services(instance)
+
+                        #TODO: SWITCH
+
+                        u.reply 'Switched rds instances, now replacing services that depend on them...'
+
+                        #TODO: REPLACE EACH SERVICE (PROBABLY ON SUB-FIBER FOR EFFICIENCY)
+
+                        u.reply "Okay, switch over is complete.  Gracefully terminating replication.  Please manually deleted #{current_rds_instance.id} once replication finishes"
+
+                        end_replication_cb()
+
+
+
+
+                    #Not real, so just leave it running for a bit
+                    else
+                        services = get_upgrade_services(instance)
+
+                        u.reply "Replication is up to date, but this is a test run.  If this was for real, we would switch the instances, then call replace on the following services: #{services.join(', ')}.  Leaving replication running for 5 minutes..."
+                        u.pause 5 * 60 * 1000
+                        u.reply 'Okay, telling the process to stop replication.  Since this is a test run, it may never actually shut down, so cancel it by hand if necessary'
+                        end_replication_cb()
+
+        catch err
+            u.reply 'Error, so aborting replication...'
+            abort?()
+
+            throw err
+
+
+
+
+
+    upgrade_cmd:
+        help: 'Runs an upgrade function on the RDS instance by copying it, running the function, then replicating it and switching over'
+        groups: constants.ADMIN
+        dangerous: (instance) -> instance.is_production()
+        params: [
+            {name: 'name', required: true, help: 'The name of the upgrade to perform'}
+            {name: 'for real', required: true, type: 'boolean', help: 'If for real, actually does the replacement operation, otherwise just creates and tests the replica'}
+        ]
+
 
 
 #Represents a service that's a database managed by some other service
