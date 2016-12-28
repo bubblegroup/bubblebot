@@ -123,22 +123,23 @@ templates.Service = class Service
             return
 
         #make sure that the version hasn't been updated in the interim
-        while instance.version() and not codebase.ahead_of(version, instance.version())
-            #see if we can merge
-            merged = codebase.canonicalize codebase.merge(version, instance.version())
-            if not merged
-                u.reply "Your version is no longer ahead of the production version (#{instance.version()}) -- someone else probably deployed in the interim.  We tried to automatically merge it but were unable to, so we are aborting."
-                return
-            else if merged is version
-                u.reply 'Someone already deployed this same version in the interim, so we are aborting'
-                return
-            else
-                version = merged
-                u.reply "Your version was no longer ahead of the production version -- someone else probably deployed in the interim.  We were able to automatically merge it and will continue trying to deploy: " + merged
-                #Make sure the new version passes the tests
-                if not ensure_tested()
-                    u.log 'Tests did not pass so aborting deploy'
+        if not rollback
+            while instance.version() and not codebase.ahead_of(version, instance.version())
+                #see if we can merge
+                merged = codebase.canonicalize codebase.merge(version, instance.version())
+                if not merged
+                    u.reply "Your version is no longer ahead of the production version (#{instance.version()}) -- someone else probably deployed in the interim.  We tried to automatically merge it but were unable to, so we are aborting."
                     return
+                else if merged is version
+                    u.reply 'Someone already deployed this same version in the interim, so we are aborting'
+                    return
+                else
+                    version = merged
+                    u.reply "Your version was no longer ahead of the production version -- someone else probably deployed in the interim.  We were able to automatically merge it and will continue trying to deploy: " + merged
+                    #Make sure the new version passes the tests
+                    if not ensure_tested()
+                        u.log 'Tests did not pass so aborting deploy'
+                        return
 
         #Hook to add any custom logic for making sure the deployment is safe
         if @deploy_safe?
@@ -155,22 +156,25 @@ templates.Service = class Service
         instance.add_history 'deploy', version, {username, deployment_message, rollback}
 
         #Notify re: the deployment
-        u.announce 'Deployment to ' + instance + ': ' + username + ' deployed version ' + version + '.  We are rolling out the new version now.\nDeployment message: *' + deployment_message + '*'
+        u.announce 'Deployment to ' + instance + ': ' + username + ' deployed version ' + version + '.  We are rolling out the new version now.\nDeployment message: *' + deployment_message + '*' + (if rollback then '\nThis is a rollback!!' else '')
         u.reply 'Your deploy was successful! Rolling out the new version now...'
 
-        #Interrupt anyone trying to deploy to the same service who isn't ahead of us
-        for fiber_id, data of deployment_interrupts
-            if data.instance_id is instance.id and not codebase.ahead_of(data.version, version)
-                u.cancel_fiber data.fiber, INTERRUPT_REASON
+        #If this is not a rollback deploy, interrupt and have people follow the leader
+        if not rollback
 
-        #In case this is a leader, have all services do a quick check...
-        if deployment_message isnt constants.LEADER_DEPLOY_MESSAGE
-            u.log 'Calling check_leader on all service instances...'
-            for service_instance in bbobjects.list_all('ServiceInstance')
-                do (service_instance) ->
-                    u.log 'Checking leader for ' + service_instance
-                    u.sub_fiber ->
-                        service_instance.check_leader()
+            #Interrupt anyone trying to deploy to the same service who isn't ahead of us
+            for fiber_id, data of deployment_interrupts
+                if data.instance_id is instance.id and not codebase.ahead_of(data.version, version)
+                    u.cancel_fiber data.fiber, INTERRUPT_REASON
+
+            #In case this is a leader, have all services do a quick check...
+            if deployment_message isnt constants.LEADER_DEPLOY_MESSAGE
+                u.log 'Calling check_leader on all service instances...'
+                for service_instance in bbobjects.list_all('ServiceInstance')
+                    do (service_instance) ->
+                        u.log 'Checking leader for ' + service_instance
+                        u.sub_fiber ->
+                            service_instance.check_leader()
 
         #Replace the existing servers with the new version
         u.retry 3, 30000, =>
