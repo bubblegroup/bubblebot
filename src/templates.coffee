@@ -585,17 +585,23 @@ templates.RDSService = class RDSService extends Service
                         u.reply "Replication is up to date, so replacing #{current_rds_instance.id} with #{new_rds_instance.id}"
                         services = get_upgrade_services(instance)
 
-                        #TODO: SWITCH
+                        #Do the switch in the database
+                        instance.set 'rds_instance', new_rds_instance.id
 
-                        u.reply 'Switched rds instances, now replacing services that depend on them...'
+                        u.reply 'Switched rds instances, now replacing ' + services.join(', ')
 
-                        #TODO: REPLACE EACH SERVICE (PROBABLY ON SUB-FIBER FOR EFFICIENCY)
+                        waiting_on = []
+                        for svc in services
+                            waiting_on.push u.sub_fiber =>
+                                sv.replace()
+                                return null
+
+                        #Wait for all the replaces to finish...
+                        wait() for wait in waiting_on()
 
                         u.reply "Okay, switch over is complete.  Gracefully terminating replication.  Please manually deleted #{current_rds_instance.id} once replication finishes"
 
                         end_replication_cb()
-
-
 
 
                     #Not real, so just leave it running for a bit
