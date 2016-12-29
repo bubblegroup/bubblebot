@@ -3866,34 +3866,34 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     #Destroys this RDS instance.  As an extra safety layer, we only terminate production
     #instances if terminate prod is true
     terminate: (terminate_prod, assume_production, SkipFinalSnapshot) ->
-        if @get_configuration(true).DBInstanceStatus is 'deleting'
-            u.log 'skipping termination, already deleting'
-            return
-
-        is_production = assume_production or @is_production()
-
-        if is_production and not terminate_prod
-            throw new Error 'cannot terminate a production RDS instance without passing terminate_prod'
-
-        SkipFinalSnapshot ?= not is_production
-
-        u.log 'Deleting rds instance ' + @id
-        #If it is a production instance, we want to save a final snapshot.  Otherwise,
-        #jus delete it.
-        params = {
-            DBInstanceIdentifier: @id
-            FinalDBSnapshotIdentifier: if not SkipFinalSnapshot then @id + '-final-snapshot-' + String(Date.now()) else null
-            SkipFinalSnapshot: SkipFinalSnapshot
-        }
         try
-            @rds 'deleteDBInstance', params
-            u.log 'Deleted rds instance ' + @id
+            if @get_configuration(true).DBInstanceStatus is 'deleting'
+                u.log 'skipping termination, already deleting'
+
+            else
+                is_production = assume_production or @is_production()
+
+                if is_production and not terminate_prod
+                    throw new Error 'cannot terminate a production RDS instance without passing terminate_prod'
+
+                SkipFinalSnapshot ?= not is_production
+
+                u.log 'Deleting rds instance ' + @id
+                #If it is a production instance, we want to save a final snapshot.  Otherwise,
+                #jus delete it.
+                params = {
+                    DBInstanceIdentifier: @id
+                    FinalDBSnapshotIdentifier: if not SkipFinalSnapshot then @id + '-final-snapshot-' + String(Date.now()) else null
+                    SkipFinalSnapshot: SkipFinalSnapshot
+                }
+                @rds 'deleteDBInstance', params
+                u.log 'Deleted rds instance ' + @id
+
         catch err
             if String(err.message).indexOf('DBInstanceNotFound') isnt -1
                 u.log 'DBInstanceNotFound: ' + @id
             else
                 throw err
-
 
         #then delete the data if it exists
         if @exists()
