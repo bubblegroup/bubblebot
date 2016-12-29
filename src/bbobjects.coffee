@@ -964,7 +964,12 @@ bbobjects.Environment = class Environment extends BubblebotObject
             else
                 for child in children
                     u.reply 'Destroying: ' + child
-                    (child.service_destroy ? child.destroy ? (throw new Error 'no destroy function'))()
+                    if child.service_destroy
+                        child.service_destroy()
+                    else if child.destroy
+                        child.destroy()
+                    else
+                        throw new Error 'no destroy function for ' + child
 
         @delete()
         u.reply 'Environment ' + @id + ' is destroyed'
