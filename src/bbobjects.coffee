@@ -971,6 +971,9 @@ bbobjects.Environment = class Environment extends BubblebotObject
                     else
                         throw new Error 'no destroy function for ' + child
 
+        if @children().length > 0
+            throw new Error 'still children!  bug in destroy function?'
+
         @delete()
         u.reply 'Environment ' + @id + ' is destroyed'
 
