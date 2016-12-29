@@ -627,6 +627,10 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     #Saves a region against this type
     cache_region: (region) -> region_cache.set @type + '-' + @id, region
 
+    #Warns that we can't create a copy... should be overriden by children
+    copy_to: (parent) -> u.reply 'Not copying ' + this + ' because no copy function is defined'
+
+
 
 GROUP_PREFIX = 'group_member_'
 
@@ -909,6 +913,37 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
     #Need to overwrite the default implementation since it by default checks the environment
     is_production: -> @get('type') is PROD
+
+    #Creates a total copy of this environment
+    copy: (id, type) ->
+        new_environment = bbobjects.instance 'Environment', id
+        if new_environment.exists()
+            u.reply 'An environment named ' + id + ' already exists'
+            return
+        new_environment.create type, @get('template'), @get_region(), @get_vpc()
+
+        u.reply 'Beginning copy of children'
+        wait_for = []
+
+        for child in @children()
+            do (child) =>
+                wait_for.push u.sub_fiber =>
+                    u.log 'Beginning copy of ' + child
+                    child.copy_to new_environment
+                    u.log 'Copy of ' + child + ' complete'
+
+        wait() for wait in wait_for
+        u.reply 'Copying children complete'
+
+    copy_cmd:
+        help: 'Creates a complete copy of this environment'
+        params: [
+            {name: 'id', required: true, help: 'The id of the new environment'}
+            {name: 'type', required: true, type: 'list', options: (-> [DEV, QA, PROD]), help: 'What type of environment the copy is'}
+        ]
+        groups: constants.BASIC
+        sublogger: true
+
 
     template: ->
         if @id is constants.BUBBLEBOT_ENV
@@ -2228,6 +2263,9 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
             throw new Error 'CredentialSet ids should be of the form [environment id]_[set name]'
         super environment.type, environment.id
 
+    copy_to: (parent) ->
+        parent.copy_credential_set @set_name(), @environment().id, true
+
     #Destroys this credential set
     destroy: ->
         if not @exists()
@@ -2309,6 +2347,15 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         templates.verify 'Service', template
 
         super environment.type, environment.id, {initializing: true}
+
+    copy_to: (parent) ->
+        #Defaults to creating the service in the parent environment, and deploying the same
+        #version, but the template can override this
+        if @template().copy_to
+            @template().copy_to this, parent
+        else
+            new_service = parent.get_service @template_id(), true
+            new_service.deploy @version(), false, 'Running copy_to operation'
 
     #Destroys this service (backing its metadata up first)
     destroy: ->
@@ -3573,8 +3620,10 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
     #returns true if any of the sizing options changes could cause downtime
     are_changes_unsafe: (sizing_options) ->
-        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops} = sizing_options
+        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, EngineVersion} = sizing_options
         unsafe = false
+        if EngineVersion?
+            unsafe = true
         if DBInstanceClass?
             unsafe = true
         if BackupRetentionPeriod is 0
@@ -3587,8 +3636,9 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     #Resizes an RDS instance
     #
     #unsafe_okay: if true, allows making changes that would cause downtime
-    resize: (sizing_options, unsafe_okay) ->
-        {AllocatedStorage, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, outside_world_accessible} = sizing_options
+    #wait_retries: determines how many retries before we give up on waiting for the modifications to complete -- defaults to 100
+    resize: (sizing_options, unsafe_okay, wait_retries = 100) ->
+        {AllocatedStorage, EngineVersion, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, outside_world_accessible} = sizing_options
 
         if @are_changes_unsafe(sizing_options) and not unsafe_okay
             throw new Error 'making unsafe changes without unsafe_okay'
@@ -3605,6 +3655,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             DBInstanceIdentifier: @id
             ApplyImmediately: true
             AllocatedStorage
+            EngineVersion
             DBInstanceClass
             BackupRetentionPeriod
             MultiAZ
@@ -3627,7 +3678,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             u.log 'Reboot initiated'
 
         u.log 'Waiting for modifications to complete'
-        @wait_for_modifications_complete(100)
+        @wait_for_modifications_complete(wait_retries)
         u.log 'Resizing RDB succesful'
 
         return null
@@ -3969,6 +4020,9 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
         endpoint: @endpoint()
     }
 
+    #We don't copy this when we copy an environment
+    copy_to: (parent) -> null
+
     exists_in_aws: ->
         try
             @get_data(true)
@@ -4111,6 +4165,15 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         endpoint: @endpoint()
         more: 'Call the get_configuration command to see the raw AWS configuration'
     }
+
+    #Create a replication group with the same name and config
+    copy_to: (parent) ->
+        CacheClusterId = @get_configuration().MemberClusters[0]
+        data = @elasticache 'describeCacheClusters', {CacheClusterId}
+        {CacheNodeType, EngineVersion} = data.CacheClusters[0]
+        CacheParameterGroupName = data.CacheClusters[0].CacheParameterGroup.CacheParameterGroupName
+
+        parent.create_redis_repgroup @get('name'), {CacheNodeType, CacheParameterGroupName, EngineVersion}
 
     status: -> @get_data().Status
 

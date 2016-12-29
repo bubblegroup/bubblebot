@@ -637,6 +637,37 @@ templates.RDSService = class RDSService extends Service
             {name: 'name', required: true, help: 'The name of the upgrade to perform'}
             {name: 'for real', required: true, type: 'boolean', help: 'If for real, actually does the replacement operation, otherwise just creates and tests the replica'}
         ]
+        sublogger: true
+
+
+    #Copies this rds service to a new environment.  We create a physical clone of the database
+    copy_to: (service, parent) ->
+        new_service = parent.get_service service.template_id(), true
+
+        u.log 'New rds service: ' + new_service.id
+
+        rds_instance = @rds_instance service
+
+        my_config = rds_instance.get_configuration(true)
+        MultiAZ = my_config.MultiAZ
+        DBInstanceClass = my_config.DBInstanceClass
+        StorageType = my_config.StorageType
+        Iops = my_config.Iops
+        permanent_options = {cloned_from: rds_instance.id}
+        outside_world_accessible = rds_instance.get 'outside_world_accessible'
+        sizing_options = {DBInstanceClass, MultiAZ, StorageType, outside_world_accessible, Iops}
+
+        copy_rds_instance = bbobjects.instance 'RDSInstance', new_service.id + '-inst1'
+        u.log 'Beginning creation of database copy: ' + copy_rds_instance.id
+        copy_rds_instance.create environment, permanent_options, sizing_options
+
+        u.log 'Copying complete.  Setting it as the database...'
+
+        new_service.set 'rds_instance', copy_rds_instance.id
+
+        u.log 'Setting the version...'
+
+        new_service.set 'version', service.version()
 
 
 
