@@ -610,8 +610,14 @@ templates.RDSService = class RDSService extends Service
 
                         u.reply "Replication is up to date, but this is a test run.  If this was for real, we would switch the instances, then call replace on the following services: #{services.join(', ')}.  Leaving replication running for 5 minutes..."
                         u.pause 5 * 60 * 1000
-                        u.reply 'Okay, telling the process to stop replication.  Since this is a test run, it may never actually shut down, so cancel it by hand if necessary'
+                        u.reply 'Okay, telling the process to stop replication, and calling abort() on the original'
                         end_replication_cb()
+
+                        #Make sure don't call it in the error handler
+                        if abort?
+                            x = abort
+                            abort = null
+                            x()
 
         catch err
             u.reply 'Error, so aborting replication...'
