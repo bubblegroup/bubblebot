@@ -957,7 +957,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
     destroy: ->
         children = @children()
         if children.length > 0
-            u.reply 'This environment still has children: ' + (String(child) for child in children).join('\n')
+            u.reply 'This environment still has children:\n' + (String(child) for child in children).join('\n')
             if not u.confirm 'Do you want to recursively destroy them?'
                 u.reply 'Okay, aborting'
                 return
