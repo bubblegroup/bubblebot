@@ -957,8 +957,14 @@ bbobjects.Environment = class Environment extends BubblebotObject
     destroy: ->
         children = @children()
         if children.length > 0
-            u.reply 'Cannot destroy this environment because it still has children.  Please clean up the children first:\n' + (String(child) for child in children).join('\n')
-            return
+            u.reply 'This environment still has children: ' + (String(child) for child in children).join('\n')
+            if not u.confirm 'Do you want to recursively destroy them?'
+                u.reply 'Okay, aborting'
+                return
+            else
+                for child in children
+                    u.reply 'Destroying: ' + child
+                    (child.service_destroy ? child.destroy ? (throw new Error 'no destroy function'))()
 
         @delete()
         u.reply 'Environment ' + @id + ' is destroyed'
@@ -3874,8 +3880,15 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             FinalDBSnapshotIdentifier: if not SkipFinalSnapshot then @id + '-final-snapshot-' + String(Date.now()) else null
             SkipFinalSnapshot: SkipFinalSnapshot
         }
-        @rds 'deleteDBInstance', params
-        u.log 'Deleted rds instance ' + @id
+        try
+            @rds 'deleteDBInstance', params
+            u.log 'Deleted rds instance ' + @id
+        catch err
+            if String(err.message).indexOf('DBInstanceNotFound') isnt -1
+                u.log 'DBInstanceNotFound: ' + @id
+            else
+                throw err
+
 
         #then delete the data if it exists
         if @exists()
