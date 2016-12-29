@@ -4052,6 +4052,10 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
     #We don't copy this when we copy an environment
     copy_to: (parent) -> null
 
+    destroy: ->
+        u.reply 'Releasing ' + this + '.  To actually delete it, use the AWS console'
+        @delete()
+
     exists_in_aws: ->
         try
             @get_data(true)
