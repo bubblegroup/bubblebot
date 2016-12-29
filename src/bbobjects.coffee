@@ -1365,7 +1365,15 @@ bbobjects.Environment = class Environment extends BubblebotObject
             if retries is 0
                 throw new Error 'unable to create security group ' + group_name
 
-            @ec2('createSecurityGroup', {Description: 'Created by bubblebot', GroupName: group_name, VpcId: @get_vpc()})
+            try
+                @ec2('createSecurityGroup', {Description: 'Created by bubblebot', GroupName: group_name, VpcId: @get_vpc()})
+            catch err
+                #Handle the case of two people trying to create it in parallel
+                if String(err.message).indexOf('InvalidGroup.Duplicate') isnt -1
+                    u.pause 1000
+                    return @get_security_group_data(group_name, force_refresh, retries - 1)
+                else
+                    throw err
             return @get_security_group_data(group_name, force_refresh, retries - 1)
 
     #Given a name (stored in a tag on the security group), finds the id of the group
