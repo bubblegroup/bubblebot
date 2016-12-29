@@ -1380,7 +1380,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
                 @ec2('createSecurityGroup', {Description: 'Created by bubblebot', GroupName: group_name, VpcId: @get_vpc()})
             catch err
                 #Handle the case of two people trying to create it in parallel
-                if String(err.message).indexOf('InvalidGroup.Duplicate') isnt -1
+                if String(err).indexOf('InvalidGroup.Duplicate') isnt -1
                     u.pause 1000
                     return @get_security_group_data(group_name, force_refresh, retries - 1)
                 else
@@ -3890,7 +3890,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 u.log 'Deleted rds instance ' + @id
 
         catch err
-            if String(err.message).indexOf('DBInstanceNotFound') isnt -1
+            if String(err).indexOf('DBInstanceNotFound') isnt -1
                 u.log 'DBInstanceNotFound: ' + @id
             else
                 throw err
