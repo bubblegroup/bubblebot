@@ -547,7 +547,7 @@ templates.RDSService = class RDSService extends Service
         #Pick a new id
         #In practice this will toggle between 1 + 2, for now:
         counter = 1
-        while current_rds.indexOf('instance' + counter) isnt -1 or current_rds.indexOf('inst' + counter) isnt -1
+        while current_rds_instance.id.indexOf('instance' + counter) isnt -1 or current_rds_instance.id.indexOf('inst' + counter) isnt -1
             counter++
         new_id = instance.id + '-inst' + String(counter)
 
@@ -593,7 +593,7 @@ templates.RDSService = class RDSService extends Service
                         waiting_on = []
                         for svc in services
                             waiting_on.push u.sub_fiber =>
-                                sv.replace()
+                                svc.replace()
                                 return null
 
                         #Wait for all the replaces to finish...
@@ -659,7 +659,7 @@ templates.RDSService = class RDSService extends Service
 
         copy_rds_instance = bbobjects.instance 'RDSInstance', new_service.id + '-inst1'
         u.log 'Beginning creation of database copy: ' + copy_rds_instance.id
-        copy_rds_instance.create environment, permanent_options, sizing_options
+        copy_rds_instance.create new_service, permanent_options, sizing_options
 
         u.log 'Copying complete.  Setting it as the database...'
 
