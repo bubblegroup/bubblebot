@@ -583,44 +583,48 @@ templates.RDSService = class RDSService extends Service
 
             replicate current_rds_instance, new_rds_instance, (end_replication_cb) =>
                 u.sub_fiber =>
-                    #Do the switch-over
-                    if for_real
-                        u.reply "Replication is up to date, so replacing #{current_rds_instance.id} with #{new_rds_instance.id}"
-                        services = get_upgrade_services(instance)
+                    try
+                        #Do the switch-over
+                        if for_real
+                            u.reply "Replication is up to date, so replacing #{current_rds_instance.id} with #{new_rds_instance.id}"
+                            services = get_upgrade_services(instance)
 
-                        #Do the switch in the database
-                        instance.set 'rds_instance', new_rds_instance.id
+                            #Do the switch in the database
+                            instance.set 'rds_instance', new_rds_instance.id
 
-                        u.reply 'Switched rds instances, now replacing ' + services.join(', ')
+                            u.reply 'Switched rds instances, now replacing ' + services.join(', ')
 
-                        waiting_on = []
-                        for svc in services
-                            waiting_on.push u.sub_fiber =>
-                                svc.replace()
-                                return null
+                            waiting_on = []
+                            for svc in services
+                                waiting_on.push u.sub_fiber =>
+                                    svc.replace()
+                                    return null
 
-                        #Wait for all the replaces to finish...
-                        wait() for wait in waiting_on()
+                            #Wait for all the replaces to finish...
+                            wait() for wait in waiting_on()
 
-                        u.reply "Okay, switch over is complete.  Gracefully terminating replication.  Please manually deleted #{current_rds_instance.id} once replication finishes"
+                            u.reply "Okay, switch over is complete.  Gracefully terminating replication.  Please manually deleted #{current_rds_instance.id} once replication finishes"
 
-                        end_replication_cb()
+                            end_replication_cb()
 
 
-                    #Not real, so just leave it running for a bit
-                    else
-                        services = get_upgrade_services(instance)
+                        #Not real, so just leave it running for a bit
+                        else
+                            services = get_upgrade_services(instance)
 
-                        u.reply "Replication is up to date, but this is a test run.  If this was for real, we would switch the instances, then call replace on the following services: #{services.join(', ')}.  Leaving replication running for 5 minutes..."
-                        u.pause 5 * 60 * 1000
-                        u.reply 'Okay, telling the process to stop replication, and calling abort() on the original'
-                        end_replication_cb()
+                            u.reply "Replication is up to date, but this is a test run.  If this was for real, we would switch the instances, then call replace on the following services: #{services.join(', ')}.  Leaving replication running for 5 minutes..."
+                            u.pause 5 * 60 * 1000
+                            u.reply 'Okay, telling the process to stop replication, and calling abort() on the original'
+                            end_replication_cb()
 
-                        #Make sure don't call it in the error handler
-                        if abort?
-                            x = abort
-                            abort = null
-                            x()
+                            #Make sure don't call it in the error handler
+                            if abort?
+                                x = abort
+                                abort = null
+                                x()
+                    catch err
+                        u.reply 'Error on the switchover thread: ' + err.stack
+                        u.reply 'Not automatically handling this: manually fix, please'
 
         catch err
             u.reply 'Error, so aborting replication...'
