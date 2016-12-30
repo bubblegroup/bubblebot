@@ -546,10 +546,13 @@ templates.RDSService = class RDSService extends Service
 
         #Pick a new id
         #In practice this will toggle between 1 + 2, for now:
-        counter = 1
-        while current_rds_instance.id.indexOf('instance' + counter) isnt -1 or current_rds_instance.id.indexOf('inst' + counter) isnt -1
-            counter++
-        new_id = instance.id + '-inst' + String(counter)
+        if for_real
+            counter = 1
+            while current_rds_instance.id.indexOf('instance' + counter) isnt -1 or current_rds_instance.id.indexOf('inst' + counter) isnt -1
+                counter++
+            new_id = instance.id + '-inst' + String(counter)
+        else
+            new_id = instance.id + '-test' + u.gen_password(5)
 
         u.reply 'Preparing for replication on ' + current_rds_instance
         abort = prepare_for_replication current_rds_instance
