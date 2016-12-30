@@ -3554,7 +3554,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             @rds 'modifyDBInstance', params
 
             u.log 'Modification command sent, waiting for it to complete'
-            @wait_for_modifications_complete()
+            @wait_for_modifications_complete(null, true)
 
             u.log 'Modification complete: ' + JSON.stringify(@get_configuration true)
 
@@ -3701,7 +3701,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             u.log 'Reboot initiated'
 
         u.log 'Waiting for modifications to complete'
-        @wait_for_modifications_complete(wait_retries)
+        @wait_for_modifications_complete(wait_retries, unsafe_okay)
         u.log 'Resizing RDB succesful'
 
         return null
@@ -3763,7 +3763,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             @wait_for_available(retries - 1, available_statuses)
 
     #Make sure we are no longer modifying anything
-    wait_for_modifications_complete: (retries = 20) ->
+    wait_for_modifications_complete: (retries = 20, reboot_allowed) ->
         ready = false
         while not ready
             u.pause 10000
@@ -3785,6 +3785,13 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
             for parameter_group in config.DBParameterGroups ? []
                 if parameter_group.ParameterApplyStatus isnt 'in-sync'
+                    if parameter_group.ParameterApplyStatus is 'pending-reboot'
+                        if reboot_allowed
+                            u.log 'Parameter group is pending reboot, so doing a reboot...
+                            @wait_for_available(100, ['available'])
+                            @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
+                        else
+                            throw new Error 'Parameter group is pending reboot, but reboot is not allowed! ' + parameter_group.DBParameterGroupName
                     u.log 'Waiting for DBParameterGroup ' + parameter_group.DBParameterGroupName + ' to be in-sync: ' + parameter_group.ParameterApplyStatus
                     ready = false
 
