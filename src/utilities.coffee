@@ -180,7 +180,7 @@ u.current_user = -> u.context()?.current_user?() ? null
 u.pause = (ms) ->
     block = u.Block 'pause'
     setTimeout block.make_cb(), ms
-    block.wait()
+    block.wait(ms + 20000)
 
 
 #Generates a command for the user to type in based on an array of args... takes care of adding quotes
