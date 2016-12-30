@@ -612,8 +612,8 @@ templates.RDSService = class RDSService extends Service
                         else
                             services = get_upgrade_services(instance)
 
-                            u.reply "Replication is up to date, but this is a test run.  If this was for real, we would switch the instances, then call replace on the following services: #{services.join(', ')}.  Leaving replication running for 5 minutes..."
-                            u.pause 5 * 60 * 1000
+                            u.reply "Replication is up to date, but this is a test run.  If this was for real, we would switch the instances, then call replace on the following services: #{services.join(', ')}.  Leaving replication running for a minute..."
+                            u.pause 60 * 1000
                             u.reply 'Okay, telling the process to stop replication, and calling abort() on the original'
                             end_replication_cb()
 
