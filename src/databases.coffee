@@ -69,9 +69,35 @@ databases.Postgres = class Postgres
         finally
             done()
 
+    #Runs the given function with a single client (but not as a transaction)
+    #
+    #passes in an object with {query, set_timeout, advisory_lock}
+    with_client: (fn) ->
+        [client, done] = @get_client()
+        try
+            _my_timeout = null
+
+            t = {
+                set_timeout: (timeout) -> _my_timeout = timeout
+
+                query: (statement, args...) =>
+                    block = u.Block statement
+                    @_query client, block.make_cb(), statement, args
+                    return block.wait(_my_timeout)
+
+                #Convenience function for acquiring an advisory lock
+                advisory_lock: (text) ->
+                    query = "SELECT pg_advisory_xact_lock(('x'||substr(md5($1),1,16))::bit(64)::bigint)"
+                    t.query query, text
+            }
+            return fn t
+
+        finally
+            done()
+
     #Runs the given function as a transaction
     #
-    #Passes in an object with {rollback, query}
+    #Passes in an object with {rollback, query, set_timeout, advisory_lock}
     #
     #Automatically commits on finish, automatically rolls back on uncaught errors
     transaction: (fn) ->
