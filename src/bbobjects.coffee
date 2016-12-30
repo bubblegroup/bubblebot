@@ -3660,7 +3660,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     #unsafe_okay: if true, allows making changes that would cause downtime
     #wait_retries: determines how many retries before we give up on waiting for the modifications to complete -- defaults to 100
     resize: (sizing_options, unsafe_okay, wait_retries = 100) ->
-        {AllocatedStorage, EngineVersion, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, outside_world_accessible} = sizing_options
+        {AllocatedStorage, EngineVersion, AllowMajorVersionUpgrade, DBInstanceClass, BackupRetentionPeriod, MultiAZ, StorageType, Iops, outside_world_accessible} = sizing_options
 
         if @are_changes_unsafe(sizing_options) and not unsafe_okay
             throw new Error 'making unsafe changes without unsafe_okay'
@@ -3678,6 +3678,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             ApplyImmediately: true
             AllocatedStorage
             EngineVersion
+            AllowMajorVersionUpgrade
             DBInstanceClass
             BackupRetentionPeriod
             MultiAZ
