@@ -3549,7 +3549,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
             #We have to wait for it to be available before we can modify it.  We set a
             #very long timeout because copying the data can take a while
-            @wait_for_available(1000, ['available'])
+            @wait_for_available(3000, ['available'])
             u.log 'Updating the credentials; setting MasterUserPassword, and changing VpcSecurityGroupIds to ' + JSON.stringify(VpcSecurityGroupIds)
             @rds 'modifyDBInstance', params
 
