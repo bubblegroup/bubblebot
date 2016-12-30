@@ -4102,6 +4102,9 @@ bbobjects.ElasticIPAddress = class ElasticIPAddress extends BubblebotObject
         if old_instance?
             old_instance.get_data(true)
 
+        #And same with our data
+        @get_data(true)
+
 
 #Represents a Cloudfront distribution.  The id should be the aws id for the distribution
 bbobjects.CloudfrontDistribution = class CloudfrontDistribution extends BubblebotObject
