@@ -567,19 +567,35 @@ templates.RDSService = class RDSService extends Service
             MultiAZ = my_config.MultiAZ
             DBInstanceClass = my_config.DBInstanceClass
             StorageType = my_config.StorageType
+
             Iops = my_config.Iops
             permanent_options = {cloned_from: current_rds_instance.id}
             outside_world_accessible = current_rds_instance.get 'outside_world_accessible'
+
+            #We turn these off until the upgrade is complete
+            old_MultiAZ = MultiAZ
+            MultiAZ = false
+            old_BackupRetentionPeriod = my_config.BackupRetentionPeriod
+            #We have to set this afterwards -- can't be set in in the initial call
+
             sizing_options = {DBInstanceClass, MultiAZ, StorageType, outside_world_accessible, Iops}
 
             new_rds_instance = bbobjects.instance 'RDSInstance', new_id
             new_rds_instance.create instance, permanent_options, sizing_options
 
-            u.reply 'Clone created, running upgrade function'
+            u.reply 'Clone created, disabling backups'
+
+            new_rds_instance.resize {BackupRetentionPeriod: 0}, true, 200
+
+            u.reply 'Backups disabled, running upgrade functions'
 
             upgrade_fn new_rds_instance, for_real
 
-            u.reply 'Upgrade function complete, beginning replication...'
+            u.reply 'Upgrade function complete, restoring BackupRetentionPeriod and MultiAZ'
+
+            new_rds_instance.resize {BackupRetentionPeriod: old_BackupRetentionPeriod, MultiAZ: old_MultiAZ}, true, 2000
+
+            u.reply 'Restoring BackupRetentionPeriod and MultiAZ complete, beginning replication..'
 
             replicate current_rds_instance, new_rds_instance, (end_replication_cb) =>
                 u.sub_fiber =>
