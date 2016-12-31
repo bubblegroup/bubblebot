@@ -1316,6 +1316,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
         for port in ports
             #Let any webserver in this environment connect to the database on this port
             rules.push {UserIdGroupPairs: [{GroupId: @get_webserver_security_group()}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
+            #Let any database in this environment connect to the database on this port
+            rules.push {UserIdGroupPairs: [{GroupId: id}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
             #if external is true, let external servers connect to the database on this port
             if external
                 rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: port, ToPort: port}
