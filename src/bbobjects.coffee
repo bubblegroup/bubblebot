@@ -1352,7 +1352,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             @ensure_security_group_rules group_name, rules
 
             u.log 'Using temporary security group ' + group_id + ' (' + group_name + ')'
-            fn group_id, group_name
+            return fn group_id, group_name
 
         finally
             #release our claim on this temporary group
@@ -3706,13 +3706,16 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
 
         return null
 
-    #Temporarily grants access for this ip_address to talk to this database.
+    #Temporarily grants access for this ip_address (or array of ip addresses) to talk to this database.
     #
     #Calls fn once the firewall is open, then closes the firewall afterwards
     grant_temporary_access: (ip_address, fn) ->
+        if not Array.isArray ip_address
+            ip_address = [ip_address]
+
         #Create a temporary security group
-        rules = [{IpRanges: [{CidrIp: ip_address + '/32'}], IpProtocol: '-1'}]
-        @environment().with_temporary_security_group rules, (security_group_id) =>
+        rules = ({IpRanges: [{CidrIp: ip_a + '/32'}], IpProtocol: '-1'} for ip_a in ip_address)
+        return @environment().with_temporary_security_group rules, (security_group_id) =>
             current_security_groups = (group.VpcSecurityGroupId for group in @get_configuration(true).VpcSecurityGroups ? [])
             u.log 'We are going to open temporary access to ' + this + ' from ' + ip_address
             u.log 'Currently, ' + this + ' has the following security groups set: ' + current_security_groups.join(', ')
@@ -3731,7 +3734,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 u.log 'Adding group initiated, waiting for it to complete'
                 @wait_for_modifications_complete(100)
                 u.log 'Okay, security group is added'
-                fn()
+                return fn()
 
             finally
                 u.log 'Okay, we are now going to remove the temporary security group from ' + this
