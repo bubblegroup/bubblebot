@@ -3789,12 +3789,12 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             for parameter_group in config.DBParameterGroups ? []
                 if parameter_group.ParameterApplyStatus isnt 'in-sync'
                     if parameter_group.ParameterApplyStatus is 'pending-reboot'
-                        if reboot_allowed
+                        if config.DBInstanceStatus isnt 'available'
+                            u.log 'Parameter group is pending reboot, so waiting for available...'
+                            @wait_for_available(Math.max(100, retries), ['available'])
+                        else if reboot_allowed
                             u.log 'Parameter group is pending reboot, so doing a reboot...'
-                            if config.DBInstanceStatus isnt 'available'
-                                @wait_for_available(100, ['available'])
-                            else
-                                @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
+                            @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
                         else
                             throw new Error 'Parameter group is pending reboot, but reboot is not allowed! ' + parameter_group.DBParameterGroupName
                     u.log 'Waiting for DBParameterGroup ' + parameter_group.DBParameterGroupName + ' to be in-sync: ' + parameter_group.ParameterApplyStatus
