@@ -3790,6 +3790,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                             u.log 'Parameter group is pending reboot, so doing a reboot...'
                             @wait_for_available(100, ['available'])
                             @rds 'rebootDBInstance', {DBInstanceIdentifier: @id}
+                            @wait_for_available(100, ['available'])
                         else
                             throw new Error 'Parameter group is pending reboot, but reboot is not allowed! ' + parameter_group.DBParameterGroupName
                     u.log 'Waiting for DBParameterGroup ' + parameter_group.DBParameterGroupName + ' to be in-sync: ' + parameter_group.ParameterApplyStatus
