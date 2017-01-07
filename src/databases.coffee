@@ -8,36 +8,66 @@ databases.Postgres = class Postgres
 
     #Gets the connection string for talking to this database
     get_connection_string: ->
-        endpoint = @rds_instance.endpoint()
-        if not endpoint?
-            throw new Error 'endpoint not available!'
-
+        endpoint = @get_endpoint()
         {user, password, host, port, database} = endpoint
         conn_string = "postgres://#{user}:#{password}@#{host}:#{port}/#{database}"
         return conn_string
-
-    #Gets the connection string in the format that dblink expects
-    get_dblink_connection_string: ->
+        
+    #Gets the endpoint for talking to this database
+    get_endpoint: -> 
         endpoint = @rds_instance.endpoint()
         if not endpoint?
             throw new Error 'endpoint not available!'
+        return endpoint
 
+    #Gets the connection string in the format that dblink expects
+    get_dblink_connection_string: ->
+        endpoint = @get_endpoint()
         {user, password, host, port, database} = endpoint
         conn_string = "user=#{user} password=#{password} host=#{host} port=#{port} dbname=#{database}"
         return conn_string
+    
+    #Gets a connection pool for talking to this database    
+    get_pool: ->
+        endpoint = @get_endpoint()
+        key = JSON.stringify endpoint
+        
+        if not conn_pool_cache.get key
+            {user, password, host, port, database} = endpoint
+        
+            pool = new pg.Pool {
+                user
+                database
+                password
+                host
+                port
+                max: 5
+                idleTimeoutMillis: 30000
+            }
+            pool.on 'error', (err) ->
+                u.log 'Error from pg connection pool to ' + host + ': ' + String(err)
+            conn_pool_cache.set key, pool
+        
+        return conn_pool_cache.get key
+        
 
     #Returns [client, done]
     get_client: ->
-        client = new pg.Client @get_connection_string()
         block = u.Block 'connecting'
-        client.connect block.make_cb()
+        
+        @get_pool().connect (err, client, done) ->
+            if err
+                block.fail err
+            else
+                block.success [client, done]
+                
+        [client, done] = block.wait()
 
         #This will happen if pg sends an error in between queries
-        #Capture it and throw it if we try to use the client again
-        client.on 'error', (err) ->
+        #Make sure we kick the client out of the ppool
+        client.on 'error', (err) -> 
             client._had_error = err
-
-        done = -> client.end()
+            done err
 
         return [client, done]
 
@@ -53,7 +83,7 @@ databases.Postgres = class Postgres
 
     #Calls pg_dump and returns the result
     pg_dump: (options) ->
-        {user, password, host, port, database} = @rds_instance.endpoint()
+        {user, password, host, port, database} = @get_endpoint()
         command = "pg_dump -h #{host} -p #{port} -U #{user} -w #{options} #{database}"
 
         return u.run_local command, {env: {PGPASSWORD: password}}
@@ -161,3 +191,9 @@ databases.Postgres = class Postgres
 
 pg = require 'pg'
 u = require './utilities'
+bbobjects = require './bbobjects'
+
+
+
+#We cache pools based on connection strings
+conn_pool_cache = new bbobjects.Cache 24 * 60 * 60 * 1000
