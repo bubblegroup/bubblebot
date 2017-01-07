@@ -32,7 +32,7 @@ databases.Postgres = class Postgres
         endpoint = @get_endpoint()
         key = JSON.stringify endpoint
         
-        if not conn_pool_cache.get key
+        if not conn_pool_cache().get key
             {user, password, host, port, database} = endpoint
         
             pool = new pg.Pool {
@@ -46,9 +46,9 @@ databases.Postgres = class Postgres
             }
             pool.on 'error', (err) ->
                 u.log 'Error from pg connection pool to ' + host + ': ' + String(err)
-            conn_pool_cache.set key, pool
+            conn_pool_cache().set key, pool
         
-        return conn_pool_cache.get key
+        return conn_pool_cache().get key
         
 
     #Returns [client, done]
@@ -188,6 +188,11 @@ databases.Postgres = class Postgres
                 done()
 
 
+#We cache pools based on connection strings
+_cache = null
+conn_pool_cache =  ->
+    _cache ?= new bbobjects.Cache 24 * 60 * 60 * 1000
+    return _cache
 
 pg = require 'pg'
 u = require './utilities'
@@ -195,5 +200,3 @@ bbobjects = require './bbobjects'
 
 
 
-#We cache pools based on connection strings
-conn_pool_cache = new bbobjects.Cache 24 * 60 * 60 * 1000
