@@ -21,9 +21,19 @@ databases.Postgres = class Postgres
         return endpoint
 
     #Gets the connection string in the format that dblink expects
-    get_dblink_connection_string: ->
+    #
+    #If force_internal is true, forces the internal ip address by doing a dns lookup
+    #of the hostname (TODO: not guaranteed to work correctly if this is not in the same
+    #zone as bubblebot)
+    get_dblink_connection_string: (force_internal) ->
         endpoint = @get_endpoint()
         {user, password, host, port, database} = endpoint
+        
+        if force_internal
+            block = u.Block 'dns lookup'
+            dns.resolve host, block.make_cb()
+            host = block.wait()
+        
         conn_string = "user=#{user} password=#{password} host=#{host} port=#{port} dbname=#{database}"
         return conn_string
     
@@ -207,6 +217,4 @@ conn_pool_cache =  ->
 pg = require 'pg'
 u = require './utilities'
 bbobjects = require './bbobjects'
-
-
-
+dns = require 'dns'
