@@ -53,10 +53,26 @@ databases.Postgres = class Postgres
 
     #Returns [client, done]
     get_client: ->
+        client = new pg.Client @get_connection_string()
+        block = u.Block 'connecting'
+        client.connect block.make_cb()
+
+        #This will happen if pg sends an error in between queries
+        #Capture it and throw it if we try to use the client again
+        client.on 'error', (err) ->
+            client._had_error = err
+
+        done = -> client.end()
+
+        return [client, done]
+
+    #Returns [client, done], uses connection pool
+    get_pooled_client: ->
         block = u.Block 'connecting'
         
         @get_pool().connect (err, client, done) ->
             if err
+                done err
                 block.fail err
             else
                 block.success [client, done]
@@ -91,7 +107,7 @@ databases.Postgres = class Postgres
 
     #Runs the query and returns the results
     query: (statement, args...) ->
-        [client, done] = @get_client()
+        [client, done] = @get_pooled_client()
         try
             block = u.Block statement
             @_query client, block.make_cb(), statement, args
