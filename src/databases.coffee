@@ -79,12 +79,6 @@ databases.Postgres = class Postgres
                 
         [client, done] = block.wait()
 
-        #This will happen if pg sends an error in between queries
-        #Make sure we kick the client out of the ppool
-        client.on 'error', (err) -> 
-            client._had_error = err
-            done err
-
         return [client, done]
 
     #Helper function for running queries
