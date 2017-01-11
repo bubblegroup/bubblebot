@@ -2624,6 +2624,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
     set_leader: (service_id) ->
         @set 'leader', service_id
         u.reply this + ' is set to follow leader ' + service_id
+        @check_leader()
 
     set_leader_cmd:
         help: "Sets another service as the leader for this service, meaning that when you deploy to that service, we try to deploy to this service"
