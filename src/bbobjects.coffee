@@ -3011,21 +3011,23 @@ bbobjects.Test = class Test extends BubblebotObject
     codebase: -> @template().codebase()
 
     #Runs the tests against this version
-    run: (version) ->
+    run: (version, target) ->
         codebase = @codebase()
         if codebase
             version = codebase.ensure_version version
-        u.reply 'Running test ' + @id + ' on version ' + version
+        u.reply 'Running test ' + @id + ' on version ' + version + (if target then ' target ' + target)
         try
             u.context().currently_running_test = @id
-            result = @template().run version
+            result = @template().run version, target
             u.log 'Test ' + (if result then 'passed' else 'failed') + ' with return value ' + result
         catch err
             u.log 'Test failed because of error: ' + (err.stack ? err)
             result = false
         if result
             u.reply 'Test ' + @id + ' passed on version ' + version
-            @mark_tested version
+            if not target
+                u.reply 'Not marking tested because we passed a specific target'
+                @mark_tested version
         else
             u.reply 'Test ' + @id + ' failed on version ' + version + ': ' + u.context().get_transcript()
         return result
@@ -3048,7 +3050,10 @@ bbobjects.Test = class Test extends BubblebotObject
 
     run_cmd:
         sublogger: true
-        params: [{name: 'version', required: true, help: 'The version of the codebase to run this test against'}]
+        params: [
+            {name: 'version', required: true, help: 'The version of the codebase to run this test against'}
+            {name: 'target', help: 'An optional server to run the tests against.  What this means in practice varies from test-to-test'}
+        ]
         help: 'Runs this test against the given version'
         groups: constants.BASIC
 
