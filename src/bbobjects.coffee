@@ -3027,6 +3027,7 @@ bbobjects.Test = class Test extends BubblebotObject
             u.reply 'Test ' + @id + ' passed on version ' + version
             if not target
                 u.reply 'Not marking tested because we passed a specific target'
+            else
                 @mark_tested version
         else
             u.reply 'Test ' + @id + ' failed on version ' + version + ': ' + u.context().get_transcript()
