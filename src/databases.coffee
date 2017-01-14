@@ -115,7 +115,7 @@ databases.Postgres = class Postgres
         try
             block = u.Block statement
             @_query client, block.make_cb(), statement, args
-            return block.wait()
+            return block.wait(@global_query_timeout)
         finally
             done()
 
