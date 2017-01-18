@@ -895,6 +895,14 @@ bbobjects.Environment = class Environment extends BubblebotObject
         super null, null, {type, template, region, vpc}
 
         @template().initialize this
+        
+    on_startup: ->
+        super()
+        #Load the security groups to make sure they are up to date
+        @get_database_security_group()
+        @get_database_security_group(true)
+        @get_webserver_security_group()
+        
 
     describe_keys: -> u.extend super(), {
         template: @get('template')
