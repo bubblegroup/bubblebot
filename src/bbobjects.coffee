@@ -3023,7 +3023,7 @@ bbobjects.Test = class Test extends BubblebotObject
         codebase = @codebase()
         if codebase
             version = codebase.ensure_version version
-        u.reply 'Running test ' + @id + ' on version ' + version + (if target then ' target ' + target)
+        u.reply 'Running test ' + @id + ' on version ' + version + (if target then ' target ' + target else '')
         try
             u.context().currently_running_test = @id
             result = @template().run version, target
