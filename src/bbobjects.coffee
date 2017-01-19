@@ -2167,11 +2167,16 @@ bbobjects.Environment = class Environment extends BubblebotObject
         }
         SubnetIds = (subnet.SubnetId for subnet in results.Subnets ? [])
 
-        @rds 'createDBSubnetGroup', {
-            DBSubnetGroupDescription: 'Default Bubblebot-created subnet group for environment ' + @id
-            DBSubnetGroupName: subnet_groupname
-            SubnetIds
-        }
+        try
+            @rds 'createDBSubnetGroup', {
+                DBSubnetGroupDescription: 'Default Bubblebot-created subnet group for environment ' + @id
+                DBSubnetGroupName: subnet_groupname
+                SubnetIds
+            }
+        catch err
+            #If it was created in parallel, that's fine
+            if String(err).indexOf('DBSubnetGroupAlreadyExists') is -1
+                throw err
 
         return subnet_groupname
 
