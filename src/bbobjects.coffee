@@ -78,7 +78,7 @@ bbobjects.get_bbserver = ->
 
     software.supervisor('bubblebot', command, config.get('install_directory')) instance
     software.node('4.4.5') instance
-    software.pg_dump95() instance
+    software.pg_dump96() instance
 
     environment.tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
 

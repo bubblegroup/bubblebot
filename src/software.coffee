@@ -117,6 +117,10 @@ software.metrics = -> (instance) ->
 software.pg_dump95 = -> do_once 'pg_dump95', (instance) ->
     instance.run 'sudo yum -y localinstall https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-6-x86_64/pgdg-ami201503-95-9.5-2.noarch.rpm'
     instance.run 'sudo yum -y install postgresql95'
+    
+software.pg_dump96 = -> do_once 'pg_dump96', (instance) ->
+    instance.run 'sudo yum -y localinstall https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-6-x86_64/pgdg-ami201503-96-9.6-2.noarch.rpm'
+    instance.run 'sudo yum -y install postgresql96'
 
 
 #Given a local path to a private key, installs that as the main key on this box
