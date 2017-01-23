@@ -3525,7 +3525,8 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             @set 'MasterUserPassword', MasterUserPassword
             
         #If this is a clone, copy the database parameters
-        @set 'database', bbobjects.instance('RDSInstance', cloned_from).get('database')
+        if cloned_from
+            @set 'database', bbobjects.instance('RDSInstance', cloned_from).get('database')
 
         #Save our outside_world_accessible setting
         @set 'outside_world_accessible', outside_world_accessible
