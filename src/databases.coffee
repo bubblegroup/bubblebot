@@ -30,9 +30,19 @@ databases.Postgres = class Postgres
         {user, password, host, port, database} = endpoint
         
         if force_internal
-            block = u.Block 'dns lookup'
-            dns.resolve host, block.make_cb()
-            host = block.wait()
+            #If not in the bubblebot environment, we have to use another server to get the information
+            if @rds_instance.environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
+                #grab the first available server in this environment
+                server = @rds_instance.environment().describe_instances()[0]
+                output = server.run "dig +noall +answer #{host} @8.8.8.8"
+                in_a = output.indexOf('IN A ')
+                if in_a is -1
+                    throw new Error 'unable to parse dig output: ' + output
+                host = output[in_a + 5..].trim()
+            else
+                block = u.Block 'dns lookup'
+                dns.resolve host, block.make_cb()
+                host = block.wait()
         
         conn_string = "user=#{user} password=#{password} host=#{host} port=#{port} dbname=#{database}"
         return conn_string
