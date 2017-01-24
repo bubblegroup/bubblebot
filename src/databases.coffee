@@ -34,7 +34,7 @@ databases.Postgres = class Postgres
             if @rds_instance.environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
                 #grab the first available server in this environment
                 server = @rds_instance.environment().describe_instances()[0]
-                output = server.run "dig +noall +answer #{host} @8.8.8.8"
+                output = server.run "dig +noall +answer #{host}"
                 in_a = output.indexOf('IN A ')
                 if in_a is -1
                     throw new Error 'unable to parse dig output: ' + output
