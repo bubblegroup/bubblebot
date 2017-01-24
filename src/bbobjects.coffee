@@ -256,6 +256,25 @@ bbobjects.get_default_dev_environment = (region) ->
         vpc = prompt_for_vpc(region)
         environment.create DEV, 'blank', region, vpc
     return environment
+    
+#Given a region, finds the VPC.  Throws an error if missing.
+bbobjects.get_vpc_for_region = (region) ->
+    #first, see if we have an environment
+    for environment in bbobjects.list_environments()
+        if environment.get_region() is region
+            return environment.get_vpc()
+    
+    #then, see if there is a vpc in that environment
+    ec2 = new AWS.EC2(aws_config region)
+    block = u.Block 'listing vpcs'
+    ec2.describeVpcs {}, block.make_cb()
+    results = block.wait()
+
+    if (results.Vpcs ? []).length is 0
+        throw new Error 'there are no VPCs available for region ' + region + ': please create one'
+        
+    return results.Vpcs[0].VpcId
+    
 
 #Lists the regions in a VPC, and prompts for the user to pick one
 #(or picks the first one if there is no user id)

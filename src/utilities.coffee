@@ -142,6 +142,21 @@ bound_console.is_console = true
 u.get_logger = (log_fn) ->
     u.context()?.loggers?[log_fn] ? u.default_loggers?[log_fn] ? bound_console
 
+#Runs fn in the context of the given logger    
+u.with_logger = (name, log_fn, fn) ->
+    old_logger = u.context().loggers?[log_fn]
+    try
+        u.set_logger name, log_fn
+        return fn()
+    finally
+        u.context().loggers[log_fn] = old_logger
+        
+#Runs a function redirecting 'reply' to 'log'
+u.run_silently = (fn) ->
+    silent_reply = (msg) -> u.log 'Reply (silenced): ' + msg
+    return u.with_logger 'reply', silent_reply, fn
+        
+
 #Sets a function in the current context
 u.set_logger = (name, fn) ->
     context = u.context()
