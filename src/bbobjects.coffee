@@ -590,6 +590,9 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Calls ec2 and returns the results
     ec2: (method, parameters) -> @aws 'EC2', method, parameters
+    
+    #Calls route53 and returns the results
+    route53: (method, parameters) -> @aws 'Route53', method, parameters
 
     #Calls describe instances on the given set of instances / parameters, and returns an array of
     #Instance objects
@@ -648,7 +651,42 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
 
     #Warns that we can't create a copy... should be overriden by children
     copy_to: (parent) -> u.reply 'Not copying ' + this + ' because no copy function is defined'
-
+    
+    
+    #Route 53
+    
+    #Given a domain name, returns the id of the hosted zone, or returns null
+    get_hosted_zone_id: (name) ->
+        res = @route53 'listHostedZones', {}
+        for hosted_zone in res.HostedZones
+            if hosted_zone.Name is name
+                return hosted_zone.Id
+        if res.IsTruncated
+            throw new Error 'TODO: handle pagination'
+        return null
+        
+    #Creates the given record for the given zone
+    create_record: (zone_name, record_name, record_type, values) ->
+        if not Array.isArray values
+            values = [values]
+        HostedZoneId = @get_hosted_zone_id zone_name
+        params = {
+            HostedZoneId
+            ChangeBatch: {
+                Changes: [
+                    {
+                        Action: 'UPSERT'
+                        ResourceRecordSet: {
+                            Name: record_name + '.' + zone_name
+                            Type: record_type
+                            ResourceRecords: ({Value: v} for v in values)
+                        }                        
+                    }
+                ]
+            }
+        }
+        u.log 'Updating route53 record for zone ' + zone_name + ': ' + JSON.stringify params
+        @route53 'changeResourceRecordSets', params
 
 
 GROUP_PREFIX = 'group_member_'

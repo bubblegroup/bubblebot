@@ -617,7 +617,7 @@ templates.RDSService = class RDSService extends Service
                             #Wait for all the replaces to finish...
                             wait() for wait in waiting_on
 
-                            u.reply "Okay, switch over is complete.  Gracefully terminating replication.  Please manually deleted #{current_rds_instance.id} once replication finishes"
+                            u.reply "Okay, switch over is complete.  Gracefully terminating replication.  Please manually delete #{current_rds_instance.id} once replication finishes"
 
                             end_replication_cb()
 
