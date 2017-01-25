@@ -670,15 +670,18 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         if not Array.isArray values
             values = [values]
         HostedZoneId = @get_hosted_zone_id zone_name
+        if not HostedZoneId?
+            throw new Error 'could not find hosted zone id for ' + zone_name
         params = {
             HostedZoneId
             ChangeBatch: {
                 Changes: [
                     {
-                        Action: 'UPSERT'
+                        Action: 'CREATE'
                         ResourceRecordSet: {
                             Name: record_name + '.' + zone_name
                             Type: record_type
+                            TTL: 300
                             ResourceRecords: ({Value: v} for v in values)
                         }                        
                     }
