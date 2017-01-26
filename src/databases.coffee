@@ -23,8 +23,7 @@ databases.Postgres = class Postgres
     #Gets the connection string in the format that dblink expects
     #
     #If force_internal is true, forces the internal ip address by doing a dns lookup
-    #of the hostname (TODO: not guaranteed to work correctly if this is not in the same
-    #zone as bubblebot)
+    #of the hostname
     get_dblink_connection_string: (force_internal) ->
         endpoint = @get_endpoint()
         {user, password, host, port, database} = endpoint
