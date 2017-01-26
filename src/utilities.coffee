@@ -144,12 +144,12 @@ u.get_logger = (log_fn) ->
 
 #Runs fn in the context of the given logger    
 u.with_logger = (name, log_fn, fn) ->
-    old_logger = u.context().loggers?[log_fn]
+    old_logger = u.context().loggers?[name]
     try
         u.set_logger name, log_fn
         return fn()
     finally
-        u.context().loggers[log_fn] = old_logger
+        u.context().loggers[name] = old_logger
         
 #Runs a function redirecting 'reply' to 'log'
 u.run_silently = (fn) ->
