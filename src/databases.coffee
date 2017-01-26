@@ -69,6 +69,19 @@ databases.Postgres = class Postgres
         
         return conn_pool_cache().get key
         
+    #Destroys the current pool, if there is one, and creates a clean one.  Useful
+    #to force a clean state if we suspect there is something messed up with the connection
+    refresh_pool: ->
+        endpoint = @get_endpoint()
+        key = JSON.stringify endpoint
+    
+        current_pool = conn_pool_cache().get key
+        if not current_pool
+            return
+        conn_pool_cache().set key, null
+        current_pool.end()
+        
+            
 
     #Returns [client, done]
     get_client: ->

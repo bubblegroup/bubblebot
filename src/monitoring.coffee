@@ -362,8 +362,16 @@ monitoring.Monitor = class Monitor
                     result = false
                     reason = 'Could not hit ' + clean_url + ': ' + err.message
 
-            else if protocol is 'postgres'
+            else if protocol is 'postgres'            
                 db = new databases.Postgres object
+                
+                #We want to call get endpoint outside of the try-catch, because if 
+                #there's an error loading the endpoint (AWS API is down, for instance),
+                #that isn't evidence that the database itself is unhealthy, so we want
+                #to report this as a monitoring error rather than as a service down to 
+                #avoid restarting a healthy database
+                db.get_endpoint()
+                
                 try
                     block = u.Block 'monitor hitting pg'
                     pg_hit_timeout = setTimeout ->
@@ -382,6 +390,9 @@ monitoring.Monitor = class Monitor
                 catch err
                     result = false
                     reason = err.stack
+                    
+                    #Nuke our connection pool to make sure next time we try is clean
+                    db.refresh_pool()
                 clearTimeout pg_hit_timeout
 
             else if protocol is 'redis'
