@@ -3804,6 +3804,10 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
     grant_temporary_access: (ip_address, fn) ->
         if not Array.isArray ip_address
             ip_address = [ip_address]
+            
+        #Need to wait for stable, since if we are in the process of modifying security groups,
+        #the list of current groups will not be active
+        @wait_for_modifications_complete()
 
         #Create a temporary security group
         rules = ({IpRanges: [{CidrIp: ip_a + '/32'}], IpProtocol: '-1'} for ip_a in ip_address)
