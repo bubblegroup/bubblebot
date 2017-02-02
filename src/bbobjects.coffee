@@ -1429,7 +1429,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
 
         finally
             #release our claim on this temporary group
-            delete temporary_security_groups_in_use[temp_id]
+            #we do it on a timeout to allow some time for it to be fully removed
+            setTimeout ->
+                delete temporary_security_groups_in_use[temp_id]
+            , 30 * 1000
 
 
     #Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
