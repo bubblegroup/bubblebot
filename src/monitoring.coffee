@@ -279,7 +279,7 @@ monitoring.Monitor = class Monitor
         other = []
 
         for uid, object of @to_monitor
-            if @health[uid] is HEALTHY
+            if @health[uid] is HEALTHY or NOT_MONITORING
                 uptime = (total_time - (@downtime[uid] ? 0)) / total_time
                 healthy.push String(object) + ': ' + @health[uid] + ' (' + u.format_percent(uptime) + ')'
             else
