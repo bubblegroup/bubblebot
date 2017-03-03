@@ -959,13 +959,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
     on_startup: ->
         super()
         
-        #Load the security groups to make sure they are up to date
-        setTimeout =>
-            @get_database_security_group()
-            @get_database_security_group(true)
-            @get_webserver_security_group()
-        , Math.random() * 60000
-        
+        @get_database_security_group()
+        @get_database_security_group(true)
+        @get_webserver_security_group()
+    
         
 
     describe_keys: -> u.extend super(), {
