@@ -378,7 +378,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         return u.extend {}, children, template_commands, @subcommands
 
     #Schedule a method of this object as a recurring task.  Idempotent operation; we schedule
-    #at most one [object, schedule_name, method] combination.  variant exists to
+    #at most one [object, schedule_name, method] combination.  schedule_name exists to
     #allow multiple schedules / property combinations for the same method.
     schedule_recurring: (interval, schedule_name, method, params...) ->
         schedule_name = @type + '.' + @id + '.' + schedule_name + '.' + method
@@ -958,13 +958,14 @@ bbobjects.Environment = class Environment extends BubblebotObject
         
     on_startup: ->
         super()
+        
         #Load the security groups to make sure they are up to date
+        setTimeout =>
+            @get_database_security_group()
+            @get_database_security_group(true)
+            @get_webserver_security_group()
+        , Math.random() * 60000
         
-        #DISABLING UNTIL WE AUTO-HANDLE STARTUP
-        
-        #@get_database_security_group()
-        #@get_database_security_group(true)
-        #@get_webserver_security_group()
         
 
     describe_keys: -> u.extend super(), {
