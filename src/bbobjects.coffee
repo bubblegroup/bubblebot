@@ -959,9 +959,10 @@ bbobjects.Environment = class Environment extends BubblebotObject
     on_startup: ->
         super()
         
-        @get_database_security_group()
-        @get_database_security_group(true)
-        @get_webserver_security_group()
+        #Disabling this til we solve rate limiting
+        #@get_database_security_group()
+        #@get_database_security_group(true)
+        #@get_webserver_security_group()
     
         
 
