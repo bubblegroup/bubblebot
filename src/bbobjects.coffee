@@ -4374,8 +4374,11 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
             if not u.confirm 'This is a production cluster... are you sure you want to delete this?'
                 return
 
-        u.log 'Deleting Redis Replication Group ' + @id
-        @elasticache 'deleteReplicationGroup', {ReplicationGroupId: @id}
+        if @exists_in_aws()
+            u.log 'Deleting Redis Replication Group ' + @id
+            @elasticache 'deleteReplicationGroup', {ReplicationGroupId: @id}
+        else
+            u.log 'Replication group does not exist in AWS'
 
         @delete()
 
