@@ -75,10 +75,10 @@ bbobjects.get_bbserver = ->
     #Install node and supervisor
     command = 'node ' + config.get('install_directory') + '/' + config.get('run_file')
 
-
     software.supervisor('bubblebot', command, config.get('install_directory')) instance
     software.node('4.4.5') instance
     software.pg_dump96() instance
+    software.supervisor_auto_start() instance
 
     environment.tag_resource id, config.get('bubblebot_role_tag'), config.get('bubblebot_role_bbserver')
 

@@ -43,6 +43,23 @@ software.supervisor = (name, command, pwd) -> (instance) ->
 
     #Set a big ulimit
     instance.run "echo '* soft nofile 1000000\n* hard nofile 1000000\n* soft nproc 1000000\n* hard nproc 1000000' | sudo tee /etc/security/limits.d/large.conf"
+    
+#Adds code to /etc/rc.local that starts supervisord and maps ports on system boot
+software.supervisor_auto_start = -> do_once 'supervisor_auto_start', (instance) ->
+    commands = """
+    #start supervisor on startup
+    sudo -u ec2-user -H sh -c "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin:/home/ec2-user/.local/bin:/home/ec2-user/bin; supervisord" 
+
+    #map port 80 -> 8080
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+    #map port 443 -> 8043
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8043
+    """
+    instance.run 'cat > /tmp/autostart <<\'EOF\'\n' + commands + '\n\nEOF'
+    
+    instance.run 'sudo su -c"cat /tmp/autostart >> /etc/rc.local"'
+    instance.run 'rm /tmp/autostart'
+    
 
 #Make sure ports are exposed and starts supervisord
 software.supervisor_start = (can_fail) -> (instance) ->
