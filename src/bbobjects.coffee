@@ -3868,7 +3868,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             config = @get_configuration(true)
             ready = true
 
-            if config.DBInstanceStatus isnt 'available'
+            if config.DBInstanceStatus not in ['available', 'backing-up']
                 u.log 'Waiting for DBInstanceStatus to be available: ' + config.DBInstanceStatus
                 ready = false
 
