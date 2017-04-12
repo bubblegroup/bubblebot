@@ -3824,6 +3824,10 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             }
 
             @wait_for_available 20, ['available', 'backing-up']
+            if @get_configuration(true).DBInstanceStatus is 'backing-up'
+                u.reply 'Database ' + this + ' is currently backing up.  We have to wait for it to finish before continuing.  This may take a while...'
+                @wait_for_available 2000, ['available']
+            
             @rds 'modifyDBInstance', params
             try
                 u.log 'Adding group initiated, waiting for it to complete'
@@ -3855,7 +3859,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         if @get_configuration(true).DBInstanceStatus in available_statuses
             return
         else if retries is 0
-            throw new Error 'timed out while waiting for ' + @id + ' to be available: ' + @get_configuration(true).DBInstanceStatus
+            throw new Error 'timed out while waiting for ' + @id + ' to be available.  Current state is: ' + @get_configuration(true).DBInstanceStatus
         else
             u.pause 10000
             @wait_for_available(retries - 1, available_statuses)
