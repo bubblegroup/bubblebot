@@ -232,7 +232,7 @@ bbserver.Server = class Server
                         bbobjects.instance 'User', context.user_id
                 fn req, res
             catch err
-                u.report 'Error handling http request:\n' + err.stack
+                u.report 'Error handling http request:\n' + req.url + '\n' + err.stack
                 next err
 
     #Given a web request, checks for the environment's credentials
@@ -858,7 +858,8 @@ bbserver.Server = class Server
                         current_user = bbobjects.instance('User', context.user_id)
                     if not current_user?.is_in_group(constants.ADMIN)
                         name = current_user?.name() ? '<no name, user_id: ' + context.user_id + '>'
-                        u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ': ' + err.stack ? err
+                        transcript = u.context().get_transcript?() ? ''
+                        u.report 'User ' + name + ' hit an unexpected error trying to run ' + cmd + ':\n' + transcript + '\n' + (err.stack ? err)
 
     graceful_shutdown: (no_restart) ->
         user = u.current_user()
