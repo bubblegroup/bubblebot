@@ -401,7 +401,7 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
             
             for k, v of template
                 if typeof(v) is 'function'
-                    ret[k] = v.bind(template, this)
+                    t[k] = v.bind(template, this)
         
         return template._bbobjects_t
 
