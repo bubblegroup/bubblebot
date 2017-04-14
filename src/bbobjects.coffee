@@ -3804,6 +3804,14 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         u.log 'Resizing RDB succesful'
 
         return null
+        
+    #Waits until we are in a modifiable state (calls to modifyDBInstance won't fail).
+    #Assumes a short timeout, unless we are backing up
+    wait_for_modifiable: -> 
+        @wait_for_available 20, ['available', 'backing-up']
+        if @get_configuration(true).DBInstanceStatus is 'backing-up'
+            u.reply 'Database ' + this + ' is currently backing up.  We have to wait for it to finish before continuing.  This may take a while...'
+            @wait_for_available 2000, ['available']
 
     #Temporarily grants access for this ip_address (or array of ip addresses) to talk to this database.
     #
@@ -3831,11 +3839,8 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 VpcSecurityGroupIds: new_security_groups
             }
 
-            @wait_for_available 20, ['available', 'backing-up']
-            if @get_configuration(true).DBInstanceStatus is 'backing-up'
-                u.reply 'Database ' + this + ' is currently backing up.  We have to wait for it to finish before continuing.  This may take a while...'
-                @wait_for_available 2000, ['available']
             
+            @wait_for_modifiable()
             @rds 'modifyDBInstance', params
             try
                 u.log 'Adding group initiated, waiting for it to complete'
@@ -3851,6 +3856,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                     ApplyImmediately: true
                     VpcSecurityGroupIds: current_security_groups
                 }
+                @wait_for_modifiable()
                 @rds 'modifyDBInstance', params
                 u.log 'Removing group initiated'
 
