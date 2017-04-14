@@ -388,14 +388,22 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
     schedule_once: (timeout, method, params...) ->
         u.context().server.schedule_once timeout, @type, @id, method, params...
 
-    #If we want to call a command added via a template from our own code, this returns
-    #the function (pre-bound)
-    get_template_command: (name) ->
+    #This returns an object with all the functions that the template has, already pre-bound
+    #So, you can do instance.t().template_fn()
+    t: ->
         template = @template()
-        fn = template?[name]
-        if typeof(fn) isnt 'function'
-            throw new Error 'no template command named ' + name
-        return fn.bind(template, this)
+        if not template
+            return null
+        
+        #See if we have this cached on the template object
+        if not template._bbobjects_t
+            t = template._bbobjects_t = {}
+            
+            for k, v of template
+                if typeof(v) is 'function'
+                    ret[k] = v.bind(template, this)
+        
+        return template._bbobjects_t
 
     toString: -> @type + ' ' + @id
 
