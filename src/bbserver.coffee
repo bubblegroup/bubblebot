@@ -230,6 +230,11 @@ bbserver.Server = class Server
                 context.current_user = ->
                     if context.user_id
                         bbobjects.instance 'User', context.user_id
+                        
+                context.create_sub_logger = =>
+                    sub_logger = @create_sub_logger u.fiber_id() + ' ' + req.url
+                    link = sub_logger.get_tail_url()
+                        
                 fn req, res
             catch err
                 u.report 'Error handling http request:\n' + req.url + '\n' + err.stack
