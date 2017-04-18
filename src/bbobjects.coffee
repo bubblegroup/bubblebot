@@ -2407,6 +2407,13 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
     #Get all the keys in this set as an array
     all_credentials: ->
         return (k[CREDENTIAL_PREFIX.length..] for k, v of @properties() when k.indexOf(CREDENTIAL_PREFIX) is 0)
+        
+    #Returns all the credentials in this set as a {key: value} object
+    get_all_credentials: ->
+        ret = {}
+        for k, v of @properties() when k.indexOf(CREDENTIAL_PREFIX) is 0
+            ret[k[CREDENTIAL_PREFIX.length..]] = v
+        return ret
 
     get_credential: (name) ->
         @get CREDENTIAL_PREFIX + name
