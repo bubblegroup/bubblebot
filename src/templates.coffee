@@ -1798,20 +1798,27 @@ templates.EC2Build = class EC2Build
     # (Does not seem to be a straightforward way of getting this chart from the API)
     base_ami: (region) ->
         BY_REGION =
-            'us-east-1': 'ami-f5f41398'
-            'us-west-2': 'ami-d0f506b0'
-            'us-west-1': 'ami-6e84fa0e'
-            'eu-west-1': 'ami-b0ac25c3'
-            'eu-central-1': 'ami-d3c022bc'
-            'ap-southeast-1': 'ami-1ddc0b7e'
-            'ap-northeast-2': 'ami-cf32faa1'
-            'ap-northeast-1': 'ami-29160d47'
-            'ap-southeast-2': 'ami-0c95b86f'
-            'sa-east-1': 'ami-fb890097'
-            'cn-north-1': 'ami-05a66c68'
-            'us-gov-west-1': 'ami-e3ad1282'
+            'us-east-1': 'ami-c58c1dd3'
+            'us-east-2': 'ami-4191b524'
+            'us-west-2': 'ami-4836a428'
+            'us-west-1': 'ami-7a85a01a'
+            'ca-central-1': 'ami-0bd66a6f'
+            'eu-west-1': 'ami-01ccc867'
+            'eu-west-2': 'ami-b6daced2'
+            'eu-central-1': 'ami-b968bad6'
+            'ap-southeast-1': 'ami-fc5ae39f'
+            'ap-northeast-2': 'ami-9d15c7f3'
+            'ap-northeast-1': 'ami-923d12f5'
+            'ap-southeast-2': 'ami-162c2575'
+            'ap-south-1': 'ami-52c7b43d'
+            'sa-east-1': 'ami-37cfad5b'
+            'cn-north-1': 'ami-3fe13752'
+            'us-gov-west-1': 'ami-34e76355'
 
-        return BY_REGION[region]
+        ami = BY_REGION[region]
+        if not ami?
+            throw new Error 'we do not have an Amazon Linux AMI coded for region ' + region
+        return ami
 
     #Informs the box that it is now active.  Defaults to no-op.
     make_active: (ec2instance) ->
