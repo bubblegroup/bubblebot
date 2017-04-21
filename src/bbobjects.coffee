@@ -2172,13 +2172,21 @@ bbobjects.Environment = class Environment extends BubblebotObject
         ]
         help: 'Sets a credential for this environment'
 
-        groups: (set_name, name, value, overwrite) ->
-            if not value?
-                throw new Error 'assertion error: ' + JSON.stringify({set_name, name, value, overwrite})
-            if overwrite and @is_development()
-                return constants.ADMIN
-            else
-                return constants.BASIC
+        groups: constants.BASIC
+                
+    #Deletes an already set credential
+    delete_credential: (set_name, name) ->
+        @get_credential_set(set_name).delete_credential(name)
+    
+    delete_credential_cmd:
+        params: [
+            {name: 'set_name', required: true, help: 'The name of the credential-set to delete'}
+            {name: 'name', required: true, help: 'The name of the credential to delete'}
+        ]
+        help: 'Deletes a credential from this environment'
+        
+        groups: constants.BASIC
+        
 
     #copies the credential set of another environment
     copy_credential_set: (set_name, copy_from_env, skip_overwrites) ->
@@ -2403,15 +2411,18 @@ bbobjects.CredentialSet = class CredentialSet extends BubblebotObject
         if not no_log
             u.announce msg
             u.reply msg
+            
+    delete_credential: (name) ->
+        @set CREDENTIAL_PREFIX + name, null
 
     #Get all the keys in this set as an array
     all_credentials: ->
-        return (k[CREDENTIAL_PREFIX.length..] for k, v of @properties() when k.indexOf(CREDENTIAL_PREFIX) is 0)
+        return (k[CREDENTIAL_PREFIX.length..] for k, v of @properties() when k.indexOf(CREDENTIAL_PREFIX) is 0 and v?)
         
     #Returns all the credentials in this set as a {key: value} object
     get_all_credentials: ->
         ret = {}
-        for k, v of @properties() when k.indexOf(CREDENTIAL_PREFIX) is 0
+        for k, v of @properties() when k.indexOf(CREDENTIAL_PREFIX) is 0 and v?
             ret[k[CREDENTIAL_PREFIX.length..]] = v
         return ret
 
