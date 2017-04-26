@@ -3838,7 +3838,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         #If not in the bubblebot environment, we have to use another server to get the information
         if @environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
             #grab the first available server in this environment
-            server = service.environment().describe_instances()[0]
+            server = @environment().describe_instances()[0]
             output = server.run "dig +noall +answer #{host}"
             in_a = output.indexOf('IN A ')
             if in_a is -1
@@ -3851,7 +3851,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
             
     #Gets the external ip address of this instance
     get_public_ip_address: ->
-        dest_hostname = service.endpoint().host
+        dest_hostname = @endpoint().host
         block = u.Block 'getting ip'
         #@8.8.8.8 is google's nameservers: we use them to make sure we are getting the public,
         #not private, ip
@@ -4659,3 +4659,4 @@ templates = require './templates'
 bbdb = require './bbdb'
 databases = require './databases'
 dns = require 'dns'
+child_process = require 'child_process'
