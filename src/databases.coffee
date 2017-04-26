@@ -22,14 +22,16 @@ databases.Postgres = class Postgres
 
     #Gets the connection string in the format that dblink expects
     #
-    #If force_internal is true, forces the internal ip address by doing a dns lookup
-    #of the hostname
-    get_dblink_connection_string: (force_internal) ->
+    #ip can be 'internal' or 'external'.  If null, we just use the default hostname;
+    #if set, we use the internal or external ip.
+    get_dblink_connection_string: (ip) ->
         endpoint = @get_endpoint()
         {user, password, host, port, database} = endpoint
         
-        if force_internal
+        if ip is 'internal'
             host = @rds_instance.get_private_ip_address()
+        else if ip is 'external'
+            host = @rds_instance.get_public_ip_address()
         
         conn_string = "user=#{user} password=#{password} host=#{host} port=#{port} dbname=#{database}"
         return conn_string
