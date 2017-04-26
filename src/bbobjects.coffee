@@ -3830,6 +3830,38 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         if @get_configuration(true).DBInstanceStatus is 'backing-up'
             u.reply 'Database ' + this + ' is currently backing up.  We have to wait for it to finish before continuing.  This may take a while...'
             @wait_for_available 2000, ['available']
+            
+    #Gets the within-vpn ip of this instance
+    get_private_ip_address: ->
+        host = @endpoint().host
+    
+        #If not in the bubblebot environment, we have to use another server to get the information
+        if @environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
+            #grab the first available server in this environment
+            server = service.environment().describe_instances()[0]
+            output = server.run "dig +noall +answer #{host}"
+            in_a = output.indexOf('IN A ')
+            if in_a is -1
+                throw new Error 'unable to parse dig output: ' + output
+            return output[in_a + 5..].trim()
+        else
+            block = u.Block 'dns lookup'
+            dns.resolve host, block.make_cb()
+            return block.wait()
+            
+    #Gets the external ip address of this instance
+    get_public_ip_address: ->
+        dest_hostname = service.endpoint().host
+        block = u.Block 'getting ip'
+        #@8.8.8.8 is google's nameservers: we use them to make sure we are getting the public,
+        #not private, ip
+        command = "dig +noall +answer #{dest_hostname} @8.8.8.8"
+        child_process.exec command, block.make_cb()
+        output = block.wait()
+        in_a = output.indexOf('IN A ')
+        if in_a is -1
+            throw new Error 'unable to parse dig output: ' + output
+        return output[in_a + 5..].trim()
 
     #Temporarily grants access for this ip_address (or array of ip addresses) to talk to this database.
     #
@@ -4626,3 +4658,4 @@ bbserver = require './bbserver'
 templates = require './templates'
 bbdb = require './bbdb'
 databases = require './databases'
+dns = require 'dns'
