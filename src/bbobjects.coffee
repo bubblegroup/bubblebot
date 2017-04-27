@@ -956,6 +956,8 @@ bbobjects.put_s3_config = (Key, Body) ->
 
 temporary_security_groups_in_use = {}
 
+modifying_security_groups = {}
+
 bbobjects.Environment = class Environment extends BubblebotObject
     create: (type, template, region, vpc) ->
         templates.verify 'Environment', template
@@ -3870,28 +3872,44 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         if not Array.isArray ip_address
             ip_address = [ip_address]
             
-        #Need to wait for stable, since if we are in the process of modifying security groups,
-        #the list of current groups will not be active
-        @wait_for_modifications_complete()
-
         #Create a temporary security group
         rules = ({IpRanges: [{CidrIp: ip_a + '/32'}], IpProtocol: '-1'} for ip_a in ip_address)
         return @environment().with_temporary_security_group rules, (security_group_id) =>
-            current_security_groups = (group.VpcSecurityGroupId for group in @get_configuration(true).VpcSecurityGroups ? [])
-            u.log 'We are going to open temporary access to ' + this + ' from ' + ip_address
-            u.log 'Currently, ' + this + ' has the following security groups set: ' + current_security_groups.join(', ')
-            u.log 'We are going to add temporary security group ' + security_group_id
-            new_security_groups = [security_group_id].concat current_security_groups
-
-            params = {
-                DBInstanceIdentifier: @id
-                ApplyImmediately: true
-                VpcSecurityGroupIds: new_security_groups
-            }
-
+        
+            #Pause to to allow any changes to the temporary security group to take effect.
+            #Unfortunately there doesn't seem to be an API to track this
+            u.pause 2000
             
-            @wait_for_modifiable()
-            @rds 'modifyDBInstance', params
+            #Acquire a lock on changing this DBs secuirty groups
+            while modifying_security_groups[@id]
+                u.pause 1000
+            modifying_security_groups[@id] = true
+                
+            try
+                #Need to wait for stable, since if we are in the process of modifying security groups,
+                #the list of current groups will not be up to date
+                @wait_for_modifications_complete()
+                current_security_groups = (group.VpcSecurityGroupId for group in @get_configuration(true).VpcSecurityGroups ? [])
+                
+                u.log 'We are going to open temporary access to ' + this + ' from ' + ip_address
+                u.log 'Currently, ' + this + ' has the following security groups set: ' + current_security_groups.join(', ')
+                u.log 'We are going to add temporary security group ' + security_group_id
+                
+                new_security_groups = [security_group_id].concat current_security_groups
+
+
+                params = {
+                    DBInstanceIdentifier: @id
+                    ApplyImmediately: true
+                    VpcSecurityGroupIds: new_security_groups
+                }
+            
+                @wait_for_modifiable()
+                @rds 'modifyDBInstance', params
+                
+            finally
+                delete modifying_security_groups[@id]
+                
             try
                 u.log 'Adding group initiated, waiting for it to complete'
                 @wait_for_modifications_complete(100)
