@@ -1609,7 +1609,7 @@ class Cancel extends Command
 class Shutdown extends Command
     constructor: (@server) ->
 
-    help: 'Shuts bubblebot down.\nDefault is to do a graceful shutdown then restart it.'
+    help: 'Shuts bubblebot down and restarts it.\nDefault is to do a graceful shutdown, followed by a restart'
     params: [
         {name: 'immediate', type: 'boolean', help: 'Does an immediate shutdown instead of a graceful shutdown'}
         {name: 'no restart', type: 'boolean', help: 'Tells supervisor not to restart bubblebot after exiting'}
