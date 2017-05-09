@@ -395,15 +395,15 @@ bbobjects.BubblebotObject = class BubblebotObject extends bbserver.CommandTree
         if not template
             return null
         
-        #See if we have this cached on the template object
-        if not template._bbobjects_t
-            t = template._bbobjects_t = {}
+        #See if we have this cached on us
+        if not @_bbobjects_t
+            t = @_bbobjects_t = {}
             
             for k, v of template
                 if typeof(v) is 'function'
                     t[k] = v.bind(template, this)
         
-        return template._bbobjects_t
+        return @_bbobjects_t
 
     toString: -> @type + ' ' + @id
 
