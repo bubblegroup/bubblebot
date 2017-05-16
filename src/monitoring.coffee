@@ -195,16 +195,18 @@ monitoring.Monitor = class Monitor
     #Returns true if we have any dependencies who don't have a confirmed health
     unhealthy_dependencies: (policy) ->
         for dep in policy.dependencies
-            dep_uid = @_get_uid(dep)
-            if @health[dep_uid] not in [HEALTHY, NOT_MONITORING]
-                #make sure we are monitoring...
-                if not @health[dep_uid]
-                    @monitor dep
-                return true
+            if dep?
+                dep_uid = @_get_uid(dep)
+                if @health[dep_uid] not in [HEALTHY, NOT_MONITORING]
+                    #make sure we are monitoring...
+                    if not @health[dep_uid]
+                        @monitor dep
+                    return true
 
         #If we have any upstream dependencies, make sure we are monitoring them
         for dependency in policy.dependencies ? []
-            @monitor dependency
+            if dependency?
+                @monitor dependency
 
         return false
 
