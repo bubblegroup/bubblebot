@@ -3553,7 +3553,31 @@ bbobjects.EC2Instance = class EC2Instance extends AbstractBox
 
     bubblebot_role: -> @get_tags()[config.get('bubblebot_role_tag')]
 
-
+#Tries to run function and retries if we get a retryable state error.  AWS API sometimes
+#throws errors for things like security groups being in a bad state that we can't monitor upfront
+retry_state_errors = (fn, duration = 2 * 60 * 1000) ->
+    start = Date.now()
+    while true
+        try
+            return fn()
+        catch err
+            #if we're past our retry window, give up
+            if Date.now() - start > duration
+                throw err
+                
+            #See if this is one of the error messages we should retry
+            can_retry = false
+            if String(err).indexOf('InvalidDBSecurityGroupState') isnt -1
+                can_retry = true
+                
+            #If we can retry, pause for a bit then continue looping, otherwise throw the error
+            if can_retry
+                u.log 'retry_state_errors: retrying ' + err.message
+                u.pause 3000
+            else
+                throw err
+            
+            
 
 
 #Storage for credentials that we don't store in the bubblebot database
@@ -3905,7 +3929,8 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                 }
             
                 @wait_for_modifiable()
-                @rds 'modifyDBInstance', params
+                retry_state_errors =>
+                    @rds 'modifyDBInstance', params
                 
             finally
                 delete modifying_security_groups[@id]
@@ -3925,7 +3950,9 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
                     VpcSecurityGroupIds: current_security_groups
                 }
                 @wait_for_modifiable()
-                @rds 'modifyDBInstance', params
+                retry_state_errors =>
+                    @rds 'modifyDBInstance', params
+                    
                 u.log 'Removing group initiated'
 
     #Waits til the instance is in the available state
