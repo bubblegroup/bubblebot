@@ -101,6 +101,13 @@ templates.Service = class Service
 
         #Allows us to be interrupted by another deploy
         ensure_tested = =>
+            #Let services optionally override requiring the tests to pass
+            if instance.get 'service_always_skip_tests'
+                u.reply 'We have disabled running the test suit on ' + instance
+                
+                return true
+        
+        
             my_fiber_id = u.fiber_id()
             deployment_interrupts[my_fiber_id] = {instance_id: instance.id, version, fiber: u.fiber()}
             try
