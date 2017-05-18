@@ -3569,6 +3569,8 @@ retry_state_errors = (fn, duration = 2 * 60 * 1000) ->
             can_retry = false
             if String(err).indexOf('InvalidDBSecurityGroupState') isnt -1
                 can_retry = true
+            if String(err).indexOf('InvalidDBInstanceState') isnt -1
+                can_retry = true
                 
             #If we can retry, pause for a bit then continue looping, otherwise throw the error
             if can_retry
