@@ -320,9 +320,13 @@ monitoring.Monitor = class Monitor
         protocol = policy.endpoint.protocol
         retries = policy.endpoint.retries ? 2
         timeout = policy.endpoint.timeout ? 10000
+        
+        object_environment = object.environment()
+        if not object_environment
+            return [false, 'object does not have an environment']
 
         #Compensate for cross-vpc traffic
-        if object.environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
+        if object_environment.get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
             timeout += 20000
 
         while retries > 0
