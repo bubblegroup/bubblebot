@@ -13,7 +13,7 @@ u.run_local = (cmd, options = {}) ->
     logger 'Running locally: ' + cmd
     block = u.Block 'run_local ' + cmd
 
-    child_process.exec cmd, {encoding: 'utf8', env}, (err, stdout, stderr) ->
+    child_process.exec cmd, {encoding: 'utf8', env, maxBuffer: 10000*1024}, (err, stdout, stderr) ->
         if stdout
             logger stdout
         if stderr
