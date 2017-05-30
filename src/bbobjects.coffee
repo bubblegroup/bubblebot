@@ -3867,7 +3867,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         if @environment().get_vpc() isnt bbobjects.bubblebot_environment().get_vpc()
             #grab the first available server in this environment
             server = @environment().describe_instances()[0]
-            output = server.run "dig +noall +answer #{host}"
+            output = server.run("dig +noall +answer #{host}").replace(/[\s]+/g, ' ')
             in_a = output.indexOf('IN A ')
             if in_a is -1
                 throw new Error 'unable to parse dig output: ' + output
@@ -3885,7 +3885,7 @@ bbobjects.RDSInstance = class RDSInstance extends AbstractBox
         #not private, ip
         command = "dig +noall +answer #{dest_hostname} @8.8.8.8"
         child_process.exec command, block.make_cb()
-        output = block.wait()
+        output = block.wait().replace(/[\s]+/g, ' ')
         in_a = output.indexOf('IN A ')
         if in_a is -1
             throw new Error 'unable to parse dig output: ' + output
