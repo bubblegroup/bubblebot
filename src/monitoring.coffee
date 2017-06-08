@@ -345,6 +345,10 @@ monitoring.Monitor = class Monitor
 
                 expected_status = policy.endpoint.expected_status ? 200
                 expected_body = policy.endpoint.expected_body ? null
+                if not Array.isArray expected_status
+                    expected_status = [expected_status]
+                if expected_body? and not Array.isArray expected_body
+                    expected_body = [expected_body]
 
                 start = Date.now()
                 block = u.Block clean_url
@@ -359,7 +363,7 @@ monitoring.Monitor = class Monitor
                     latency = Date.now() - start
                     clearTimeout timed_out
 
-                    if res.statusCode isnt expected_status or expected_body and res.body.indexOf(expected_body) is -1
+                    if res.statusCode not in expected_status or (expected_body and (b for b in expected_body when res.body.indexOf(b) isnt -1).length is 0)
                         result = false
                         reason = 'Could not hit ' + clean_url + ': ' + res.statusCode + ' ' + res.body
                     else
