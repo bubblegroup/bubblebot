@@ -252,11 +252,16 @@ u.retry = (a, b, c) ->
 #Creates a lock object that fibers can acquire and release
 #
 #Acquiring the same lock multiple times has no effect
-u.Lock = -> new Lock()
+#
+#n is the number of parallel fibers that can aquire the same lock.  Defaults to 1.
+u.Lock = -> new Lock(acquire_timout, n)
 
 class Lock
-    constructor: (@acquire_timeout) ->
+    constructor: (@acquire_timeout, @n = 1) ->
         @waiting_on = []
+
+        #fibers currently holding the lock 
+        @owners = []
 
     #Acquires the lock, runs the function, then releases the lock.
     #This is the recommended way to use locks... if we use a lower-level
@@ -270,26 +275,29 @@ class Lock
 
     acquire: ->
         #while someone else owns this lock, wait...
-        while @owner? and @owner isnt Fiber.current
+        while @owners.length is @n and Fiber.current not in @owners
             block = u.Block 'waiting on lock'
             @waiting_on.push block
             block.wait(@acquire_timeout)
 
         #own this lock
-        @owner = Fiber.current
+        @owners.push Fiber.current
 
     release: ->
         #Only the holding thread can release
-        if @owner isnt Fiber.current
+        if Fiber.current not in @owners
             throw new Error 'cannot release lock, you do not own it'
 
         #Release the lock
-        @owner = null
+        u.array_remove @owners, Fiber.current
 
         #shift the first thing waiting on this lock off the stack and let it
         #try to acquire the lock again
         next = @waiting_on.shift()
         next?.success()
+        
+        
+
 
 
 #Some standard error codes
