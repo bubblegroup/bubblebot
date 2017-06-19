@@ -254,7 +254,7 @@ u.retry = (a, b, c) ->
 #Acquiring the same lock multiple times has no effect
 #
 #n is the number of parallel fibers that can aquire the same lock.  Defaults to 1.
-u.Lock = -> new Lock(acquire_timout, n)
+u.Lock = (acquire_timeout, n) -> new Lock acquire_timeout, n
 
 class Lock
     constructor: (@acquire_timeout, @n = 1) ->
