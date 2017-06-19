@@ -503,6 +503,9 @@ u.sub_fiber = (fn) ->
     u.SyncRun 'sub_fiber', ->
         try
             Fiber.current.current_context = u.extend {}, shared_context
+            #Build a copy of the loggers object so u.with_logger can override logger for just this sub-fiber
+            Fiber.current.current_context.loggers = u.extend {}, (Fiber.current.current_context.loggers ? {})
+            
             if Fiber.current.current_context.original_message
                 Fiber.current.current_context.original_message + ' (sub-fiber)'
             if Fiber.current.current_context.name
