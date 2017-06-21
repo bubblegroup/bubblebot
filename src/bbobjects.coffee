@@ -2711,12 +2711,38 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
             return
 
         @template().deploy this, version, rollback, deployment_message
-
+        
     deploy_cmd:
         sublogger: true
         params: [{name: 'version', required: true, help: 'The version to deploy'}, {name: 'rollback', type: 'boolean', help: 'If true, allows deploying versions that are not ahead of the current version'}]
         help: 'Deploys the given version to this service.  Ensures that the new version is tested and ahead of the current version'
         groups: constants.BASIC
+        
+    #For development services, deploys a version without tests and without redeploying the service
+    quick_deploy: (version) ->
+        if @is_production()
+            throw u.expected_error 'This is a production service: we do not allow quick_deploy on it'
+            
+        #Get the canonical version
+        version = @codebase().ensure_version version, @version()
+        
+        u.reply 'Deploying version ' + version
+        instance.set 'version', version
+        if @t().quick_deploy?
+            @t().quick_deploy version
+        else
+            u.reply 'We do not have a quick deploy function for this service, so doing this the slow way...'
+            @replace()
+        u.reply 'Deployment complete'
+        
+    quick_deploy_cmd:
+        sublogger: true
+        params: [{name: 'version', required: true, help: 'The version to deploy'}]
+        help: 'Deploys the given version to this service, without running tests, and without replacing the server if possible'
+        groups: constants.BASIC
+        
+        
+
 
     #Returns the current version of this service
     version: -> @get 'version'
