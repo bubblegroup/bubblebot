@@ -790,8 +790,16 @@ null_switcher = (service_instance) ->
 #If switcher is null, we don't keep the endpoint constant -- instead, we just
 #replace the box
 templates.SingleBoxService = class SingleBoxService extends templates.Service
-    constructor: (@build_id, @test_ids, @switcher, @monitoring_policy) ->
+    constructor: (@build_id, @test_ids, @switcher, @monitoring_policy, quick_deploy) ->
         @switcher ?= null_switcher
+        
+        #If we pass in a quick deploy function, set it up so it gets passed the version
+        #and the ec2instance
+        if quick_deploy
+            @quick_deploy = (instance, version) ->
+                ec2instance = @get_active_instance(instance)
+                quick_deploy ec2instance, version
+                
 
     #Retrieve the ec2build object for this service
     ec2build: -> bbobjects.instance 'EC2Build', @build_id

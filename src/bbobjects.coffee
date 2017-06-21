@@ -2727,7 +2727,7 @@ bbobjects.ServiceInstance = class ServiceInstance extends BubblebotObject
         version = @codebase().ensure_version version, @version()
         
         u.reply 'Deploying version ' + version
-        instance.set 'version', version
+        @set 'version', version
         if @t().quick_deploy?
             @t().quick_deploy version
         else
