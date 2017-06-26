@@ -799,6 +799,8 @@ templates.SingleBoxService = class SingleBoxService extends templates.Service
             @quick_deploy = (instance, version) ->
                 ec2instance = @get_active_instance(instance)
                 quick_deploy ec2instance, version
+                #normally this gets set on building a new server, so we have to update it here
+                ec2instance.set 'software_version', version
                 
 
     #Retrieve the ec2build object for this service
