@@ -1034,22 +1034,22 @@ bbobjects.Environment = class Environment extends BubblebotObject
         return templates.get('Environment', template)
 
     #Destroys this environment
-    destroy: ->
+    destroy: (auto_confirm_recursive) ->
         children = @children()
         if children.length > 0
-            u.reply 'This environment still has children:\n' + (String(child) for child in children).join('\n')
-            if not u.confirm 'Do you want to recursively destroy them?'
-                u.reply 'Okay, aborting'
-                return
-            else
-                for child in children
-                    u.reply 'Destroying: ' + child
-                    if child.service_destroy
-                        child.service_destroy()
-                    else if child.destroy
-                        child.destroy()
-                    else
-                        throw new Error 'no destroy function for ' + child
+            if not auto_confirm_recursive
+                u.reply 'This environment still has children:\n' + (String(child) for child in children).join('\n')
+                if not u.confirm 'Do you want to recursively destroy them?'
+                    u.reply 'Okay, aborting'
+                    return
+            for child in children
+                u.reply 'Destroying: ' + child
+                if child.service_destroy
+                    child.service_destroy()
+                else if child.destroy
+                    child.destroy()
+                else
+                    throw new Error 'no destroy function for ' + child
 
         if @children().length > 0
             throw new Error 'still children!  bug in destroy function?'
