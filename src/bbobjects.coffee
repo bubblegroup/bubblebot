@@ -4470,7 +4470,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         groups: constants.BASIC
 
     wait_for_available: (retries = 100, available_statuses) ->
-        available_statuses ?= ['available', 'backing-up', 'modifying']
+        available_statuses ?= ['available', 'backing-up', 'modifying', 'storage-full']
 
         #first do a quick check using cached data...
         if @status() in available_statuses
