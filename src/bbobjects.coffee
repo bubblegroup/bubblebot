@@ -15,7 +15,6 @@ bbobjects.instance = (type, id) ->
 #Returns the bubblebot environment
 bbobjects.bubblebot_environment = ->
     environment = bbobjects.instance 'Environment', constants.BUBBLEBOT_ENV
-
     return environment
 
 
