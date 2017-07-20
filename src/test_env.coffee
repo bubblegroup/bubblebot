@@ -1,5 +1,5 @@
 fs = require 'fs'
-bbobjects = require './bbobjects'
+# bbobjects = require './bbobjects'
 
 # hacky, where will this be in production ? 
 # test_credentials = JSON.parse(fs.readFileSync('AKIAIEFNCTPKEJ4GUE3A.json'))
