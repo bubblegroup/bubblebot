@@ -617,9 +617,10 @@ templates.RDSService = class RDSService extends Service
 
                             waiting_on = []
                             for svc in services
-                                waiting_on.push u.sub_fiber =>
-                                    svc.replace()
-                                    return null
+                                if svc
+                                    waiting_on.push u.sub_fiber =>
+                                        svc.replace()
+                                        return null
 
                             #Wait for all the replaces to finish...
                             wait() for wait in waiting_on
