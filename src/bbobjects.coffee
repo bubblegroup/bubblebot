@@ -2368,6 +2368,7 @@ bbobjects.Environment = class Environment extends BubblebotObject
             help: 'Cleans up old instances.\nSearches ALL environments, not just the one you call it one.\nIf auto_delete_mode is true, actually does the deletes, otherwise just lists them'
             params
             groups
+            sublogger: true
         }
 
 
