@@ -1,4 +1,5 @@
 lib
 node_modules
 static/lib
-*.json
+configuration.json
+AKIAIEFNCTPKEJ4GUE3A.json
