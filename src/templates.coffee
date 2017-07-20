@@ -594,7 +594,7 @@ templates.RDSService = class RDSService extends Service
 
             u.reply 'Backups disabled, running upgrade functions'
 
-            upgrade_fn new_rds_instance, for_real
+            upgrade_fn new_rds_instance, for_real, instance
 
             u.reply 'Upgrade function complete, restoring BackupRetentionPeriod and MultiAZ'
 
