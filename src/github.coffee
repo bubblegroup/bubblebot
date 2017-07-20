@@ -110,27 +110,24 @@ github.Repo = class Repo
 
     #hits the url and returns the raw response.
     _request: (url, method, body) ->
-        block = u.Block 'hitting github'
-        options = {headers: @headers()}
-        if method
-            options.method = method
-        if body
-            options.body = JSON.stringify body
-            options.headers['Content-Type'] = 'application/json'
+        u.log 'Hitting github: ' + method + ' ' + url
+        return global_lock().run ->
+            block = u.Block 'hitting github'
+            options = {headers: @headers()}
+            if method
+                options.method = method
+            if body
+                options.body = JSON.stringify body
+                options.headers['Content-Type'] = 'application/json'
 
-        if (method ? 'GET').toLowerCase() is 'get'
-            use_cache = true
-            cached_data = github_cache.get url
-            if cached_data?
-                options.headers['If-None-Match'] = cached_data.etag
-        else
-            use_cache = false
+            if (method ? 'GET').toLowerCase() is 'get'
+                use_cache = true
+                cached_data = github_cache.get url
+                if cached_data?
+                    options.headers['If-None-Match'] = cached_data.etag
+            else
+                use_cache = false
 
-        #See comment on global lock
-        global_lock().run ->
-            #Insert a short pause to avoid pounding github too quickly
-            u.pause 100
-        
             request url, options, block.make_cb()
             res = block.wait()
 
