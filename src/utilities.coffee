@@ -254,10 +254,10 @@ u.retry = (a, b, c) ->
 #Acquiring the same lock multiple times has no effect
 #
 #n is the number of parallel fibers that can aquire the same lock.  Defaults to 1.
-u.Lock = (acquire_timeout, n) -> new Lock acquire_timeout, n
+u.Lock = (acquire_timeout, n, hold_timeout) -> new Lock acquire_timeout, n
 
 class Lock
-    constructor: (@acquire_timeout, @n = 1) ->
+    constructor: (@acquire_timeout, @n = 1, @name = '') ->
         @waiting_on = []
 
         #fibers currently holding the lock 
@@ -267,6 +267,9 @@ class Lock
     #This is the recommended way to use locks... if we use a lower-level
     #function there is no guarantee the lock is ever released.
     run: (fn) ->
+        if Fiber.current in @owners
+            return fn()
+        
         @acquire()
         try
             return fn()
@@ -274,11 +277,20 @@ class Lock
             @release()
 
     acquire: ->
+        if not Fiber.current
+            throw new Error 'Cannot acquire a lock off-fiber!'
+            
+        if Fiber.current in @owners
+            throw new Error 'You already hold this lock!'
+    
         #while someone else owns this lock, wait...
         while @owners.length is @n and Fiber.current not in @owners
-            block = u.Block 'waiting on lock'
-            @waiting_on.push block
-            block.wait(@acquire_timeout)
+            u.log 'Waiting on lock ' + @name + ' (owned by ' + (u.fiber_id(owner) for owner in @owners).join(', ') + ')'
+            
+            if @owners.length is @n and Fiber.current not in @owners
+                block = u.Block 'waiting on lock'
+                @waiting_on.push block
+                block.wait(@acquire_timeout)
 
         #own this lock
         @owners.push Fiber.current
@@ -295,6 +307,9 @@ class Lock
         #try to acquire the lock again
         next = @waiting_on.shift()
         next?.success()
+        
+        if next
+            u.log 'Released lock ' + @name
         
         
 

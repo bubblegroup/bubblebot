@@ -6,7 +6,7 @@ _gl = null
 #Github does not allow accessing their API in parallel, so we have a lock that enforces
 #only one request at a time talks to github.  
 global_lock = ->
-    _gl ?= u.Lock()
+    _gl ?= u.Lock(null, null, 'github')
     return _gl
 
 github.Repo = class Repo
