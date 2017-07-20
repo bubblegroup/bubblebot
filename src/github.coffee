@@ -111,7 +111,7 @@ github.Repo = class Repo
     #hits the url and returns the raw response.
     _request: (url, method, body) ->
         u.log 'Hitting github: ' + method + ' ' + url
-        return global_lock().run ->
+        return global_lock().run =>
             u.log 'lock acquired'
             block = u.Block 'hitting github'
             options = {headers: @headers()}
