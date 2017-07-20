@@ -168,7 +168,7 @@ slack.SlackClient = class SlackClient extends events.EventEmitter
         #Only one thread can be trying to talk to a single user at a time...
         #We set a long timeout because we'd rather not timeout from multiple
         #threads waiting on the same user
-        @talking_to_lock[user_id] ?= u.Lock(60 * 60 * 1000)
+        @talking_to_lock[user_id] ?= u.Lock(60 * 60 * 1000, null, 'talking to ' + user_id)
 
         return @talking_to_lock[user_id].run =>
             @rate_limit()
