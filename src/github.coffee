@@ -111,6 +111,7 @@ github.Repo = class Repo
     #hits the url and returns the raw response.
     _request: (url, method, body) ->
         return global_lock().run =>
+            u.log 'Hitting ' + url
             block = u.Block 'hitting github'
             options = {headers: @headers()}
             if method
@@ -137,6 +138,7 @@ github.Repo = class Repo
                 if etag?
                     github_cache.set url, {etag, res}
 
+            u.log 'Done hitting ' + url
             return res
 
     #Retrieves the body from the response, throwing an error if not retrievable
