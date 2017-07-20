@@ -1,5 +1,14 @@
 github = exports
 
+
+_gl = null
+
+#Github does not allow accessing their API in parallel, so we have a lock that enforces
+#only one request at a time talks to github.  
+global_lock = ->
+    _gl ?= u.Lock()
+    return _gl
+
 github.Repo = class Repo
     constructor: (@org, @project, @username, @access_token, @abbrev = 10) ->
 
@@ -117,17 +126,22 @@ github.Repo = class Repo
         else
             use_cache = false
 
-        request url, options, block.make_cb()
-        res = block.wait()
+        #See comment on global lock
+        global_lock().run ->
+            #Insert a short pause to avoid pounding github too quickly
+            u.pause 100
+        
+            request url, options, block.make_cb()
+            res = block.wait()
 
-        if res.statusCode is 304
-            res = cached_data.res
-        else if use_cache
-            etag = res.headers['etag']
-            if etag?
-                github_cache.set url, {etag, res}
+            if res.statusCode is 304
+                res = cached_data.res
+            else if use_cache
+                etag = res.headers['etag']
+                if etag?
+                    github_cache.set url, {etag, res}
 
-        return res
+            return res
 
     #Retrieves the body from the response, throwing an error if not retrievable
     extract: (res, url) ->
