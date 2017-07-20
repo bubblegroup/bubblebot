@@ -285,7 +285,7 @@ class Lock
     
         #while someone else owns this lock, wait...
         while @owners.length is @n and Fiber.current not in @owners
-            u.log 'Waiting on lock ' + @name + ' (owned by ' + (u.fiber_id(owner) for owner in @owners).join(', ') + ')'
+            #u.log 'Waiting on lock ' + @name + ' (owned by ' + (u.fiber_id(owner) for owner in @owners).join(', ') + ')'
             
             if @owners.length is @n and Fiber.current not in @owners
                 block = u.Block 'waiting on lock'
@@ -308,8 +308,8 @@ class Lock
         next = @waiting_on.shift()
         next?.success()
         
-        if next
-            u.log 'Released lock ' + @name
+        #if next
+        #    u.log 'Released lock ' + @name
         
         
 

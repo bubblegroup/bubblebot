@@ -1,14 +1,18 @@
 github = exports
 
+_lock =  null
+_last_sent = null
 
-_gl = null
-
-#Github does not allow accessing their API in parallel, so we have a lock that enforces
-#only one request at a time talks to github.  
-global_lock = ->
-    _gl ?= u.Lock(null, null, 'github')
-    return _gl
-
+#Prevent us from hitting github too frequently
+rate_limit = ->
+    _lock ?= u.Lock(5 * 60 * 1000, null, 'github rate limit')
+    
+    _lock.run =>
+        if _last_sent and Date.now() - _last_sent < 200
+            u.pause 200 - (Date.now() - _last_sent)
+        _last_sent = Date.now()
+        
+    
 github.Repo = class Repo
     constructor: (@org, @project, @username, @access_token, @abbrev = 10) ->
 
@@ -110,36 +114,35 @@ github.Repo = class Repo
 
     #hits the url and returns the raw response.
     _request: (url, method, body) ->
-        return global_lock().run =>
-            u.log 'Hitting ' + url
-            block = u.Block 'hitting github'
-            options = {headers: @headers()}
-            if method
-                options.method = method
-            if body
-                options.body = JSON.stringify body
-                options.headers['Content-Type'] = 'application/json'
+        rate_limit()
+        
+        block = u.Block 'hitting github'
+        options = {headers: @headers()}
+        if method
+            options.method = method
+        if body
+            options.body = JSON.stringify body
+            options.headers['Content-Type'] = 'application/json'
 
-            if (method ? 'GET').toLowerCase() is 'get'
-                use_cache = true
-                cached_data = github_cache.get url
-                if cached_data?
-                    options.headers['If-None-Match'] = cached_data.etag
-            else
-                use_cache = false
+        if (method ? 'GET').toLowerCase() is 'get'
+            use_cache = true
+            cached_data = github_cache.get url
+            if cached_data?
+                options.headers['If-None-Match'] = cached_data.etag
+        else
+            use_cache = false
 
-            request url, options, block.make_cb()
-            res = block.wait()
+        request url, options, block.make_cb()
+        res = block.wait()
 
-            if res.statusCode is 304
-                res = cached_data.res
-            else if use_cache
-                etag = res.headers['etag']
-                if etag?
-                    github_cache.set url, {etag, res}
+        if res.statusCode is 304
+            res = cached_data.res
+        else if use_cache
+            etag = res.headers['etag']
+            if etag?
+                github_cache.set url, {etag, res}
 
-            u.log 'Done hitting ' + url
-            return res
+        return res
 
     #Retrieves the body from the response, throwing an error if not retrievable
     extract: (res, url) ->
