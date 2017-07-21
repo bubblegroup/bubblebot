@@ -1,5 +1,6 @@
 lib
 node_modules
 static/lib
+npm-debug.log
 configuration.json
-AKIAIEFNCTPKEJ4GUE3A.json
+test_credentials.json
