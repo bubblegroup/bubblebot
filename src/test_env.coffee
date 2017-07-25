@@ -2,15 +2,16 @@ fs = require 'fs'
 AWS = require 'aws-sdk'
 strip_comments = require 'strip-json-comments'
 
-bbobjects = require './bbobjects'
+u = require './utilities'
 software = require './software'
+bbobjects = require './bbobjects'
 
 test_credentials = JSON.parse(fs.readFileSync('test_credentials.json'))
 config = JSON.parse strip_comments fs.readFileSync('configuration.json').toString()
 config_ = {
     run_file: 'run.js'
     install_directory: '/home/ec2-user/bubblebot'
-    deploy_key_path : 'deploy_key_rsa'
+    deploy_key_path: 'deploy_key_rsa'
     bubblebot_instance_profile: 'bubblebot_server'
     bubblebot_tag_key: 'bubblebot'
     bubblebot_tag_value: 'bubblebot_server'
@@ -22,33 +23,32 @@ config_ = {
     install_directory: '/home/ec2-user/bubblebot'
     run_file: 'run.js'
     bubblebot_domain: ''
-    bubblebot_use_https: false,
-    # TODO : what is this ?
+    bubblebot_use_https: false
     remote_repo: 'bubblebot'
     }
 
 for key, val of config_
     config[key] = val
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 REGION = config['bubblebot_region']
-console.log(config)
-
-_startup_ran = false
-#Code that we run each time on startup to make sure bbserver is up to date.  Should
-#be idempotent
-startup_bbserver = (instance) ->
-    if _startup_ran
-        return
-    _startup_ran = true
-
-    try
-        software.metrics() instance
-    catch err
-        #We don't want to kill server startup if this fails
-        u.log err
 
 # Copied and pasted from bbobjects; this essentially creates an EC2 Instance
-aws_config = () ->
+aws_config = (REGION) ->
     accessKeyId = test_credentials['accessKeyId']
     secretAccessKey = test_credentials['secretAccessKey']
     res = {
@@ -66,24 +66,268 @@ aws_config = () ->
         }
     return res
 
-call_aws_api = () ->
-    return
+get_aws_service = (name, region) ->
+    key = name + ' ' + region
+    # NOTE : there was a cache lookup here before
+    svc = u.retry 20, 2000, =>
+        config = aws_config region
+        return new AWS[name] aws_config(REGION)
+    return svc
+
+get_svc = (service) -> get_aws_service service, REGION
+
+# TODO : u.block ? 
+aws = (service, method, parameters) ->
+    svc = get_svc service
+    block = u.Block method
+    svc[method] parameters, block.make_cb()
+    return block.wait()
+
+#Calls ec2 and returns the results
+ec2 = (method, parameters) -> aws 'EC2', method, parameters
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Gets the given property of this object
+get = (name) ->
+    # if @hardcoded?[name]
+    #     return @hardcoded[name]?() ? null
+    u.db().get_property 'Environment', constants.BUBBLEBOT_ENV, name
+
+get_vpc = () -> get 'vpc'
+
+#Returns the raw data for all subnets in the VPC for this environments
+get_all_subnets = (force_refresh) ->
+    vpc_id = get_vpc()
+
+    if not force_refresh
+        data = vpc_to_subnets.get(vpc_id)
+        if data?
+            return data
+
+    data = ec2 'describeSubnets', {Filters: [{Name: 'vpc-id', Values: [vpc_id]}]}
+    vpc_to_subnets.set(vpc_id, data)
+    return data
+
+get_subnet = () ->
+    data = get_all_subnets()
+
+    for subnet in data.Subnets ? []
+        if subnet.State is 'available' and subnet.AvailableIpAddressCount > 0
+            return subnet.SubnetId
+
+    throw new Error 'Could not find a subnet!  Data: ' + JSON.stringify(data)
+
+#Returns the keypair name for this environment, or creates it if it does not exist
+get_keypair_name = ->
+
+    # TODO : is this correct ? 
+    name = config['keypair_prefix'] + constants.BUBBLEBOT_ENV
+
+    #check to see if it already exists
+    try
+        pairs = ec2('describeKeyPairs', {KeyNames: [name]})
+    catch err
+        if String(err).indexOf('does not exist') is -1
+            throw err
+
+        #If not, create it
+        {private_key, public_key} = u.generate_key_pair()
+
+        #Save the private key to s3
+        bbobjects.put_s3_config name, private_key
+
+        #Strip the header and footer lines
+        public_key = public_key.split('-----BEGIN PUBLIC KEY-----\n')[1].split('\n-----END PUBLIC KEY-----')[0]
+
+        #And save the public key to ec2 to use in server creation
+        ec2('importKeyPair', {KeyName: name, PublicKeyMaterial: public_key})
+
+    return name
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+allow_outside_ssh: ->
+    #We allow direct SSH connections to bubblebot to allow for deployments.
+    #The security key for connecting should NEVER be saved locally!
+    if @id is constants.BUBBLEBOT_ENV
+        true
+    else
+        return @is_development()
+
+#Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
+#Creates the group if there is not one with this name.
+get_security_group_data: (group_name, force_refresh, retries = 2) ->
+    #try the cache
+    if not force_refresh
+        data = sg_cache.get(group_name)
+
+    if data?
+        return data
+
+    data = ec2('describeSecurityGroups', {Filters: [{Name: 'group-name', Values: [group_name]}]}).SecurityGroups[0]
+    if data?
+        sg_cache.set(group_name, data)
+        return data
+
+    if not data?
+        #prevent an infinite loop if something goes wrong
+        if retries is 0
+            throw new Error 'unable to create security group ' + group_name
+
+        try
+            ec2('createSecurityGroup', {Description: 'Created by bubblebot', GroupName: group_name, VpcId: @get_vpc()})
+        catch err
+            #Handle the case of two people trying to create it in parallel
+            if String(err).indexOf('InvalidGroup.Duplicate') isnt -1
+                u.pause 1000
+                return @get_security_group_data(group_name, force_refresh, retries - 1)
+            else
+                throw err
+        return get_security_group_data(group_name, force_refresh, retries - 1)
+
+get_security_group_id = (group_name) -> get_security_group_data(group_name).GroupId
+
+get_webserver_security_group: ->
+    group_name = constants.BUBBLEBOT_ENV + '_webserver_sg'
+    id = get_security_group_id(group_name)
+
+    rules = [
+        #Allow outside world access on 80 and 443
+        {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 80, ToPort: 80}
+        {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 443, ToPort: 443}
+        #Allow other boxes in this security group to connect on any port
+        {UserIdGroupPairs: [{GroupId: id}], IpProtocol: '-1'}
+    ]
+    #If this is a server people are allowed to SSH into directly, open port 22.
+    # if @allow_outside_ssh()
+    rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
+
+    #If this is not bubblebot, add the bubblebot server
+    # if @id isnt constants.BUBBLEBOT_ENV
+    #     bubblebot_ip_range = bbobjects.get_bbserver().get_public_ip_address() + '/32'
+    #     bubblebot_private_ip_range = bbobjects.get_bbserver().get_private_ip_address() + '/32'
+
+    #     #Allow bubblebot to connect on any port
+    #     rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: '-1'}
+    #     rules.push {IpRanges: [{CidrIp: bubblebot_private_ip_range}], IpProtocol: '-1'}
+
+    ensure_security_group_rules group_name, rules
+    return id
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+_startup_ran = false
+#Code that we run each time on startup to make sure bbserver is up to date.  Should
+#be idempotent
+startup_bbserver = (instance) ->
+    if _startup_ran
+        return
+    _startup_ran = true
+
+    try
+        software.metrics() instance
+    catch err
+        #We don't want to kill server startup if this fails
+        u.log err
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+create_server_raw = () ->
+    KeyName = get_keypair_name()
+
+    # TODO : what is a security group ? 
+    security_group_id ?= get_webserver_security_group()
+    if Array.isArray security_group_id
+        SecurityGroupIds = security_group_id
+    else
+        SecurityGroupIds = [security_group_id]
+
+    SubnetId = get_subnet()
+    MaxCount = 1
+    MinCount = 1
+    InstanceInitiatedShutdownBehavior = 'stop'
+
+    params = {
+        ImageId
+        MaxCount
+        MinCount
+        SubnetId
+        IamInstanceProfile
+        KeyName
+        SecurityGroupIds
+        InstanceType
+        InstanceInitiatedShutdownBehavior
+    }
+
+    u.log 'Creating new ec2 instance: ' + JSON.stringify params
+
+    results = ec2 'runInstances', params
+    id = results.Instances[0].InstanceId
+    u.log 'EC2 succesfully created with id ' + id
+    return id
 
 create_bbserver = () ->
-    aws_config()
-
     environment = bbobjects.bubblebot_environment()
 
     image_id = config['bubblebot_image_id']
     instance_type = config['bubblebot_instance_type']
     instance_profile = config['bubblebot_instance_profile']
 
-    id = environment.create_server_raw image_id, instance_type, instance_profile
+    id = create_server_raw image_id, instance_type, instance_profile
+
     environment.tag_resource id, 'Name', 'Bubble Bot'
 
-    # TODO : how does this work. does it set up on a new machine? is there an ssh needed?
+    # just saves it in the postgres database
     instance = bbobjects.instance 'EC2Instance', id
-    # instance.create()
+    instance.create()
 
     u.log 'bubblebot server created, waiting for it to ready...'
 
@@ -115,23 +359,6 @@ create_bbserver = () ->
 
     return instance
 
-# Gets the underlying AWS service object
-# get_svc = (service) ->
-#     get_aws_service service, @get_region()
-
-# If we are in the database, we can get the environment's region.
-# We also maintain a cache of regions by id, for dealing with objects that
-# exist in AWS but don't have a region
-# get_region = () ->
-#     environment = @environment()
-#     if environment
-#         return environment.get_region()
-#     region = region_cache.get(@type + '-' + @id)
-#     if region
-#         return region
-#     throw new Error 'could not find a region for ' + @type + ' ' + @id + '.  Please use cache_region...'
-
-# TODO : what is going to call this function ? 
 # Copied and pasted from commands.publish()
 copy_to_test_server = (access_key, secret_access_key) ->
     u.SyncRun 'publish', ->
@@ -142,9 +369,11 @@ copy_to_test_server = (access_key, secret_access_key) ->
         u.log 'Found bubblebot server'
 
         # Ensure we have the necessary deployment key installed
+        # where does it get the private key from ? 
         bbserver.install_private_key config['deploy_key_path']
 
         # Clone our bubblebot installation to a fresh directory, and run npm install and npm test
+        # TODO : look at this code
         install_dir = 'bubblebot-' + Date.now()
         bbserver.run('git clone ' + config['remote_repo'] + ' ' + install_dir)
         bbserver.run("cd #{install_dir} && npm install", {timeout: 300000})
@@ -157,6 +386,7 @@ copy_to_test_server = (access_key, secret_access_key) ->
 
         #Ask bubblebot to restart itself
         try
+            # TODO : before this, change config etc to contain releveant information so can use builtin code paths later
             results = bbserver.run("curl -X POST http://localhost:8081/shutdown")
             if results.indexOf(bubblebot_server.SHUTDOWN_ACK) is -1
                 throw new Error 'Unrecognized response: ' + results
