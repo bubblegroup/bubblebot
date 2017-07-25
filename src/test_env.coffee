@@ -171,41 +171,36 @@ get_keypair_name = ->
 
 
 
-allow_outside_ssh: ->
+allow_outside_ssh = () ->
     #We allow direct SSH connections to bubblebot to allow for deployments.
     #The security key for connecting should NEVER be saved locally!
-    if @id is constants.BUBBLEBOT_ENV
-        true
-    else
-        return @is_development()
+    return true
 
 #Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
 #Creates the group if there is not one with this name.
-get_security_group_data: (group_name, force_refresh, retries = 2) ->
+get_security_group_data = (group_name, force_refresh, retries = 2) ->
     #try the cache
     if not force_refresh
         data = sg_cache.get(group_name)
 
-    if data?
-        return data
+    # if data?
+    #     return data
 
     data = ec2('describeSecurityGroups', {Filters: [{Name: 'group-name', Values: [group_name]}]}).SecurityGroups[0]
     if data?
-        sg_cache.set(group_name, data)
+        # sg_cache.set(group_name, data)
         return data
 
     if not data?
-        #prevent an infinite loop if something goes wrong
         if retries is 0
             throw new Error 'unable to create security group ' + group_name
-
         try
-            ec2('createSecurityGroup', {Description: 'Created by bubblebot', GroupName: group_name, VpcId: @get_vpc()})
+            ec2('createSecurityGroup', {Description: 'Created by bubblebot', GroupName: group_name, VpcId: get_vpc()})
         catch err
             #Handle the case of two people trying to create it in parallel
             if String(err).indexOf('InvalidGroup.Duplicate') isnt -1
                 u.pause 1000
-                return @get_security_group_data(group_name, force_refresh, retries - 1)
+                return get_security_group_data(group_name, force_refresh, retries - 1)
             else
                 throw err
         return get_security_group_data(group_name, force_refresh, retries - 1)
@@ -214,7 +209,7 @@ get_security_group_id = (group_name) -> get_security_group_data(group_name).Grou
 
 get_webserver_security_group: ->
     group_name = constants.BUBBLEBOT_ENV + '_webserver_sg'
-    id = get_security_group_id(group_name)
+    id = get_security_group_id(group_name, false)
 
     rules = [
         #Allow outside world access on 80 and 443
