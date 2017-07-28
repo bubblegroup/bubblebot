@@ -1,4 +1,4 @@
-# TODO : canoot find subnets!!!!
+test_env = exports
 
 fs = require 'fs'
 AWS = require 'aws-sdk'
@@ -38,24 +38,23 @@ for key, val of config_
 
 AWS.config.update({region: config['bubblebot_region']})
 
-u.log("Config: " + JSON.stringify config )
-u.log("Test credentials: " + JSON.stringify test_credentials )
+# u.log("Config: " + JSON.stringify(config, null, 4) )
+# u.log("Test credentials: " + JSON.stringify(test_credentials, null, 4) )
 
 
 
-
-
-
-
+SERVER_ID = null
 
 
 
 REGION = config['bubblebot_region']
 
+# NOTE : here I had to manually code REGION
 get_region = () ->
     return REGION
 
 aws_config = (REGION) ->
+    # NOTE : Here I had to manually code test credentials
     accessKeyId = test_credentials['accessKeyId']
     secretAccessKey = test_credentials['secretAccessKey']
     res = {
@@ -73,16 +72,21 @@ aws_config = (REGION) ->
         }
     return res
 
+# NOTE : caching globally. perhaps we should cache within an object ? 
+AWS_CACHE = {}
 get_aws_service = (name, region) ->
     key = name + ' ' + region
-    svc = u.retry 20, 2000, =>
-        config = aws_config region
-        return new AWS[name] aws_config(REGION)
-    return svc
+    if not AWS_CACHE[name]?
+        svc = u.retry 20, 2000, =>
+            AWS_CACHE[name] = new AWS[name] aws_config(REGION)
+            u.log AWS_CACHE
+            return AWS_CACHE[name]
+        return svc
+    else
+        return AWS_CACHE[name]
 
 get_svc = (service) -> get_aws_service service, REGION
 
-# TODO : u.block ? 
 aws = (service, method, parameters) ->
     svc = get_svc service
     block = u.Block method
@@ -92,7 +96,8 @@ aws = (service, method, parameters) ->
 ec2 = (method, parameters) -> aws 'EC2', method, parameters
 
 
-
+s3 = (method, parameters) ->
+    aws('S3', method, parameters)
 
 
 
@@ -112,6 +117,7 @@ get = (name) ->
     u.log "CURRENT FIBER", Fiber.current
     u.db().get_property 'Environment', constants.BUBBLEBOT_ENV, name
 
+# NOTE : here I had to manually code something; this was originally get('vpc'), but Fiber.current is null
 get_vpc = () -> return config['bubblebot_vpc']
 
 #Returns the raw data for all subnets in the VPC for this environments
@@ -123,12 +129,14 @@ get_all_subnets = (force_refresh) ->
         if data?
             return data
 
-    data = ec2 'describeSubnets', {Filters: [{Name: 'vpc-id', Values: [vpc_id]}]}
+    data = ec2('describeSubnets', {Filters: [{Name: 'vpc-id', Values: [vpc_id]}]})
+    # data = ec2 'describeSubnets', {}
     # vpc_to_subnets.set(vpc_id, data)
     return data
 
 get_subnet = () ->
     data = get_all_subnets(true)
+    console.log(data)
 
     for subnet in data.Subnets ? []
         if subnet.State is 'available' and subnet.AvailableIpAddressCount > 0
@@ -153,32 +161,38 @@ get_subnet = () ->
 get_keypair_name = ->
     u.log 'getting key pair name...'
     # TODO : is this correct ? 
+    # NOTE : had to manually code constants.BUBBLEBOT_ENV
     name = config['keypair_prefix'] + constants.BUBBLEBOT_ENV
 
     #check to see if it already exists
     try
         pairs = ec2('describeKeyPairs', {KeyNames: [name]})
+        u.log pairs
     catch err
-
         if String(err).indexOf('does not exist') is -1
             u.log String(err)
             throw err
+
         u.log 'generating new key pair...'
-        #If not, create it
+
+        # If not, create it
         {private_key, public_key} = u.generate_key_pair()
         u.log public_key
 
-        #Save the private key to s3
+        # Save the private key to s3
         bbobjects.put_s3_config name, private_key
 
-        #Strip the header and footer lines
+        # Strip the header and footer lines
         public_key = public_key.split('-----BEGIN PUBLIC KEY-----\n')[1].split('\n-----END PUBLIC KEY-----')[0]
 
-        #And save the public key to ec2 to use in server creation
+        # And save the public key to ec2 to use in server creation
         u.log 'importKeyPair'
         ec2('importKeyPair', {KeyName: name, PublicKeyMaterial: public_key})
 
     return name
+
+
+
 
 
 
@@ -217,16 +231,8 @@ allow_outside_ssh = () ->
 #Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
 #Creates the group if there is not one with this name.
 get_security_group_data = (group_name, force_refresh, retries = 2) ->
-    #try the cache
-    # if not force_refresh
-    #     data = sg_cache.get(group_name)
-
-    # if data?
-    #     return data
-
     data = ec2('describeSecurityGroups', {Filters: [{Name: 'group-name', Values: [group_name]}]}).SecurityGroups[0]
     if data?
-        # sg_cache.set(group_name, data)
         return data
 
     if not data?
@@ -246,6 +252,7 @@ get_security_group_data = (group_name, force_refresh, retries = 2) ->
 get_security_group_id = (group_name) -> get_security_group_data(group_name).GroupId
 
 get_webserver_security_group = () ->
+    # NOTE : had to manually code constants.BUBBLEBOT_ENV
     group_name = constants.BUBBLEBOT_ENV + '_webserver_sg'
 
     # TODO : extra work done here
@@ -261,15 +268,6 @@ get_webserver_security_group = () ->
     #If this is a server people are allowed to SSH into directly, open port 22.
     if allow_outside_ssh()
         rules.push {IpRanges: [{CidrIp: '0.0.0.0/0'}], IpProtocol: 'tcp', FromPort: 22, ToPort: 22}
-
-    #If this is not bubblebot, add the bubblebot server
-    # if @id isnt constants.BUBBLEBOT_ENV
-    #     bubblebot_ip_range = bbobjects.get_bbserver().get_public_ip_address() + '/32'
-    #     bubblebot_private_ip_range = bbobjects.get_bbserver().get_private_ip_address() + '/32'
-
-    #     #Allow bubblebot to connect on any port
-    #     rules.push {IpRanges: [{CidrIp: bubblebot_ip_range}], IpProtocol: '-1'}
-    #     rules.push {IpRanges: [{CidrIp: bubblebot_private_ip_range}], IpProtocol: '-1'}
 
     ensure_security_group_rules group_name, rules
     return id
@@ -293,7 +291,7 @@ get_webserver_security_group = () ->
 
 
 
-create_server_raw = () ->
+create_server_raw = (ImageId, InstanceType, IamInstanceProfile) ->
     KeyName = get_keypair_name()
 
     # TODO : what is a security group ? 
@@ -314,16 +312,16 @@ create_server_raw = () ->
         MaxCount
         MinCount
         SubnetId
-        IamInstanceProfile
+        IamInstanceProfile: {Name: IamInstanceProfile}
         KeyName
         SecurityGroupIds
         InstanceType
         InstanceInitiatedShutdownBehavior
     }
 
-    u.log 'Creating new ec2 instance: ' + JSON.stringify params
-
+    u.log 'Creating new ec2 instance: ' + JSON.stringify(params, null, 4)
     results = ec2 'runInstances', params
+
     id = results.Instances[0].InstanceId
     u.log 'EC2 succesfully created with id ' + id
     return id
@@ -351,6 +349,11 @@ startup_bbserver = (instance) ->
 
 
 
+tag_resource = (id, Key, Value) ->
+    ec2('createTags', {
+        Resources: [id]
+        Tags: [{Key, Value}]
+    })
 
 
 
@@ -359,11 +362,95 @@ startup_bbserver = (instance) ->
 
 
 
+_ssh_expected = (err) ->
+    if String(err).indexOf('Timed out while waiting for handshake') isnt -1
+        return true
+    if String(err).indexOf('ECONNREFUSED') isnt -1
+        return true
+    if String(err).indexOf('All configured authentication methods failed') isnt -1
+        return true
+    return false
+
+#Returns the state of the instance.  Set force_refresh to true to check for changes.
+get_state = (force_refresh) -> get_data(force_refresh).State.Name
+
+#Waits til the server is in the running state
+wait_for_running = (retries = 20, target_state = 'running') ->
+    u.log 'waiting for server to be ' + target_state + ' (' + retries + ')'
+    data = ec2('describeInstances', {InstanceIds:[SERVER_ID]})
+    
+    reservations = data.Reservations ? []
+    instances = reservations[0].Instances ? []
+    machine = instances[0]
+    
+    if machine.State.Name is target_state
+        return
+    else if retries is 0
+        throw new Error 'timed out while waiting for ' + @id + ' to be ' + target_state + ': ' + @get_state()
+    else
+        u.pause 10000
+        wait_for_running(retries - 1, target_state)
+
+# NOTE : here had to avoid hardcoded parameter
+wait_for_ssh = () ->
+    wait_for_running()
+    do_wait = (retries = 20) =>
+        u.log 'server running, waiting for it accept ssh connections (' + retries + ')'
+        try
+            bbserver_run 'hostname'
+        catch err
+            if retries is 0 or not _ssh_expected(err)
+                throw err
+            else
+                u.pause 10000
+                return do_wait(retries - 1)
+    do_wait()
+
+
+
+
+
+software.do_once = do_once = (name, fn) ->
+    return (instance) ->
+        dependencies = instance.run('cat bubblebot_dependencies || echo "NOTFOUND"').trim()
+        if dependencies.indexOf('NOTFOUND') isnt -1
+            dependencies = ''
+        if name in dependencies.split('\n')
+            return
+
+        fn instance
+        dependencies += '\n' + name
+        instance.run 'cat > bubblebot_dependencies << EOF\n' + dependencies + '\nEOF'
+
+
+
+
+#Sets up sudo and yum and installs GCC
+software.basics = -> do_once 'basics', (instance) ->
+    #update yum and install git + development tools
+    instance.run 'sudo yum update -y', {timeout: 5 * 60 * 1000}
+    instance.run 'sudo yum -y install git'
+    instance.run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y ', {timeout: 5 * 60 * 1000}
+
+
+#Installs supervisor and sets it up to run the given command
+software.supervisor = (name, command, pwd) -> (instance) ->
+    software.basics() instance
+
+    instance.run 'sudo pip install supervisor==3.1'
+    instance.run '/usr/local/bin/echo_supervisord_conf > tmp'
+    instance.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\ndirectory=' + pwd + '\n\nEOF'
+    instance.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
+
+    #Set a big ulimit
+    instance.run "echo '* soft nofile 1000000\n* hard nofile 1000000\n* soft nproc 1000000\n* hard nproc 1000000' | sudo tee /etc/security/limits.d/large.conf"
+    
 
 
 
 
 create_bbserver = () ->
+    # TODO : sync run here
     environment = bbobjects.bubblebot_environment()
 
     image_id = config['bubblebot_image_id']
@@ -371,21 +458,22 @@ create_bbserver = () ->
     instance_profile = config['bubblebot_instance_profile']
 
     u.log('creating raw server...')
-    id = create_server_raw image_id, instance_type, instance_profile
 
-    environment.tag_resource id, 'Name', 'Bubble Bot'
+    # awkward that this is done before bbobjects.instance 'EC2Instance'
+    id = create_server_raw(image_id, instance_type, instance_profile)
+    SERVER_ID = id
 
-    # just saves it in the postgres database
     instance = bbobjects.instance 'EC2Instance', id
-    instance.create()
-
-    u.log 'bubblebot server created, waiting for it to ready...'
 
     #manually set environment because we can't check database
     instance.environment = -> environment
 
-    # TODO : what does this do
-    instance.wait_for_ssh()
+    # what does this do ? 
+    tag_resource(id, 'Name', 'Bubble Bot')
+
+    u.log 'bubblebot server created, waiting for it to ready...'
+
+    wait_for_ssh()
 
     u.log 'bubblebot server ready, installing software...'
 
@@ -405,7 +493,7 @@ create_bbserver = () ->
     software.supervisor_auto_start() instance
     
     # tags a bunch of stuff
-    environment.tag_resource id, config['bubblebot_role_tag'], config['bubblebot_role_bbserver']
+    tag_resource id, config['bubblebot_role_tag'], config['bubblebot_role_bbserver']
 
     u.log 'bubblebot server has base software installed'
 
@@ -422,29 +510,47 @@ create_bbserver = () ->
 
 
 
+_cached_bucket = null
+get_s3_config_bucket = ->
+    if not _cached_bucket
+        buckets = config['bubblebot_s3_bucket'].split(',')
+        if buckets.length is 1
+            _cached_bucket = buckets[0]
+        else
+            data = s3('listBuckets', {})
+            our_buckets = (bucket.Name for bucket in data.Buckets ? [])
+            for bucket in buckets
+                if bucket in our_buckets
+                    _cached_bucket = bucket
+                    break
+            if not _cached_bucket
+                throw new Error 'Could not find any of ' + buckets.join(', ') + ' in ' + our_buckets.join(', ')
+    return _cached_bucket
 
 
-
-
-
-
-
-
-
-
+#Retrieves an S3 configuration file as a string, or null if it does not exists
+get_s3_config = (Key) ->
+    u.retry 3, 1000, ->
+        try
+            # TODO : make this an s3 method
+            data = aws('S3', 'getObject', {Bucket: get_s3_config_bucket(), Key})
+        catch err
+            if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
+                return null
+            else
+                throw err
+        if data.DeleteMarker
+            return null
+        if not data.Body
+            throw new Error 'no body: ' + JSON.stringify data
+        return String(data.Body)
 
 
 #Gets the private key that corresponds with @get_keypair_name()
 get_private_key = ->
     keyname = get_keypair_name()
-    # there is no from_cache in this script
-    # from_cache = key_cache.get(keyname)
-    # if from_cache
-    #     return from_cache
-
     try
-        data = bbobjects.get_s3_config keyname
-        # key_cache.set keyname, data
+        data = get_s3_config keyname
         return data
     catch err
         #We lost our key, so delete it
@@ -456,28 +562,16 @@ get_private_key = ->
 
 describe_instances = (params) ->
     #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
-    data = ec2('describeInstances', params)
-    res = []
-    region = get_region()
-    for reservation in data.Reservations ? []
-        for instance in reservation.Instances ? []
-            id = instance.InstanceId
-            instance_cache.set id, instance
+    data = ec2('describeInstances', {InstanceIds:[SERVER_ID]})
+    
+    reservations = data.Reservations ? []
+    instances = reservations[0].Instances ? []
+    return instances[0]
 
-            ec2instance = bbobjects.instance 'EC2Instance', id
-            ec2instance.cache_region region
-
-            res.push ec2instance
-
-    #filter out terminated instances
-    res = (instance for instance in res when instance.get_state() not in ['terminated', 'shutting-down'])
-
-    return res
-
-refresh = -> describe_instances({InstanceIds: [constants.BUBBLEBOT_ENV]})
+refresh = -> return describe_instances({InstanceIds: [SERVER_ID]})
 
 get_data = (force_refresh) ->
-    refresh()
+    return refresh()
 
 get_public_ip_address = -> get_data().PublicIpAddress
 
@@ -485,6 +579,21 @@ get_address = -> get_public_ip_address()
 
 bbserver_run = (command, options) ->
     return ssh.run get_address(), get_private_key(), command, options
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -546,6 +655,4 @@ copy_to_test_server = () ->
         process.exit()
 
 if require.main is module
-    # console.log('swag')
-
     copy_to_test_server()
