@@ -1,3 +1,11 @@
+# TODO : make this idempotent using AWS tags API.
+# TODO : merge test_credentials and configuration, make sure script writes them to s3 with key (see config.coffee for how to construct key)
+# get bubblebot running 
+
+# TODO : Commit should be an input
+# TODO : only one bubblebot instance at a time
+# TODO : multiple tests later maybe
+
 test_env = exports
 
 fs = require 'fs'
@@ -36,18 +44,11 @@ config_ = {
 for key, val of config_
     config[key] = val
 
+REGION = config['bubblebot_region']
+# TODO : ask Josh, what is the difference between this and the aws_config 
 AWS.config.update({region: config['bubblebot_region']})
 
-# u.log("Config: " + JSON.stringify(config, null, 4) )
-# u.log("Test credentials: " + JSON.stringify(test_credentials, null, 4) )
-
-
-
 SERVER_ID = null
-
-
-
-REGION = config['bubblebot_region']
 
 # NOTE : here I had to manually code REGION
 get_region = () ->
@@ -58,7 +59,6 @@ aws_config = (REGION) ->
     accessKeyId = test_credentials['accessKeyId']
     secretAccessKey = test_credentials['secretAccessKey']
     res = {
-        # TODO : is this okay? was originally this
         # config['bubblebot_region']
         REGION
         maxRetries: 10
@@ -95,7 +95,6 @@ aws = (service, method, parameters) ->
 
 ec2 = (method, parameters) -> aws 'EC2', method, parameters
 
-
 s3 = (method, parameters) ->
     aws('S3', method, parameters)
 
@@ -112,9 +111,6 @@ s3 = (method, parameters) ->
 
 #Gets the given property of this object
 get = (name) ->
-    # if @hardcoded?[name]
-    #     return @hardcoded[name]?() ? null
-    u.log "CURRENT FIBER", Fiber.current
     u.db().get_property 'Environment', constants.BUBBLEBOT_ENV, name
 
 # NOTE : here I had to manually code something; this was originally get('vpc'), but Fiber.current is null
@@ -122,7 +118,7 @@ get_vpc = () -> return config['bubblebot_vpc']
 
 #Returns the raw data for all subnets in the VPC for this environments
 get_all_subnets = (force_refresh) ->
-    vpc_id = get_vpc()
+    vpc_id = config['bubblebot_vpc'] # get_vpc()
 
     if not force_refresh
         data = vpc_to_subnets.get(vpc_id)
@@ -130,8 +126,6 @@ get_all_subnets = (force_refresh) ->
             return data
 
     data = ec2('describeSubnets', {Filters: [{Name: 'vpc-id', Values: [vpc_id]}]})
-    # data = ec2 'describeSubnets', {}
-    # vpc_to_subnets.set(vpc_id, data)
     return data
 
 get_subnet = () ->
@@ -157,17 +151,15 @@ get_subnet = () ->
 
 
 
-#Returns the keypair name for this environment, or creates it if it does not exist
+# Returns the keypair name for this environment, or creates it if it does not exist
 get_keypair_name = ->
     u.log 'getting key pair name...'
-    # TODO : is this correct ? 
     # NOTE : had to manually code constants.BUBBLEBOT_ENV
     name = config['keypair_prefix'] + constants.BUBBLEBOT_ENV
 
-    #check to see if it already exists
+    # Check to see if it already exists
     try
         pairs = ec2('describeKeyPairs', {KeyNames: [name]})
-        u.log pairs
     catch err
         if String(err).indexOf('does not exist') is -1
             u.log String(err)
@@ -320,6 +312,7 @@ create_server_raw = (ImageId, InstanceType, IamInstanceProfile) ->
     }
 
     u.log 'Creating new ec2 instance: ' + JSON.stringify(params, null, 4)
+    # TODO : what exactly does this do ?
     results = ec2 'runInstances', params
 
     id = results.Instances[0].InstanceId
@@ -349,11 +342,20 @@ startup_bbserver = (instance) ->
 
 
 
+
 tag_resource = (id, Key, Value) ->
     ec2('createTags', {
         Resources: [id]
         Tags: [{Key, Value}]
     })
+
+
+
+
+
+
+
+
 
 
 
@@ -410,9 +412,23 @@ wait_for_ssh = () ->
 
 
 
-software.do_once = do_once = (name, fn) ->
+
+
+
+
+
+
+
+
+
+
+
+
+
+# TODO : figure out what this does 
+do_once = (name, fn) ->
     return (instance) ->
-        dependencies = instance.run('cat bubblebot_dependencies || echo "NOTFOUND"').trim()
+        dependencies = bbserver_run('cat bubblebot_dependencies || echo "NOTFOUND"').trim()
         if dependencies.indexOf('NOTFOUND') isnt -1
             dependencies = ''
         if name in dependencies.split('\n')
@@ -420,31 +436,95 @@ software.do_once = do_once = (name, fn) ->
 
         fn instance
         dependencies += '\n' + name
-        instance.run 'cat > bubblebot_dependencies << EOF\n' + dependencies + '\nEOF'
-
-
-
+        bbserver_run 'cat > bubblebot_dependencies << EOF\n' + dependencies + '\nEOF'
 
 #Sets up sudo and yum and installs GCC
-software.basics = -> do_once 'basics', (instance) ->
+basics = -> do_once 'basics', () ->
     #update yum and install git + development tools
-    instance.run 'sudo yum update -y', {timeout: 5 * 60 * 1000}
-    instance.run 'sudo yum -y install git'
-    instance.run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y ', {timeout: 5 * 60 * 1000}
-
+    bbserver_run 'sudo yum update -y', {timeout: 5 * 60 * 1000}
+    bbserver_run 'sudo yum -y install git'
+    bbserver_run 'sudo yum install make automake gcc gcc-c++ kernel-devel git-core ruby-devel -y ', {timeout: 5 * 60 * 1000}
 
 #Installs supervisor and sets it up to run the given command
-software.supervisor = (name, command, pwd) -> (instance) ->
-    software.basics() instance
+supervisor = (name, command, pwd) -> () ->
+    basics()()
 
-    instance.run 'sudo pip install supervisor==3.1'
-    instance.run '/usr/local/bin/echo_supervisord_conf > tmp'
-    instance.run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\ndirectory=' + pwd + '\n\nEOF'
-    instance.run 'sudo su -c"mv tmp /etc/supervisord.conf"'
+    bbserver_run 'sudo pip install supervisor==3.1'
+    bbserver_run '/usr/local/bin/echo_supervisord_conf > tmp'
+    bbserver_run 'cat >> tmp <<\'EOF\'\n\n[program:' + name + ']\ncommand=' + command + '\ndirectory=' + pwd + '\n\nEOF'
+    bbserver_run 'sudo su -c"mv tmp /etc/supervisord.conf"'
 
     #Set a big ulimit
-    instance.run "echo '* soft nofile 1000000\n* hard nofile 1000000\n* soft nproc 1000000\n* hard nproc 1000000' | sudo tee /etc/security/limits.d/large.conf"
+    bbserver_run "echo '* soft nofile 1000000\n* hard nofile 1000000\n* soft nproc 1000000\n* hard nproc 1000000' | sudo tee /etc/security/limits.d/large.conf"
+
+pg_dump96 = -> do_once 'pg_dump96', () ->
+    bbserver_run 'sudo yum -y localinstall https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-6-x86_64/pgdg-ami201503-96-9.6-2.noarch.rpm'
+    bbserver_run 'sudo yum -y install postgresql96'
+
+#Installs the server metrics plugin.  Plugins are responsible for calling do_once.
+# Not necessary
+# metrics = -> () ->
+#     # TODO : this doesn't work
+#     metrics_plugins = config.get_plugins 'metrics'
+
+#     if metrics_plugins.length is 0
+#         u.log 'WARNING: no metrics plugin installed... metrics package will not do anything'
+
+#     for plugin in metrics_plugins
+#         plugin.get_server_metrics_software()
+
+supervisor_auto_start = -> do_once 'supervisor_auto_start', () ->
+    commands = """
+    #start supervisor on startup
+    sudo -u ec2-user -H sh -c "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin:/home/ec2-user/.local/bin:/home/ec2-user/bin; supervisord" 
+
+    #map port 80 -> 8080
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+    #map port 443 -> 8043
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8043
+    """
+    bbserver_run 'cat > /tmp/autostart <<\'EOF\'\n' + commands + '\n\nEOF'
     
+    bbserver_run 'sudo su -c"cat /tmp/autostart >> /etc/rc.local"'
+    bbserver_run 'rm /tmp/autostart'
+    
+
+
+#Given a local path to a private key, installs that as the main key on this box
+private_key = (path) -> () ->
+    #Write the key
+    key_data = fs.readFileSync path, 'utf8'
+    u.log 'Writing private key to ~/.ssh/id_rsa'
+    bbserver_run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
+    bbserver_run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
+
+    #turn off strict host checking so that we don't get interrupted by prompts
+    bbserver_run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
+    bbserver_run 'chmod 600 /home/ec2-user/.ssh/config'
+
+
+#Installs node
+node = (version) -> do_once 'node ' + version, (instance) ->
+    basics()()
+
+    bbserver_run 'git clone https://github.com/tj/n'
+    bbserver_run 'cd n; sudo make install'
+    bbserver_run 'cd n/bin; sudo ./n ' + version, {timeout: 360000} #usually runs < 90 seconds, so if this keeps happening, probably just need to retry
+    bbserver_run 'rm -rf n'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -481,23 +561,27 @@ create_bbserver = () ->
     command = 'node ' + config['install_directory'] + '/' + config['run_file']
 
     # does a bunch of stuff with yum 
-    software.supervisor('bubblebot', command, config['install_directory']) instance
+    supervisor('bubblebot', command, config['install_directory'])()
 
     # does a bunch of stuff with node
-    software.node('4.4.5') instance
+    node('4.4.5')()
     
     # installs postgress and stuff
-    software.pg_dump96() instance
+    pg_dump96()()
     
     # tmp autostart stuff
-    software.supervisor_auto_start() instance
+    supervisor_auto_start()()
     
     # tags a bunch of stuff
     tag_resource id, config['bubblebot_role_tag'], config['bubblebot_role_bbserver']
 
     u.log 'bubblebot server has base software installed'
 
-    startup_bbserver instance
+    # try
+    #     metrics() 
+    # catch err
+    #     #We don't want to kill server startup if this fails
+    #     u.log err
 
     return instance
 
@@ -589,6 +673,24 @@ bbserver_run = (command, options) ->
 
 
 
+#Saves the object's data to S3
+backup: (filename) ->
+    if not @exists()
+        u.expected_error 'cannot backup: does not exist'
+    if not filename
+        throw new Error 'must include a filename'
+    body = JSON.stringify @properties(), null, 4
+    key = "#{@type}/#{@id}/#{filename}/#{Date.now()}.json"
+    bbobjects.put_s3_config key, body
+    u.reply 'Saved a backup to ' + key
+
+backup_cmd:
+    params: [
+        {name: 'filename', default: 'backup', help: 'The name of this backup.  Backups are saved as type/id/filename/timestamp.json'}
+    ]
+    help: "Backs up this objects' properties to S3"
+    groups: constants.BASIC
+
 
 
 
@@ -605,6 +707,10 @@ bbserver_run = (command, options) ->
 copy_to_test_server = () ->
     u.SyncRun 'publish', ->
         u.log 'Searching for bubblebot server...'
+
+        # TODO : add if-else here, get latest commit from github API
+        # search for server with latest commit on the test account
+        # if no such server exists
 
         bbserver = create_bbserver()
 
