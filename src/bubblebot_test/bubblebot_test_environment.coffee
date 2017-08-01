@@ -2,7 +2,6 @@
 # with key (see config.coffee for how to construct key) get bubblebot running 
 
 # TODO : Commit should be an input
-# TODO : multiple tests later maybe
 
 test_env = exports
 
@@ -111,9 +110,8 @@ s3 = (method, parameters) ->
 
 
 
-# Gets the given property of this object
-get = (name) ->
-    u.db().get_property 'Environment', constants.BUBBLEBOT_ENV, name
+
+
 
 # NOTE : here I had to manually code something; this was originally get('vpc'), but Fiber.current is null
 get_vpc = () -> return config['bubblebot_vpc']
@@ -139,6 +137,9 @@ get_subnet = () ->
             return subnet.SubnetId
 
     throw new Error 'Could not find a subnet!  Data: ' + JSON.stringify(data)
+
+
+
 
 
 
@@ -217,8 +218,8 @@ ensure_security_group_rules = (group_name, rules, retries = 2) ->
                 existing.push r
 
 allow_outside_ssh = () ->
-    #We allow direct SSH connections to bubblebot to allow for deployments.
-    #The security key for connecting should NEVER be saved locally!
+    # We allow direct SSH connections to bubblebot to allow for deployments.
+    # The security key for connecting should NEVER be saved locally!
     return true
 
 #Given a security group name, fetches its meta-data (using the cache, unless force-refresh is on)
@@ -313,7 +314,6 @@ create_server_raw = (ImageId, InstanceType, IamInstanceProfile) ->
     }
 
     u.log 'Creating new ec2 instance: ' + JSON.stringify(params, null, 4)
-    # TODO : what exactly does this do ?
     results = ec2 'runInstances', params
 
     id = results.Instances[0].InstanceId
@@ -322,8 +322,8 @@ create_server_raw = (ImageId, InstanceType, IamInstanceProfile) ->
 
 
 _startup_ran = false
-#Code that we run each time on startup to make sure bbserver is up to date.  Should
-#be idempotent
+# Code that we run each time on startup to make sure bbserver is up to date.  Should
+# be idempotent
 startup_bbserver = (instance) ->
     if _startup_ran
         return
@@ -478,16 +478,23 @@ supervisor_auto_start = -> do_once 'supervisor_auto_start', () ->
     bbserver_run 'rm /tmp/autostart'
     
 # Given a local path to a private key, installs that as the main key on this box
-private_key = (path) -> () ->
-    # Write the key
-    key_data = fs.readFileSync path, 'utf8'
-    u.log 'Writing private key to ~/.ssh/id_rsa'
-    bbserver_run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
-    bbserver_run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
+write_github_private_key = (path) ->
+    if path?
+        key_data = fs.readFileSync path, 'utf8'
+        put_s3_object('/bubblebot_test_github_key', key_data)
+    else
+        key_data = get_s3_object('/bubblebot_test_github_key') 
+    
+    if key_data?
+        u.log 'Writing private key to ~/.ssh/id_rsa'
+        bbserver_run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
+        bbserver_run 'chmod 600 /home/ec2-user/.ssh/id_rsa'
 
-    #turn off strict host checking so that we don't get interrupted by prompts
-    bbserver_run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
-    bbserver_run 'chmod 600 /home/ec2-user/.ssh/config'
+        #turn off strict host checking so that we don't get interrupted by prompts
+        bbserver_run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
+        bbserver_run 'chmod 600 /home/ec2-user/.ssh/config'
+    else
+        throw new Error('github private key missing!')
 
 #Installs node
 node = (version) -> do_once 'node ' + version, (instance) ->
@@ -500,7 +507,12 @@ node = (version) -> do_once 'node ' + version, (instance) ->
 
 
 install_private_key = (path) ->
-        private_key(path) this
+        private_key(path)
+
+
+
+
+
 
 
 
@@ -645,7 +657,7 @@ get_s3_config = (Key) ->
     u.retry 3, 1000, ->
         try
             # TODO : make this an s3 method
-            data = aws('S3', 'getObject', {Bucket: get_s3_config_bucket(), Key})
+            data = s3('getObject', {Bucket: get_s3_config_bucket(), Key})
         catch err
             if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
                 return null
@@ -657,7 +669,10 @@ get_s3_config = (Key) ->
             throw new Error 'no body: ' + JSON.stringify data
         return String(data.Body)
 
+get_s3_object = (Key) ->
+    s3('getObject', {Bucket: bbobjects.get_s3_config_bucket(), Key})
 
+# Put s3 object.
 put_s3_object = (Key, Body) ->
     s3('putObject', {Bucket: get_s3_config_bucket(), Key, Body})
 
@@ -675,6 +690,7 @@ get_private_key = ->
             throw new Error 'Could not retrieve private key for ' + keyname + '; deleted public key'
         throw err
 
+# TODO : repair
 describe_instances = (params) ->
     #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
     data = ec2('describeInstances', {InstanceIds:[SERVER_ID]})
@@ -756,7 +772,7 @@ copy_to_test_server = (commit) ->
             # ensure we have the necessary deployment key installed
             # key here is the one used to talk to github API
             # TODO : this should save the key to/ get it from s3
-            private_key('./bubblebot_test_github_key')()
+            write_github_private_key('./bubblebot_test_github_key')
 
             # clone our bubblebot installation to a fresh directory, and run npm install and npm test
             # NOTE : was originally bbserver.run
@@ -765,7 +781,10 @@ copy_to_test_server = (commit) ->
             bbserver_run("cd #{install_dir} && npm install coffeescript@1.6.3 && npm install --save coffee")
             bbserver_run("cd #{install_dir} && npm install", {timeout: 300000})
             if commit?
-                bbserver_run("git checkout " + commit)
+                try
+                    bbserver_run("git checkout " + commit)
+                catch err 
+                    u.log "unable to checkout commit " commit + " ; " + err
 
             # create a symbolic link pointing to the new directory, deleting the old one if it exits
             bbserver_run('rm -rf bubblebot-old', {can_fail: true})
@@ -776,8 +795,9 @@ copy_to_test_server = (commit) ->
             # ask bubblebot to restart itself
             try
                 # change config etc to contain releveant information so can use builtin code paths later
-                # write_to_configuration_file = 'echo ' + JSON.stringify(config) + ' > ' + install_dir + '/bubblebot/src/configuration.json'
-                # bbserver_run(write_to_configuration_file)
+                u.log 'writing config to s3...'
+                put_s3_object('/bubblebot_test_config', JSON.stringify(config))
+                u.log 'attempting restart...'
                 results = bbserver_run("curl -X POST http://localhost:8081/shutdown")
                 if results.indexOf(bubblebot_server.SHUTDOWN_ACK) is -1
                     throw new Error 'Unrecognized response: ' + results
