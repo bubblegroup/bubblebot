@@ -1,8 +1,3 @@
-# TODO : merge test_credentials and configuration, make sure script writes them to s3 
-# with key (see config.coffee for how to construct key) get bubblebot running 
-
-# TODO : Commit should be an input
-
 test_env = exports
 
 fs = require 'fs'
@@ -46,7 +41,6 @@ for key, val of test_credentials
 
 REGION = config['bubblebot_region']
 
-# TODO : ask Josh, what is the difference between this and the aws_config
 AWS.config.update({region: config['bubblebot_region']})
 
 SERVER_ID = null
@@ -111,7 +105,7 @@ put_s3_object = (Key, Body) ->
 _cached_bucket = null
 get_s3_config_bucket = ->
     if not _cached_bucket
-        buckets = config['bubblebot_s3_bucket'].split(',')
+        buckets = config['bubblebot_s3_bucket']?.split(',')
         if buckets.length is 1
             _cached_bucket = buckets[0]
         else
@@ -130,7 +124,6 @@ get_s3_config_bucket = ->
 get_s3_config = (Key) ->
     u.retry 3, 1000, ->
         try
-            # TODO : make this an s3 method
             data = s3('getObject', {Bucket: get_s3_config_bucket(), Key})
         catch err
             if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
@@ -142,6 +135,11 @@ get_s3_config = (Key) ->
         if not data.Body
             throw new Error 'no body: ' + JSON.stringify data
         return String(data.Body)
+
+
+
+
+
 
 
 
@@ -287,7 +285,7 @@ get_webserver_security_group = () ->
     # NOTE : had to manually code constants.BUBBLEBOT_ENV
     group_name = constants.BUBBLEBOT_ENV + '_webserver_sg'
 
-    # TODO : extra work done here
+    # NOTE : extra work done here
     id = get_security_group_id(group_name, true)
 
     rules = [
@@ -326,7 +324,6 @@ create_server_raw = (ImageId, InstanceType, IamInstanceProfile) ->
     u.log 'getting key pair name...'
     KeyName = get_keypair_name()
 
-    # TODO : what is a security group ? 
     u.log 'getting security groups...'
     security_group_id = get_webserver_security_group()
     if Array.isArray security_group_id
@@ -459,11 +456,6 @@ wait_for_ssh = () ->
 
 
 
-
-
-
-
-
 # TODO : figure out what this does 
 do_once = (name, fn) ->
     return () ->
@@ -555,7 +547,6 @@ install_private_key = (path) ->
 
 
 #Verifies that the given supervisor process is running for the given number of seconds
-#
 #If not, logs the tail and throws an error
 verify_supervisor = (server, name, seconds) ->
     #Loop til we see it running initially
@@ -614,7 +605,6 @@ supervisor_start = (can_fail) -> (instance) ->
 
 
 create_bbserver = () ->
-    # TODO : sync run here
     environment = bbobjects.bubblebot_environment()
 
     image_id = config['bubblebot_image_id']
@@ -753,7 +743,7 @@ copy_to_test_server = (commit) ->
                 try
                     bbserver_run("git checkout " + commit)
                 catch err 
-                    u.log "unable to checkout commit " commit + " ; " + err
+                    u.log "unable to checkout commit " + commit + " ; " + err
 
             # create a symbolic link pointing to the new directory, deleting the old one if it exits
             bbserver_run('rm -rf bubblebot-old', {can_fail: true})
@@ -765,6 +755,7 @@ copy_to_test_server = (commit) ->
             try
                 # change config etc to contain releveant information so can use builtin code paths later
                 u.log 'writing config to s3...'
+                u.log 's3 bucket' + JSON.stringify(get_s3_config_bucket())
                 put_s3_object('/bubblebot_test_config', JSON.stringify(config))
                 u.log 'attempting restart...'
                 results = bbserver_run("curl -X POST http://localhost:8081/shutdown")
