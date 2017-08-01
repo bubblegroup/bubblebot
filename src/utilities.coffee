@@ -558,6 +558,9 @@ u.SyncRun = SyncRun = (cpu_name, cb) ->
         f = null
         run_fn = ->
             try
+                if not f
+                    throw new Error 'restarting dead fiber'
+            
                 #track the fiber
                 u.active_fibers.push f
                 f._fiber_id = fiber_id_counter
