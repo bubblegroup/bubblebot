@@ -1,6 +1,6 @@
 # TODO : make this idempotent using AWS tags API.
-# TODO : merge test_credentials and configuration, make sure script writes them to s3 with key (see config.coffee for how to construct key)
-# get bubblebot running 
+# TODO : merge test_credentials and configuration, make sure script writes them to s3 
+# with key (see config.coffee for how to construct key) get bubblebot running 
 
 # TODO : Commit should be an input
 # TODO : only one bubblebot instance at a time
@@ -45,7 +45,8 @@ for key, val of config_
     config[key] = val
 
 REGION = config['bubblebot_region']
-# TODO : ask Josh, what is the difference between this and the aws_config 
+
+# TODO : ask Josh, what is the difference between this and the aws_config
 AWS.config.update({region: config['bubblebot_region']})
 
 SERVER_ID = null
@@ -72,7 +73,7 @@ aws_config = (REGION) ->
         }
     return res
 
-# NOTE : caching globally. perhaps we should cache within an object ? 
+# NOTE : caching globally. perhaps we should cache within an object?
 AWS_CACHE = {}
 get_aws_service = (name, region) ->
     key = name + ' ' + region
@@ -85,7 +86,8 @@ get_aws_service = (name, region) ->
     else
         return AWS_CACHE[name]
 
-get_svc = (service) -> get_aws_service service, REGION
+get_svc = (service) ->
+    get_aws_service service, REGION
 
 aws = (service, method, parameters) ->
     svc = get_svc service
@@ -93,7 +95,8 @@ aws = (service, method, parameters) ->
     svc[method] parameters, block.make_cb()
     return block.wait()
 
-ec2 = (method, parameters) -> aws 'EC2', method, parameters
+ec2 = (method, parameters) ->
+    aws 'EC2', method, parameters
 
 s3 = (method, parameters) ->
     aws('S3', method, parameters)
@@ -109,14 +112,14 @@ s3 = (method, parameters) ->
 
 
 
-#Gets the given property of this object
+# Gets the given property of this object
 get = (name) ->
     u.db().get_property 'Environment', constants.BUBBLEBOT_ENV, name
 
 # NOTE : here I had to manually code something; this was originally get('vpc'), but Fiber.current is null
 get_vpc = () -> return config['bubblebot_vpc']
 
-#Returns the raw data for all subnets in the VPC for this environments
+# Returns the raw data for all subnets in the VPC for this environments
 get_all_subnets = (force_refresh) ->
     vpc_id = config['bubblebot_vpc'] # get_vpc()
 
@@ -153,7 +156,6 @@ get_subnet = () ->
 
 # Returns the keypair name for this environment, or creates it if it does not exist
 get_keypair_name = ->
-    u.log 'getting key pair name...'
     # NOTE : had to manually code constants.BUBBLEBOT_ENV
     name = config['keypair_prefix'] + constants.BUBBLEBOT_ENV
 
@@ -284,6 +286,7 @@ get_webserver_security_group = () ->
 
 
 create_server_raw = (ImageId, InstanceType, IamInstanceProfile) ->
+    u.log 'getting key pair name...'
     KeyName = get_keypair_name()
 
     # TODO : what is a security group ? 
@@ -427,14 +430,14 @@ wait_for_ssh = () ->
 
 # TODO : figure out what this does 
 do_once = (name, fn) ->
-    return (instance) ->
+    return () ->
         dependencies = bbserver_run('cat bubblebot_dependencies || echo "NOTFOUND"').trim()
         if dependencies.indexOf('NOTFOUND') isnt -1
             dependencies = ''
         if name in dependencies.split('\n')
             return
 
-        fn instance
+        fn()
         dependencies += '\n' + name
         bbserver_run 'cat > bubblebot_dependencies << EOF\n' + dependencies + '\nEOF'
 
@@ -461,7 +464,7 @@ pg_dump96 = -> do_once 'pg_dump96', () ->
     bbserver_run 'sudo yum -y localinstall https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-6-x86_64/pgdg-ami201503-96-9.6-2.noarch.rpm'
     bbserver_run 'sudo yum -y install postgresql96'
 
-#Installs the server metrics plugin.  Plugins are responsible for calling do_once.
+# Installs the server metrics plugin.  Plugins are responsible for calling do_once.
 # Not necessary
 # metrics = -> () ->
 #     # TODO : this doesn't work
@@ -488,11 +491,9 @@ supervisor_auto_start = -> do_once 'supervisor_auto_start', () ->
     bbserver_run 'sudo su -c"cat /tmp/autostart >> /etc/rc.local"'
     bbserver_run 'rm /tmp/autostart'
     
-
-
-#Given a local path to a private key, installs that as the main key on this box
+# Given a local path to a private key, installs that as the main key on this box
 private_key = (path) -> () ->
-    #Write the key
+    # Write the key
     key_data = fs.readFileSync path, 'utf8'
     u.log 'Writing private key to ~/.ssh/id_rsa'
     bbserver_run 'cat > ~/.ssh/id_rsa << EOF\n' + key_data + '\nEOF', {no_log: true}
@@ -501,7 +502,6 @@ private_key = (path) -> () ->
     #turn off strict host checking so that we don't get interrupted by prompts
     bbserver_run 'echo "StrictHostKeyChecking no" > ~/.ssh/config'
     bbserver_run 'chmod 600 /home/ec2-user/.ssh/config'
-
 
 #Installs node
 node = (version) -> do_once 'node ' + version, (instance) ->
@@ -513,10 +513,8 @@ node = (version) -> do_once 'node ' + version, (instance) ->
     bbserver_run 'rm -rf n'
 
 
-
-
-
-
+install_private_key = (path) ->
+        private_key(path) this
 
 
 
@@ -612,7 +610,7 @@ get_s3_config_bucket = ->
     return _cached_bucket
 
 
-#Retrieves an S3 configuration file as a string, or null if it does not exists
+# Retrieves an S3 configuration file as a string, or null if it does not exists
 get_s3_config = (Key) ->
     u.retry 3, 1000, ->
         try
@@ -630,7 +628,7 @@ get_s3_config = (Key) ->
         return String(data.Body)
 
 
-#Gets the private key that corresponds with @get_keypair_name()
+# Gets the private key that corresponds with @get_keypair_name()
 get_private_key = ->
     keyname = get_keypair_name()
     try
@@ -704,61 +702,71 @@ backup_cmd:
 
 
 # Copied and pasted from commands.publish()
-copy_to_test_server = () ->
+copy_to_test_server = (commit) ->
     u.SyncRun 'publish', ->
-        u.log 'Searching for bubblebot server...'
+        u.log 'checking for bubblebot servers on AWS account...'
 
-        # TODO : add if-else here, get latest commit from github API
-        # search for server with latest commit on the test account
-        # if no such server exists
-
-        bbserver = create_bbserver()
-
-        u.log 'Found bubblebot server'
-
-        # ensure we have the necessary deployment key installed
-        # where does it get the private key from ? 
-        bbserver.install_private_key config['deploy_key_path']
-
-        # clone our bubblebot installation to a fresh directory, and run npm install and npm test
-        # NOTE : was originally bbserver.run
-        install_dir = 'bubblebot-' + Date.now()
-        bbserver_run('git clone ' + config['remote_repo'] + ' ' + install_dir)
-        bbserver_run("cd #{install_dir} && npm install", {timeout: 300000})
-
-        # create a symbolic link pointing to the new directory, deleting the old one if it exits
-        bbserver_run('rm -rf bubblebot-old', {can_fail: true})
-        bbserver_run("mv $(readlink #{config['install_directory']}) bubblebot-old", {can_fail: true})
-        bbserver_run('unlink ' + config['install_directory'], {can_fail: true})
-        bbserver_run('ln -s ' + install_dir + ' ' +  config['install_directory'])
-
-        # ask bubblebot to restart itself
+        # TODO : this does not work
         try
-            # change config etc to contain releveant information so can use builtin code paths later
-            write_to_configuration_file = 'echo ' + JSON.stringify(config) + ' > ' + install_dir + '/bubblebot/src/configuration.json'
-            bbserver_run(write_to_configuration_file)
-            results = bbserver_run("curl -X POST http://localhost:8081/shutdown")
-            if results.indexOf(bubblebot_server.SHUTDOWN_ACK) is -1
-                throw new Error 'Unrecognized response: ' + results
+            servers = ec2('describeTags',{Filters : [{Name: 'tag', Values:['Bubble Bot']}]})
+            u.log(JSON.stringify(servers))
+            if servers.length > 0
+                u.log "bubblebot server(s) already exists on AWS account " + JSON.stringify(servers)
+                process.exit()
         catch err
-            u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
-            # make sure supervisord is running
-            software.supervisor_start(true) bbserver
-            # stop bubblebot if it is running
-            bbserver_run('supervisorctl stop bubblebot', {can_fail: true})
-            # start bubblebot
-            res = bbserver_run('supervisorctl start bubblebot')
-            if res.indexOf('ERROR (abnormal termination)') isnt -1
-                u.log 'Error starting supervisor, tailing logs:'
-                bbserver_run('tail -n 100 /tmp/bubblebot*')
-            else
-                u.log 'Waiting twenty seconds to see if it is still running...'
-                try
-                    software.verify_supervisor bbserver, 'bubblebot', 20
-                catch err
-                    u.log err.message
+            u.log "ERROR WAS: " + err
+            u.log 'creating bubblebot test server...'
+            bbserver = create_bbserver()
 
-        process.exit()
+            u.log 'bubblebot server created.'
+
+            # ensure we have the necessary deployment key installed
+            # key here is the one used to talk to github API
+            # TODO : this should save the key to/ get it from s3
+            private_key('./bubblebot_test_github_key')()
+
+            # clone our bubblebot installation to a fresh directory, and run npm install and npm test
+            # NOTE : was originally bbserver.run
+            install_dir = 'bubblebot-' + Date.now()
+            bbserver_run('git clone ' + config['remote_repo'] + ' ' + install_dir)
+            bbserver_run("cd #{install_dir} && npm install coffeescript@1.6.3 && npm install --save coffee")
+            bbserver_run("cd #{install_dir} && npm install", {timeout: 300000})
+            if commit?
+                bbserver_run("git checkout " + commit)
+
+            # create a symbolic link pointing to the new directory, deleting the old one if it exits
+            bbserver_run('rm -rf bubblebot-old', {can_fail: true})
+            bbserver_run("mv $(readlink #{config['install_directory']}) bubblebot-old", {can_fail: true})
+            bbserver_run('unlink ' + config['install_directory'], {can_fail: true})
+            bbserver_run('ln -s ' + install_dir + ' ' +  config['install_directory'])
+
+            # ask bubblebot to restart itself
+            try
+                # change config etc to contain releveant information so can use builtin code paths later
+                write_to_configuration_file = 'echo ' + JSON.stringify(config) + ' > ' + install_dir + '/bubblebot/src/configuration.json'
+                bbserver_run(write_to_configuration_file)
+                results = bbserver_run("curl -X POST http://localhost:8081/shutdown")
+                if results.indexOf(bubblebot_server.SHUTDOWN_ACK) is -1
+                    throw new Error 'Unrecognized response: ' + results
+            catch err
+                u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
+                # make sure supervisord is running
+                software.supervisor_start(true) bbserver
+                # stop bubblebot if it is running
+                bbserver_run('supervisorctl stop bubblebot', {can_fail: true})
+                # start bubblebot
+                res = bbserver_run('supervisorctl start bubblebot')
+                if res.indexOf('ERROR (abnormal termination)') isnt -1
+                    u.log 'Error starting supervisor, tailing logs:'
+                    bbserver_run('tail -n 100 /tmp/bubblebot*')
+                else
+                    u.log 'Waiting twenty seconds to see if it is still running...'
+                    try
+                        software.verify_supervisor bbserver, 'bubblebot', 20
+                    catch err
+                        u.log err.message
+
+            process.exit()
 
 if require.main is module
     copy_to_test_server()

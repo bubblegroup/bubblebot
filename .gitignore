@@ -4,3 +4,4 @@ static/lib
 npm-debug.log
 configuration.json
 test_credentials.json
+bubblebot_test_github_key
