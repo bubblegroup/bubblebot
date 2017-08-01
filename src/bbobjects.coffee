@@ -2163,6 +2163,8 @@ bbobjects.Environment = class Environment extends BubblebotObject
             value = true
         if value is 'false'
             value = false
+        if String(parseFloat(value)) is value
+            value = parseFloat(value)
         @get_credential_set(set_name).set_credential(name, value, overwrite)
 
     set_credential_cmd:
