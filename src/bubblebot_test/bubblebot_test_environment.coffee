@@ -101,9 +101,47 @@ ec2 = (method, parameters) ->
 s3 = (method, parameters) ->
     aws('S3', method, parameters)
 
+get_s3_object = (Key) ->
+    s3('getObject', {Bucket: bbobjects.get_s3_config_bucket(), Key})
+
+# Put s3 object.
+put_s3_object = (Key, Body) ->
+    s3('putObject', {Bucket: get_s3_config_bucket(), Key, Body})
+
+_cached_bucket = null
+get_s3_config_bucket = ->
+    if not _cached_bucket
+        buckets = config['bubblebot_s3_bucket'].split(',')
+        if buckets.length is 1
+            _cached_bucket = buckets[0]
+        else
+            data = s3('listBuckets', {})
+            our_buckets = (bucket.Name for bucket in data.Buckets ? [])
+            for bucket in buckets
+                if bucket in our_buckets
+                    _cached_bucket = bucket
+                    break
+            if not _cached_bucket
+                throw new Error 'Could not find any of ' + buckets.join(', ') + ' in ' + our_buckets.join(', ')
+    return _cached_bucket
 
 
-
+# Retrieves an S3 configuration file as a string, or null if it does not exists
+get_s3_config = (Key) ->
+    u.retry 3, 1000, ->
+        try
+            # TODO : make this an s3 method
+            data = s3('getObject', {Bucket: get_s3_config_bucket(), Key})
+        catch err
+            if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
+                return null
+            else
+                throw err
+        if data.DeleteMarker
+            return null
+        if not data.Body
+            throw new Error 'no body: ' + JSON.stringify data
+        return String(data.Body)
 
 
 
@@ -634,47 +672,7 @@ create_bbserver = () ->
 
 
 
-_cached_bucket = null
-get_s3_config_bucket = ->
-    if not _cached_bucket
-        buckets = config['bubblebot_s3_bucket'].split(',')
-        if buckets.length is 1
-            _cached_bucket = buckets[0]
-        else
-            data = s3('listBuckets', {})
-            our_buckets = (bucket.Name for bucket in data.Buckets ? [])
-            for bucket in buckets
-                if bucket in our_buckets
-                    _cached_bucket = bucket
-                    break
-            if not _cached_bucket
-                throw new Error 'Could not find any of ' + buckets.join(', ') + ' in ' + our_buckets.join(', ')
-    return _cached_bucket
 
-
-# Retrieves an S3 configuration file as a string, or null if it does not exists
-get_s3_config = (Key) ->
-    u.retry 3, 1000, ->
-        try
-            # TODO : make this an s3 method
-            data = s3('getObject', {Bucket: get_s3_config_bucket(), Key})
-        catch err
-            if String(err).indexOf('NoSuchKey') isnt -1 or String(err).indexOf('AccessDenied') isnt -1
-                return null
-            else
-                throw err
-        if data.DeleteMarker
-            return null
-        if not data.Body
-            throw new Error 'no body: ' + JSON.stringify data
-        return String(data.Body)
-
-get_s3_object = (Key) ->
-    s3('getObject', {Bucket: bbobjects.get_s3_config_bucket(), Key})
-
-# Put s3 object.
-put_s3_object = (Key, Body) ->
-    s3('putObject', {Bucket: get_s3_config_bucket(), Key, Body})
 
 # Gets the private key that corresponds with @get_keypair_name()
 get_private_key = ->
@@ -690,19 +688,16 @@ get_private_key = ->
             throw new Error 'Could not retrieve private key for ' + keyname + '; deleted public key'
         throw err
 
-# TODO : repair
 describe_instances = (params) ->
     #http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/EC2.html#describeInstances-property
-    data = ec2('describeInstances', {InstanceIds:[SERVER_ID]})
+    data = ec2('describeInstances', params)
     
     reservations = data.Reservations ? []
     instances = reservations[0].Instances ? []
     return instances[0]
 
-refresh = -> return describe_instances({InstanceIds: [SERVER_ID]})
-
 get_data = (force_refresh) ->
-    return refresh()
+    return describe_instances({InstanceIds: [SERVER_ID]})
 
 get_public_ip_address = -> get_data().PublicIpAddress
 
@@ -711,32 +706,6 @@ get_address = -> get_public_ip_address()
 bbserver_run = (command, options) ->
     return ssh.run get_address(), get_private_key(), command, options
 
-
-
-
-
-
-
-
-
-
-#Saves the object's data to S3
-backup = (filename) ->
-    if not @exists()
-        u.expected_error 'cannot backup: does not exist'
-    if not filename
-        throw new Error 'must include a filename'
-    body = JSON.stringify @properties(), null, 4
-    key = "#{@type}/#{@id}/#{filename}/#{Date.now()}.json"
-    bbobjects.put_s3_config key, body
-    u.reply 'Saved a backup to ' + key
-
-backup_cmd =
-    params: [
-        {name: 'filename', default: 'backup', help: 'The name of this backup.  Backups are saved as type/id/filename/timestamp.json'}
-    ]
-    help: "Backs up this objects' properties to S3"
-    groups: constants.BASIC
 
 
 
@@ -771,7 +740,7 @@ copy_to_test_server = (commit) ->
 
             # ensure we have the necessary deployment key installed
             # key here is the one used to talk to github API
-            # TODO : this should save the key to/ get it from s3
+            # TODO : test without key path
             write_github_private_key('./bubblebot_test_github_key')
 
             # clone our bubblebot installation to a fresh directory, and run npm install and npm test
