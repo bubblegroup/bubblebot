@@ -96,7 +96,7 @@ s3 = (method, parameters) ->
     aws('S3', method, parameters)
 
 get_s3_object = (Key) ->
-    s3('getObject', {Bucket: bbobjects.get_s3_config_bucket(), Key})
+    s3('getObject', {Bucket: get_s3_config_bucket(), Key})
 
 # Put s3 object.
 put_s3_object = (Key, Body) ->
@@ -315,11 +315,6 @@ get_webserver_security_group = () ->
 
 
 
-
-
-
-
-
 create_server_raw = (ImageId, InstanceType, IamInstanceProfile) ->
     u.log 'getting key pair name...'
     KeyName = get_keypair_name()
@@ -396,10 +391,6 @@ tag_resource = (id, Key, Value) ->
 
 
 
-
-
-
-
 _ssh_expected = (err) ->
     if String(err).indexOf('Timed out while waiting for handshake') isnt -1
         return true
@@ -456,7 +447,6 @@ wait_for_ssh = () ->
 
 
 
-# TODO : figure out what this does 
 do_once = (name, fn) ->
     return () ->
         dependencies = bbserver_run('cat bubblebot_dependencies || echo "NOTFOUND"').trim()
@@ -536,8 +526,6 @@ node = (version) -> do_once 'node ' + version, (instance) ->
     bbserver_run 'rm -rf n'
 
 
-install_private_key = (path) ->
-        private_key(path)
 
 
 
@@ -578,10 +566,9 @@ verify_supervisor = (server, name, seconds) ->
     throw new Error 'Supervisor not staying up ' + reason + '.\n' + status + '\nSee tailed logs below'
 
 #Make sure ports are exposed and starts supervisord
-supervisor_start = (can_fail) -> (instance) ->
+supervisor_start = (can_fail) ->
     #If supervisord is already running, kills it.
     bbserver_run "sudo killall supervisord", {can_fail: true}
-
     #Redirects 80 -> 8080 so that don't have to run things as root
     bbserver_run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080", {can_fail}
     #And 443 -> 8043
@@ -589,7 +576,8 @@ supervisor_start = (can_fail) -> (instance) ->
     #Start supervisord
     bbserver_run "supervisord -c /etc/supervisord.conf", {can_fail}
     u.pause 5000
-    u.log 'Started supervisord, checking status...'
+    
+    u.log '\nStarted supervisord, checking status...'
     bbserver_run "supervisorctl status", {can_fail: true}
 
 
@@ -709,29 +697,29 @@ bbserver_run = (command, options) ->
 
 
 
-# Copied and pasted from commands.publish()
-copy_to_test_server = (commit) ->
+# copied and pasted from commands.publish()
+# local key_path './bubblebot_test_github_key'
+copy_to_test_server = (commit, key_path) ->
     u.SyncRun 'publish', ->
         u.log 'checking for bubblebot servers on AWS account...'
 
         # TODO : this does not work
         try
-            servers = ec2('describeTags', {Filters : [{Name: 'tag', Values:['Bubble Bot']}]})
-            u.log(JSON.stringify(servers))
-            if servers.length > 0
-                u.log "bubblebot server(s) already exists on AWS account " + JSON.stringify(servers)
+            servers = ec2('describeInstances', {Filters : [{Name: 'tag:Name', Values:['Bubble Bot']}, {Name: 'instance-state-name', Values:['running']}]})
+            if servers["Reservations"].length > 0
+                u.log "bubblebot server(s) already exists on AWS account: " + JSON.stringify(servers, null, 4)
                 process.exit()
+            else
+                # TODO : how to do this more elegantly?
+                throw new Error('Found no servers on EC2')
         catch err
-            u.log "ERROR WAS: " + err
             u.log 'creating bubblebot test server...'
             bbserver = create_bbserver()
 
             u.log 'bubblebot server created.'
 
-            # ensure we have the necessary deployment key installed
             # key here is the one used to talk to github API
-            # TODO : test without key path
-            write_github_private_key('./bubblebot_test_github_key')
+            write_github_private_key(key_path)
 
             # clone our bubblebot installation to a fresh directory, and run npm install and npm test
             # NOTE : was originally bbserver.run
@@ -739,6 +727,7 @@ copy_to_test_server = (commit) ->
             bbserver_run('git clone ' + config['remote_repo'] + ' ' + install_dir)
             bbserver_run("cd #{install_dir} && npm install coffeescript@1.6.3 && npm install --save coffee")
             bbserver_run("cd #{install_dir} && npm install", {timeout: 300000})
+            # TODO : try this with a commit 
             if commit?
                 try
                     bbserver_run("git checkout " + commit)
@@ -764,7 +753,7 @@ copy_to_test_server = (commit) ->
             catch err
                 u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
                 # make sure supervisord is running
-                supervisor_start(true) bbserver
+                supervisor_start(true)
                 # stop bubblebot if it is running
                 bbserver_run('supervisorctl stop bubblebot', {can_fail: true})
                 # start bubblebot
