@@ -526,14 +526,6 @@ node = (version) -> do_once 'node ' + version, (instance) ->
     bbserver_run 'rm -rf n'
 
 
-
-
-
-
-
-
-
-
 #Verifies that the given supervisor process is running for the given number of seconds
 #If not, logs the tail and throws an error
 verify_supervisor = (server, name, seconds) ->
