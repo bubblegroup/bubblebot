@@ -1,24 +1,22 @@
-# TODO : make this idempotent using AWS tags API.
 # TODO : merge test_credentials and configuration, make sure script writes them to s3 
 # with key (see config.coffee for how to construct key) get bubblebot running 
 
 # TODO : Commit should be an input
-# TODO : only one bubblebot instance at a time
 # TODO : multiple tests later maybe
 
 test_env = exports
 
 fs = require 'fs'
 AWS = require 'aws-sdk'
-ssh = require './ssh'
 Fiber = require 'fibers'
-constants = require './constants'
 strip_comments = require 'strip-json-comments'
 child_process = require 'child_process'
 
-u = require './utilities'
-software = require './software'
-bbobjects = require './bbobjects'
+ssh = require '../ssh'
+u = require '../utilities'
+software = require '../software'
+constants = require '../constants'
+bbobjects = require '../bbobjects'
 
 test_credentials = JSON.parse(fs.readFileSync('test_credentials.json'))
 config = JSON.parse strip_comments fs.readFileSync('configuration.json').toString()
@@ -42,6 +40,9 @@ config_ = {
     }
 
 for key, val of config_
+    config[key] = val
+
+for key, val of test_credentials
     config[key] = val
 
 REGION = config['bubblebot_region']
@@ -100,8 +101,6 @@ ec2 = (method, parameters) ->
 
 s3 = (method, parameters) ->
     aws('S3', method, parameters)
-
-
 
 
 
@@ -265,7 +264,6 @@ get_webserver_security_group = () ->
 
     ensure_security_group_rules group_name, rules
     return id
-
 
 
 
@@ -464,18 +462,6 @@ pg_dump96 = -> do_once 'pg_dump96', () ->
     bbserver_run 'sudo yum -y localinstall https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-6-x86_64/pgdg-ami201503-96-9.6-2.noarch.rpm'
     bbserver_run 'sudo yum -y install postgresql96'
 
-# Installs the server metrics plugin.  Plugins are responsible for calling do_once.
-# Not necessary
-# metrics = -> () ->
-#     # TODO : this doesn't work
-#     metrics_plugins = config.get_plugins 'metrics'
-
-#     if metrics_plugins.length is 0
-#         u.log 'WARNING: no metrics plugin installed... metrics package will not do anything'
-
-#     for plugin in metrics_plugins
-#         plugin.get_server_metrics_software()
-
 supervisor_auto_start = -> do_once 'supervisor_auto_start', () ->
     commands = """
     #start supervisor on startup
@@ -515,6 +501,56 @@ node = (version) -> do_once 'node ' + version, (instance) ->
 
 install_private_key = (path) ->
         private_key(path) this
+
+
+
+#Verifies that the given supervisor process is running for the given number of seconds
+#
+#If not, logs the tail and throws an error
+verify_supervisor = (server, name, seconds) ->
+    #Loop til we see it running initially
+    retries = 0
+    while (status = bbserver_run('supervisorctl status ' + name, {can_fail: true})).indexOf('RUNNING') is -1
+        retries++
+        if retries > 5
+            throw new Error 'supervisor not reporting running after 20 seconds:\n' + status
+        u.pause 4000
+
+    #Then wait and see if it is still running
+    u.pause (seconds + 2) * 1000
+    status = bbserver_run 'supervisorctl status ' + name
+    if status.indexOf('RUNNING') isnt -1
+        uptime = status.split('uptime')[1].trim()
+        uptime_seconds = parseInt(uptime.split(':')[2])
+        uptime_minutes = parseInt(uptime.split(':')[1])
+        uptime_hours = parseInt(uptime.split(':')[0])
+        uptime_time = (uptime_minutes * 60) + uptime_seconds + (uptime_hours + 3600)
+        if uptime_time >= seconds
+            return
+        else
+            reason = 'up for ' + uptime_time + ' < ' + seconds
+    else
+        reason = 'not running'
+
+    bbserver_run 'tail -n 100 /tmp/' + name + '*'
+
+    throw new Error 'Supervisor not staying up ' + reason + '.\n' + status + '\nSee tailed logs below'
+
+#Make sure ports are exposed and starts supervisord
+supervisor_start = (can_fail) -> (instance) ->
+    #If supervisord is already running, kills it.
+    bbserver_run "sudo killall supervisord", {can_fail: true}
+
+    #Redirects 80 -> 8080 so that don't have to run things as root
+    bbserver_run "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080", {can_fail}
+    #And 443 -> 8043
+    bbserver_run "sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8043", {can_fail}
+    #Start supervisord
+    bbserver_run "supervisord -c /etc/supervisord.conf", {can_fail}
+    u.pause 5000
+    u.log 'Started supervisord, checking status...'
+    bbserver_run "supervisorctl status", {can_fail: true}
+
 
 
 
@@ -575,12 +611,6 @@ create_bbserver = () ->
 
     u.log 'bubblebot server has base software installed'
 
-    # try
-    #     metrics() 
-    # catch err
-    #     #We don't want to kill server startup if this fails
-    #     u.log err
-
     return instance
 
 
@@ -628,6 +658,9 @@ get_s3_config = (Key) ->
         return String(data.Body)
 
 
+put_s3_object = (Key, Body) ->
+    s3('putObject', {Bucket: get_s3_config_bucket(), Key, Body})
+
 # Gets the private key that corresponds with @get_keypair_name()
 get_private_key = ->
     keyname = get_keypair_name()
@@ -672,7 +705,7 @@ bbserver_run = (command, options) ->
 
 
 #Saves the object's data to S3
-backup: (filename) ->
+backup = (filename) ->
     if not @exists()
         u.expected_error 'cannot backup: does not exist'
     if not filename
@@ -682,7 +715,7 @@ backup: (filename) ->
     bbobjects.put_s3_config key, body
     u.reply 'Saved a backup to ' + key
 
-backup_cmd:
+backup_cmd =
     params: [
         {name: 'filename', default: 'backup', help: 'The name of this backup.  Backups are saved as type/id/filename/timestamp.json'}
     ]
@@ -708,7 +741,7 @@ copy_to_test_server = (commit) ->
 
         # TODO : this does not work
         try
-            servers = ec2('describeTags',{Filters : [{Name: 'tag', Values:['Bubble Bot']}]})
+            servers = ec2('describeTags', {Filters : [{Name: 'tag', Values:['Bubble Bot']}]})
             u.log(JSON.stringify(servers))
             if servers.length > 0
                 u.log "bubblebot server(s) already exists on AWS account " + JSON.stringify(servers)
@@ -743,15 +776,15 @@ copy_to_test_server = (commit) ->
             # ask bubblebot to restart itself
             try
                 # change config etc to contain releveant information so can use builtin code paths later
-                write_to_configuration_file = 'echo ' + JSON.stringify(config) + ' > ' + install_dir + '/bubblebot/src/configuration.json'
-                bbserver_run(write_to_configuration_file)
+                # write_to_configuration_file = 'echo ' + JSON.stringify(config) + ' > ' + install_dir + '/bubblebot/src/configuration.json'
+                # bbserver_run(write_to_configuration_file)
                 results = bbserver_run("curl -X POST http://localhost:8081/shutdown")
                 if results.indexOf(bubblebot_server.SHUTDOWN_ACK) is -1
                     throw new Error 'Unrecognized response: ' + results
             catch err
                 u.log 'Was unable to tell bubble bot to restart itself.  Server might not be running.  Will restart manually.  Error was: \n' + err.stack
                 # make sure supervisord is running
-                software.supervisor_start(true) bbserver
+                supervisor_start(true) bbserver
                 # stop bubblebot if it is running
                 bbserver_run('supervisorctl stop bubblebot', {can_fail: true})
                 # start bubblebot
@@ -762,7 +795,7 @@ copy_to_test_server = (commit) ->
                 else
                     u.log 'Waiting twenty seconds to see if it is still running...'
                     try
-                        software.verify_supervisor bbserver, 'bubblebot', 20
+                        verify_supervisor bbserver, 'bubblebot', 20
                     catch err
                         u.log err.message
 
