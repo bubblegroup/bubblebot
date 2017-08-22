@@ -151,10 +151,12 @@ u.with_logger = (name, log_fn, fn) ->
     finally
         u.context().loggers[name] = old_logger
         
-#Runs a function redirecting 'reply' to 'log'
+#Runs a function redirecting 'reply' and 'announce' to 'log'
 u.run_silently = (fn) ->
     silent_reply = (msg) -> u.log 'Reply (silenced): ' + msg
-    return u.with_logger 'reply', silent_reply, fn
+    silent_announce = (msg) -> u.log 'Announce (silenced): ' + msg
+    return u.with_logger 'reply', silent_reply, ->
+        return u.with_logger 'announce', silent_announce, fn
         
 
 #Sets a function in the current context

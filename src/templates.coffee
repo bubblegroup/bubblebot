@@ -181,7 +181,8 @@ templates.Service = class Service
                     do (service_instance) ->
                         u.log 'Checking leader for ' + service_instance
                         u.sub_fiber ->
-                            service_instance.check_leader()
+                            u.run_silently ->
+                                service_instance.check_leader()
 
         #Replace the existing servers with the new version
         u.retry 3, 30000, =>
