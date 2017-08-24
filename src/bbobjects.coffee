@@ -4569,7 +4569,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         if not mp?
             return {monitor: false}
         mp.frequency ?= 5000
-        mp.endpoint = {
+        mp.endpoint ?= {
             protocol: 'redis'
             host: @endpoint()
         }
