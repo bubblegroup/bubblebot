@@ -4518,7 +4518,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
         
         return null
         
-    retart_cmd:
+    restart_cmd:
         help: 'Restarts all the servers in this Redis replication group'
         groups: -> if @is_production() then constants.ADMIN else constants.BASIC
         dangerous: -> @is_production()
