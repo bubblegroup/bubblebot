@@ -4504,6 +4504,25 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
             if String(err).indexOf('ReplicationGroupNotFoundFault') is -1
                 throw err
             return false
+        
+    #Restarts the replication group.  We currently only support single-cluster 
+    #replication groups for this command
+    restart: ->
+        data = @get_data(true)
+        
+        for NodeGroup in data.NodeGroups
+            for NodeGroupMember in NodeGroup.NodeGroupMembers
+                {CacheClusterId, CacheNodeId} = NodeGroupMember
+                u.reply 'Rebooting ' + CacheClusterId + ' ' + CacheNodeId
+                @elasticache 'rebootCacheCluster', {CacheClusterId, CacheNodeIdsToReboot: [CacheNodeId]}
+        
+        return null
+        
+    retart_cmd:
+        help: 'Restarts all the servers in this Redis replication group'
+        groups: -> if @is_production() then constants.ADMIN else constants.BASIC
+        dangerous: -> @is_production()
+        
 
     #Retrieves the amazon metadata for this address.  If force_refresh is true,
     #forces us not to use our cache
