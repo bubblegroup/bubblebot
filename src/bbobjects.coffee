@@ -4516,6 +4516,7 @@ bbobjects.RedisReplicationGroup = class RedisReplicationGroup extends BubblebotO
                 u.reply 'Rebooting ' + CacheClusterId + ' ' + CacheNodeId
                 @elasticache 'rebootCacheCluster', {CacheClusterId, CacheNodeIdsToReboot: [CacheNodeId]}
         
+        u.reply 'All nodes rebooted'
         return null
         
     restart_cmd:
