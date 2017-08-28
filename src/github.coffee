@@ -153,7 +153,9 @@ github.Repo = class Repo
                 options.headers['If-None-Match'] = cached_data.etag
         else
             use_cache = false
-
+            
+        plugins.increment 'bubblebot', 'github_requests'
+        
         request url, options, block.make_cb()
         res = block.wait()
 
@@ -221,6 +223,7 @@ config = require './config'
 u = require './utilities'
 software = require './software'
 bbobjects = require './bbobjects'
+plugins = require './plugins'
 
 #Github rate limits, and since a lot of this information is fixed, cache it
 github_cache = new bbobjects.Cache 24 * 60 * 60 * 1000
