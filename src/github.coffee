@@ -130,8 +130,6 @@ github.Repo = class Repo
     #If cache_safe is true, we know the result won't change, so we can return a cached
     #result without doing an If-None-Match check
     _request: (url, method, body, cache_safe) ->
-        rate_limit()
-        
         block = u.Block 'hitting github'
         options = {headers: @headers()}
         if method
@@ -154,8 +152,8 @@ github.Repo = class Repo
         else
             use_cache = false
             
+        rate_limit()
         plugins.increment 'bubblebot', 'github_requests'
-        
         request url, options, block.make_cb()
         res = block.wait()
 
