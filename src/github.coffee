@@ -22,23 +22,36 @@ github.Repo = class Repo
     resolve_commit: (commit) ->
         if not commit
             return null
+            
+        if @is_resolved commit
+            return commit
+            
         url = @commit_url commit
         res = @_request url
         if res.statusCode is 404
             return null
-        return @extract(res, url).sha[..@abbrev]
+            
+        resolved = @extract(res, url).sha[..@abbrev]
+        github_cache.set 'is_resolved:' + resolved, true
+        return resolved
+        
+        
+    #For caching purposes, track if this is a resolved commit.  If it is a resolved commit,
+    #we can often skip hitting github at all
+    is_resolved: (commit) ->
+        return github_cache.get 'is_resolved:' + commit
 
     #Returns the full 40 character sha for a commit
     full_commit_sha: (commit) ->
         url = @commit_url commit
-        res = @_request url
+        res = @_request url, null, null, @is_resolved(commit)
         if res.statusCode is 404
             return null
         return @extract(res, url).sha
 
     #Returns true if second can be fast-forwarded to first
     ahead_of: (first, second) ->
-        res = @request @compare_url first, second
+        res = @request @compare_url(first, second), null, null, (@is_resolved(first) and @is_resolved(second))
         return res.behind_by is 0
 
     #Given the raw github output of a commit, returns a human readable display
@@ -50,7 +63,7 @@ github.Repo = class Repo
 
     #Returns a human-readable, newline seperated list of commits that first has but second doesn't
     show_new_commits: (first, second) ->
-        res = @request @compare_url first, second
+        res = @request @compare_url(first, second), null, null, (@is_resolved(first) and @is_resolved(second))
         return (@display_commit commit for commit in res.commits).join '\n'
 
     #Merges head into base, and returns the SHA.
@@ -113,7 +126,10 @@ github.Repo = class Repo
     compare_url: (first, second) -> @repo_url() + '/compare/' + second + '...' + first
 
     #hits the url and returns the raw response.
-    _request: (url, method, body) ->
+    #
+    #If cache_safe is true, we know the result won't change, so we can return a cached
+    #result without doing an If-None-Match check
+    _request: (url, method, body, cache_safe) ->
         rate_limit()
         
         block = u.Block 'hitting github'
@@ -128,6 +144,12 @@ github.Repo = class Repo
             use_cache = true
             cached_data = github_cache.get url
             if cached_data?
+                #If we know this won't change, just return it
+                if cache_safe
+                    return cached_data.res
+                    
+                #Otherwise, it might change (ie, a branch might point to a different
+                #commit), so use the cached data
                 options.headers['If-None-Match'] = cached_data.etag
         else
             use_cache = false
@@ -156,7 +178,7 @@ github.Repo = class Repo
             throw new Error 'error hitting ' + url + ': could not parse body: ' + res.body
 
     #hits the url and returns the body, throwing an error if it's not a 200 response
-    request: (url, method, body) -> @extract @_request(url, method, body), url
+    request: (url, method, body, cache_safe) -> @extract @_request(url, method, body, cache_safe), url
 
     #Generates a software package for cloning this repo to the given folder
     clone_software: (ref, destination) ->
@@ -172,21 +194,21 @@ github.Repo = class Repo
         commit = @full_commit_sha commit
 
         url = @repo_url() + '/git/commits/' + commit
-        res = @_request url
+        res = @_request url, null, null, true
         return @extract(res, url).tree.sha
 
 
     #Given an SHA of a tree, returns an array of it's sub-entries (blobs + more tree)
     list: (tree) ->
         url = @repo_url() + '/git/trees/' + tree
-        res = @_request url
+        res = @_request url, null, null, true
         return @extract(res, url).tree
 
     #Given a SHA of a blob, fetches the raw data.  If raw = true, returns the base64 encoded
     #string, otherwise we try to interpret it as utf8 text
     get_blob: (blob, raw) ->
         url = @repo_url() + '/git/blobs/' + blob
-        res = @_request url
+        res = @_request url, null, null, true
         data = @extract(res, url).content
         if raw
             return data
